@@ -1,5 +1,5 @@
 // Startseite haus-start (Health-Stil 08.10.2026, ADHS-Umbau 09.10.2026: Symbol + 1–2 Wörter, Gründe ins ⓘ) –
-// Icons seit 09.10.2026 nur Font Awesome (IC = {bedeutung: zeichen} aus haus_icons.py, von haus.py vor diesen Code
+// Icons seit 09.10.2026 nur Font Awesome (IC = {bedeutung: zeichen} aus der Icon-Tabelle, von haus.py vor diesen Code
 // gesetzt, ebenso die Injektion der Icon-Schrift); keine Emojis. Native Tooltips (title=) ohne Icons (tt()).
 // onInit aller HTML-graphics-Panels (gleicher Code, Teil steht im HTML: <div class="wurzel" data-teil="…">).
 // Daten: EINE Infinity-Abfrage /entwurf/haus/start im Panel "Kopf", die anderen Panels lesen sie ueber die Datenquelle
@@ -250,9 +250,9 @@ T.tun = function (w, D) {
   // schlecht zuerst; nur Icon (Statusfarbe) + Anzahl – „2 gut · 3 mäßig · 2 schlecht“ passt am Mac nicht (Wörter im ⓘ)
   const teile = ["schlecht", "maessig", "gut"].filter(s => Q.z[s]).map(s =>
     `<span class="tr ${TR[s][2]}" title="${Q.z[s]} ${TR[s][1]}"><i>${TR[s][0]}</i>${Q.z[s]}</span>`).join("");
-  const lern = Q.gesamt ? `<a class="zeile grau" href="${esc(link("/d/haus-treffsicherheit?"))}" title="${esc(tt(Q.tip))}"><span class="emo">${IC.ziel}</span>
+  const lern = Q.gesamt ? `<a class="zeile grau" href="${esc(link("/bereich?"))}" title="${esc(tt(Q.tip))}"><span class="emo">${IC.ziel}</span>
       <span class="z-mitte"><span class="z-titel">Vorhersagen</span><span class="z-was">${teile || `${Q.z["keine Bewertung"]} noch offen`}</span></span>${ibox(Q.tip)}${chev}</a>`
-    : L.gesamt ? `<a class="zeile grau" href="${esc(link("/d/haus-treffsicherheit?"))}" title="${esc(tt(L.tip))}"><span class="emo">${IC.lernen}</span>
+    : L.gesamt ? `<a class="zeile grau" href="${esc(link("/bereich?"))}" title="${esc(tt(L.tip))}"><span class="emo">${IC.lernen}</span>
       <span class="z-mitte"><span class="z-titel">Datenstand</span><span class="z-was">${L.fertig} von ${L.gesamt} genug Daten</span></span>${ibox(L.tip)}${chev}</a>` : "";
   const anzahl = k.punkte.length + k.weitere;
   w.innerHTML = `<section class="karte tun"><div class="k-kopf"><h2>Bitte ansehen</h2><span class="k-neben">${anzahl ? anzahl + (anzahl === 1 ? " Punkt" : " Punkte") : ""}</span></div>
@@ -282,11 +282,11 @@ T.heute = function (w, D) {
   const jetztTip = `Jetzt = Mittel der letzten 2 min${j.zeit_ms ? " bis " + uhr(j.zeit_ms) : ""}. ${j.satz || ""} ${IC.akku} = Ladestand jetzt (nicht die Gesundheit des Akkus).`;
   w.innerHTML = `<section class="karte heute"><div class="k-kopf"><h2>7 Tage</h2><span class="k-neben">${esc(st.zeitraum_text || "")}</span></div>
     <div class="z3-reihe">
-      ${zahl("/d/haus-energie-pv?", IC.sonne, wo.autarkie_pct != null ? de(wo.autarkie_pct) : "–", "%", "selbst versorgt", autTip)}
-      ${zahl("/d/haus-knx?", IC.hand, hg != null ? de(hg, 1) : "–", "/Tag", `Handgriffe<br><span class="ziel">Ziel 0</span>`, hgTip, hgTrend ? `<span class="trend">${hgTrend}</span>` : "")}
-      ${zahl("/d/haus-netz?", IC.netz, wo.bezug_kwh != null ? de(wo.bezug_kwh, 1) : "–", "kWh", "Netzbezug", netzTip)}
+      ${zahl("/bereich?", IC.sonne, wo.autarkie_pct != null ? de(wo.autarkie_pct) : "–", "%", "selbst versorgt", autTip)}
+      ${zahl("/bereich?", IC.hand, hg != null ? de(hg, 1) : "–", "/Tag", `Handgriffe<br><span class="ziel">Ziel 0</span>`, hgTip, hgTrend ? `<span class="trend">${hgTrend}</span>` : "")}
+      ${zahl("/bereich?", IC.netz, wo.bezug_kwh != null ? de(wo.bezug_kwh, 1) : "–", "kWh", "Netzbezug", netzTip)}
     </div>
-    <a class="jetzt-block" href="${esc(link("/d/haus-energie-pv?"))}" title="${esc(tt(jetztTip))}">
+    <a class="jetzt-block" href="${esc(link("/bereich?"))}" title="${esc(tt(jetztTip))}">
       <div class="jetzt-kopf"><span>Jetzt</span><span>${j.zeit_ms ? `<span class="emo">${IC.uhr}</span> ` + uhr(j.zeit_ms) : ""}</span></div>
       <div class="jetzt">
         <div><b><span class="emo">${IC.sonne}</span>${v(j.sonne_w)}</b><small>kW Sonne</small></div>
@@ -300,7 +300,7 @@ T.heute = function (w, D) {
    Alles SVG/CSS in der Kachel, weiche Verläufe, runde Enden, sanfte Bewegung (prefers-reduced-motion: aus).
    Sonne: Halbbogen 0 bis Wechselrichter-Nennleistung · Haus: woher der Strom kommt (Sonne/Akku/Netz) · Akku: Batterie mit
    Füllstand und Welle (steigt beim Laden, sinkt beim Entladen) · Netz: Pendel ab der Mitte (links Bezug, rechts Einspeisung,
-   ±10 kW) · Innen: Skala 16–28 °C mit Wohlfühlzone 20–23 °C und Spanne kühlster–wärmster Raum · Außen: Skala −10…35 °C mit
+   ± Netzgrenze) · Innen: Skala 16–28 °C mit Wohlfühlzone 20–23 °C und Spanne kühlster–wärmster Raum · Außen: Skala −10…35 °C mit
    heutigem Tief–Hoch-Band und dem Wert jetzt. */
 const VZ = {
   bogen(anteil, aus) {                               // Halbbogen, anteil 0..1
@@ -364,14 +364,14 @@ T.jetzt = function (w, D) {
   // Abschnitt „Messwerte“: Kacheln mit Infografik je Wert, darunter die Auto-Karte
   w.innerHTML = `<section class="abschnitt"><div class="abschnitt-kopf"><h2>Messwerte</h2><span>${j.zeit_ms ? uhr(j.zeit_ms) + " Uhr" : ""}</span></div>
     <div class="jk-reihe">
-      ${k("/d/haus-energie-pv?", IC.solar, "Sonne", kW(j.sonne_w), "kW", sonneWort, VZ.bogen((j.sonne_w || 0) / 20000, (j.sonne_w || 0) < 50))}
-      ${k("/d/haus-energie-pv?", IC.haus, "Haus", kW(j.haus_w), "kW", "Verbrauch",
+      ${k("/bereich?", IC.solar, "Sonne", kW(j.sonne_w), "kW", sonneWort, VZ.bogen((j.sonne_w || 0) / PV_NENN_W, (j.sonne_w || 0) < 50))}
+      ${k("/bereich?", IC.haus, "Haus", kW(j.haus_w), "kW", "Verbrauch",
           VZ.herkunft([[ausSonne, "#FFB340", "aus Sonne"], [ausAkku, "#34C77B", "aus Akku"], [ausNetz, "#AF52DE", "aus Netz"]]))}
-      ${k("/d/haus-akku?", IC.akku, "Akku", j.soc != null ? de(j.soc) : "–", "%", akkuWort, VZ.akku(j.soc, j.akku_w))}
-      ${k("/d/haus-netz?", IC.netz, "Netz", netzZahl, "kW", netzWort, VZ.pendel(netzRuhig ? 0 : j.netz_w), j.netz_w <= -300 ? "ton-bezug" : "")}
-      ${k("/d/haus-heizung?", IC.temperatur, "Innen", lo && hi ? `${de(lo.c)}–${de(hi.c)}` : "–", "°C", lo && hi ? "alle Räume" : "",
+      ${k("/bereich?", IC.akku, "Akku", j.soc != null ? de(j.soc) : "–", "%", akkuWort, VZ.akku(j.soc, j.akku_w))}
+      ${k("/bereich?", IC.netz, "Netz", netzZahl, "kW", netzWort, VZ.pendel(netzRuhig ? 0 : j.netz_w), j.netz_w <= -300 ? "ton-bezug" : "")}
+      ${k("/bereich?", IC.temperatur, "Innen", lo && hi ? `${de(lo.c)}–${de(hi.c)}` : "–", "°C", lo && hi ? "alle Räume" : "",
           VZ.skala(lo && lo.c, hi && hi.c, null, 16, 28, [20, 23]))}
-      ${k("/d/haus-aussen?", IC.baum, "Außen", aussen != null ? de(aussen, 1) : "–", "°C", aussen == null ? "kein Messwert" : aussenWo === "Terrasse" ? "Terrasse (Hof still)" : A.heute_min != null ? `heute ${de(A.heute_min)} bis ${de(A.heute_max)}°` : "Hof",
+      ${k("/bereich?", IC.baum, "Außen", aussen != null ? de(aussen, 1) : "–", "°C", aussen == null ? "kein Messwert" : aussenWo === "Terrasse" ? "Terrasse (Hof still)" : A.heute_min != null ? `heute ${de(A.heute_min)} bis ${de(A.heute_max)}°` : "Hof",
           VZ.skala(A.heute_min, A.heute_max, aussen, -10, 35))}
     </div></section>`;
 };
@@ -392,9 +392,9 @@ T.rueckblick = function (w, D) {
       <div class="segment gross" role="group" aria-label="Zeitraum">${ZR.map(knopf).join("")}</div>
       <span class="rb-zeit">${rechnet ? "wird geladen …" : esc(st.zeitraum_text || "")}</span></div>
     <div class="rb-reihe">
-      ${zahl("/d/haus-energie-pv?", IC.solar, wo.autarkie_pct != null ? de(wo.autarkie_pct) : "–", "%", "eigener Strom (Sonne + Akku)" + ab)}
-      ${zahl("/d/haus-netz?", IC.netz, wo.bezug_kwh != null ? de(wo.bezug_kwh, 1) : "–", "kWh", "aus dem Netz gekauft" + ab)}
-      ${zahl("/d/haus-knx?", IC.hand, hg != null ? de(hg, 1) : "–", "× / Tag", "Licht von Hand geschaltet · Ziel 0")}
+      ${zahl("/bereich?", IC.solar, wo.autarkie_pct != null ? de(wo.autarkie_pct) : "–", "%", "eigener Strom (Sonne + Akku)" + ab)}
+      ${zahl("/bereich?", IC.netz, wo.bezug_kwh != null ? de(wo.bezug_kwh, 1) : "–", "kWh", "aus dem Netz gekauft" + ab)}
+      ${zahl("/bereich?", IC.hand, hg != null ? de(hg, 1) : "–", "× / Tag", "Licht von Hand geschaltet · Ziel 0")}
     </div>`;
   w.querySelectorAll("[data-zr]").forEach(b => b.addEventListener("click", ev => {
     ev.preventDefault(); ev.stopPropagation();
@@ -415,7 +415,7 @@ const mischen = (hex, anteil) => {          // Farbe mit Weiss mischen (anteil =
 T.raum = function (w, D) {
   const R = D.raum || {}, ansicht = n._ansicht || "temp", raeume = R.raeume || [], bew = new Set(D.praesenz_jetzt || []);
   if (!raeume.length) {
-    w.innerHTML = `<section class="karte raum"><div class="k-kopf"><h2><span class="emo">${IC.haus}</span> Räume</h2><a class="k-link" href="${esc(link("/d/haus-start?"))}">Grundriss${chev}</a></div>
+    w.innerHTML = `<section class="karte raum"><div class="k-kopf"><h2><span class="emo">${IC.haus}</span> Räume</h2><a class="k-link" href="${esc(link("/bereich?"))}">Grundriss${chev}</a></div>
       <div class="raum-leer">Raumwerte werden geladen …</div></section>`;
     return;
   }
@@ -441,7 +441,7 @@ T.raum = function (w, D) {
   const schild = "";
   w.innerHTML = `<section class="karte raum"><div class="k-kopf"><h2><span class="emo">${IC.haus}</span> Räume</h2>
       <div class="segment" role="group" aria-label="Ansicht"><button type="button" data-ansicht="temp" aria-pressed="${ansicht === "temp"}">Temperatur</button><button type="button" data-ansicht="anw" aria-pressed="${ansicht !== "temp"}">Anwesenheit</button></div>
-      <a class="k-link" href="${esc(link("/d/haus-start?"))}" aria-label="Räume – Grundriss öffnen">${schmal ? "" : "Grundriss"}${chev}</a></div>
+      <a class="k-link" href="${esc(link("/bereich?"))}" aria-label="Räume – Grundriss öffnen">${schmal ? "" : "Grundriss"}${chev}</a></div>
     <div class="raum-koerper"><div class="raum-text">${text}</div>
       <div class="plaene"><figure data-g="EG"></figure><figure data-g="OG"></figure></div></div></section>`;
   // Plaene in den Platz einpassen, der nach dem Text bleibt (Mac: rechts daneben, iPhone: darunter)
@@ -472,7 +472,7 @@ T.raum = function (w, D) {
       const xs = r.p.map(p => p[0]), yy = r.p.map(p => p[1]);
       const bw = (Math.max(...xs) - Math.min(...xs)) * k, bh = (Math.max(...yy) - Math.min(...yy)) * k;
       const cx = (r.z[0] - x0) * k, cy = (r.z[1] - y0) * k;
-      const ziel = r.raumseite ? `/d/haus-raum?var-raum=${encodeURIComponent(r.raumseite)}` : "/d/haus-start?";
+      const ziel = r.raumseite ? `/bereich?var-raum=${encodeURIComponent(r.raumseite)}` : "/bereich?";
       const titel = `${r.name}${ansicht === "temp" ? (r.temp_t ? ": " + r.temp_t : "") : (r.anw_t ? ": " + r.anw_t + (r.anw_art === "praesenz" ? " der Zeit mit Bewegung" : " Licht-Einschaltungen") : "")}`;
       let t = "";
       if (wert && bw >= 22 && bh >= 13) t = `<text x="${cx.toFixed(1)}" y="${(cy + 3.5).toFixed(1)}" text-anchor="middle" class="${bw < 30 ? "klein" : ""}">${esc(wert)}</text>`;
@@ -561,7 +561,7 @@ function stromKarte(r) {
   if (!r || !r.verfuegbar) return `<div class="karte bk"><div class="k-kopf"><span class="emo">${IC.geld}</span><span class="k-titel">Rechnung</span>${status("unbekannt")}</div><div class="label">keine Prognose</div></div>`;
   const tip = `Stromrechnung ${r.jahr} (Prognose): ≈ ${de(r.rechnung_eur)} € fürs ganze Jahr (80 % sicher: ${de(r.rechnung_p10)}–${de(r.rechnung_p90)} €). `
     + `Rückzahlung ≈ ${de(r.rueckzahlung_eur)} € (${de(r.rueckzahlung_p10)}–${de(r.rueckzahlung_p90)} €), angenommen ${de(r.abschlaege_angenommen)} Abschläge.`;
-  return `<a class="karte bk klick" href="${esc(link("/d/haus-energie-pv?"))}" data-nr="strom" title="${esc(tt(tip))}">
+  return `<a class="karte bk klick" href="${esc(link("/bereich?"))}" data-nr="strom" title="${esc(tt(tip))}">
     <div class="k-kopf"><span class="emo">${IC.geld}</span><span class="k-titel">Stromrechnung ${esc(r.jahr)}</span>${ibox(tip)}<span class="st info"><i>≈</i>Prognose</span></div>
     <div class="bk-koerper"><div class="bk-text">
       <div class="zahl"><b>≈ ${de(r.rechnung_eur)}</b><small>€ im Jahr</small></div>
@@ -591,10 +591,10 @@ T.bereiche = function (w, D) {
 T.mehr = function (w, D) {
   const k = (href, emo, t) => `<a class="kachel" href="${esc(href)}" aria-label="${esc(t)}"><span class="emo">${emo}</span><b>${esc(t)}</b>${chev}</a>`;
   w.innerHTML = `<nav class="mehr" aria-label="Weitere Seiten">
-      ${k("/d/haus-woche", IC.kalender, "Woche")}
-      ${k(link("/d/haus-start?"), IC.grundriss, "Grundriss")}
+      ${k("/bereich", IC.kalender, "Woche")}
+      ${k(link("/bereich?"), IC.grundriss, "Grundriss")}
       ${k(API + "/grundriss/3d/", IC.wuerfel, "3D")}
-      ${k(link("/d/haus-knx?"), IC.uhr, "Alltag")}
+      ${k(link("/bereich?"), IC.uhr, "Alltag")}
       ${k(API + "/backlog", IC.liste, "Backlog")}
       ${k("/dashboards/f/haus/", IC.ordner, "Alle Seiten")}
     </nav>`;
@@ -684,7 +684,7 @@ n._gnVorschau = art => { const j = Date.now();
     : art === "sperre" ? { art: "bereit", text: "Gerade erst gesendet", bis: j + 52000 } : { art: "fehler", text: "Keine Antwort vom Haus-Dienst", info: "Ob gesendet wurde, ist unklar – Stand wird geprüft.", zeigeBis: j + 6e4 };
   H.gnZeigen(); };
 
-/* ── Kiosk: die Startseite zeigt sich ohne Grafana-Kopfleiste (wie Grafana-Home /d/haus-start?kiosk), auch wenn man
+/* ── Kiosk: die Startseite zeigt sich ohne Grafana-Kopfleiste (wie Grafana-Home /bereich?kiosk), auch wenn man
    ueber Brotkrumen/Zurueck kommt; beim Weg auf eine Unterseite wird der Kiosk-Modus verlassen (dort bleiben Kopfleiste
    und Zeitraumwahl). Grafana verlaesst Kiosk nur ueber seine Esc-Taste – genau die wird hier ausgeloest. ── */
 const KIOSK_RE = /(^|[?&])kiosk(=|&|$)/;
