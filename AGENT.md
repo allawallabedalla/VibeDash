@@ -198,27 +198,52 @@ the backtest card (grid import via the car ≈ 0, n ≥ 7) before the person rel
 
 ## 5. Build the pages
 
-Template (adapt per home, drop what the home does not have):
-Overview · Now · Maintenance · Garden · Device history · Forecasts.
+Pages that exist today: Overview · Now · Forecasts · Charging (+ the gallery). Further
+pages are **suggestions** to build per home (drop what the home does not have):
+Maintenance · Garden · Device history.
 
 Per page:
 
 1. Start with a `TileRow` of 2–6 `Tile`s: value large, 1–2 words, one graphic
-   (`ring`, `scale`, `spark`). Outline icon, no emoji.
+   (`ring`, `scale`, `spark`). Outline icon from `src/components/Icon.svelte`, no emoji.
 2. Then cards: `SoftTimeSeries` (actual + own forecast line + band, period choice),
    `SourceArc`, `Sparkline`, `DayList`.
 3. Then, if needed, a `DataTable` as the second section, with a period choice.
 4. Details go behind ⓘ (`info: { what, source }`), opened by tap.
 5. Texts in `src/i18n/de.ts` and `en.ts` (same keys, same placeholders – a test checks it).
 
-Reuse `src/app/tiles.ts` for standard tiles. Look at `src/pages/Overview.svelte` as the
-reference page.
+Where things live:
+
+| Need                                  | Where                                                                 |
+| ------------------------------------- | --------------------------------------------------------------------- |
+| standard tiles (sun, load, battery …) | `src/app/tiles.ts`                                                    |
+| tiles for a new page                  | a new `src/app/<page>.ts` (pure functions, called inside `$derived`)  |
+| gaps, resets, quantiles, `estimate`   | `src/model/series.ts` (`findGaps`, `counterResets`, `estimate`, …)    |
+| local days, DST-safe                  | `src/model/time.ts` (`localDateKey`, `localMidnight`, `addDays`)      |
+| daily values and "typical"            | `src/demo/views.ts` (`daily`, `completeDays`, `typicalDay`, `latest`) |
+
+A value that has no sensor (e.g. battery cycles without a cycle counter) may only be shown
+as a clearly named **proxy** with its derivation behind ⓘ (e.g. "sum of state-of-charge
+drops ÷ 100 per day") – or not at all. Never present a proxy as a measurement.
+
+Wire a new page in (three places):
+
+1. `src/app/router.svelte.ts`: add the route to `Route` and to `routes`.
+2. `src/app/App.svelte`: add a tab to `tabs` and an `{:else if router.route === '…'}`
+   branch that loads the page **lazily** (`{#await import(…)}`) – the first-page budget
+   (section 7) requires it.
+3. `src/pages/<Page>.svelte`: the page itself.
+
+Look at `src/pages/Overview.svelte` as the reference page.
 
 ## 6. Test and look
 
 1. `pnpm lint && pnpm check && pnpm test`
-2. `pnpm test:visual` – screenshots of every page: Mac 1440×900 and iPhone 390×844,
-   light and dark, in `screenshots/`.
+2. Add the page to the `pages` list in `tests/visual/pages.spec.ts` (tests are named
+   `<name> <lang>`), then `pnpm test:visual` (or `-g <name>`) – it builds and starts the
+   preview itself; Chromium must be installed for Playwright. Screenshots of every page:
+   Mac 1440×900 and iPhone 390×844, light and dark, in `screenshots/` (git-ignored; only
+   synthetic demo screenshots may go to `docs/screenshots/`).
 3. **Look at every screenshot** and go through the review list:
    - first level only tiles/infographics?
    - no emoji, no symbol chains?
@@ -229,7 +254,8 @@ reference page.
 4. Fix, repeat, then show the person.
 
 The visual test already enforces: no horizontal scroll, no emoji, touch targets ≥ 44 px,
-text ≥ 14 px on the phone, ⓘ by tap, ≈ always with n.
+text ≥ 14 px on the phone, ⓘ by tap, and ≈ with n **on tiles** (`.tile`). Approximations
+in cards and tables are not checked automatically – look at them yourself.
 
 ## 7. Budget
 
