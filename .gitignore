@@ -14,3 +14,8 @@ local/*
 !local/mapping.example.homeassistant.json
 dist-server/
 compose.yaml
+forecast/.venv/
+__pycache__/
+*.sqlite
+.pytest_cache/
+.ruff_cache/

@@ -1,0 +1,32 @@
+[project]
+name = "vibedash-forecast"
+version = "0.0.0"
+description = "VibeDash forecasting service: simplest sufficient method wins, honest accuracy."
+license = "MIT"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "fastapi==0.142.2",
+  "uvicorn==0.54.0",
+  "numpy==2.5.3",
+  "scikit-learn==1.9.1",
+]
+
+[dependency-groups]
+dev = [
+  "pytest==9.1.1",
+  "ruff==0.16.9",
+  "httpx==0.28.1",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
