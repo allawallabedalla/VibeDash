@@ -177,7 +177,7 @@ export function batteryTile(data: DemoData): TileProps {
     value: num(soc),
     unit: '%',
     sub: cap === null ? undefined : `${num((soc / 100) * cap, 1)} / ${num(cap, 1)} kWh`,
-    graphic: { kind: 'ring', value: soc / 100 },
+    graphic: { kind: 'battery', soc, flow: freshValue(data, 'battery_power') ?? 0 },
     info: {
       what: t('info.battery.what'),
       source:
@@ -215,7 +215,14 @@ export function tempTile(data: DemoData): TileProps {
     value: num(temp, 1),
     unit: '°C',
     sub: t('sub.comfort', { low: num(20), high: num(24) }),
-    graphic: { kind: 'scale', value: temp, min: 16, max: 28, band: { low: 20, high: 24 } },
+    graphic: {
+      kind: 'scale',
+      value: temp,
+      min: 16,
+      max: 28,
+      zone: { low: 20, high: 24 },
+      temperature: true,
+    },
     info: { what: t('info.temp.what'), source: t('info.temp.source') },
   });
 }
@@ -234,7 +241,7 @@ export function humidityTile(data: DemoData): TileProps {
       value: humidity,
       min: 20,
       max: 80,
-      band: { low: 40, high: 60 },
+      zone: { low: 40, high: 60 },
     },
     // Only a real open question earns the dot, never a permanent one.
     ...(data.issues.some((i) => i.entityIds.includes('living_humidity'))
@@ -336,4 +343,84 @@ export function autarkyTile(data: DemoData): TileProps {
     graphic: { kind: 'ring', value: share },
     info: { what: t('info.autarky.what'), source: t('info.autarky.source') },
   };
+}
+
+/** Highest value seen in the loaded data, rounded up (scale for "now" graphics). */
+function peak(data: DemoData, id: string, step: number, floor: number): number {
+  let hi = 0;
+  for (const x of data.series[id]?.samples ?? []) hi = Math.max(hi, Math.abs(x.v));
+  return Math.max(floor, Math.ceil(hi / step) * step);
+}
+
+/** Sun now: half arc against the highest output seen, word instead of "now". */
+export function sunNowTile(data: DemoData): TileProps {
+  const w = nowValue(data, 'pv_power');
+  const top = peak(data, 'pv_power', 1000, 1000);
+  return staleOr(data, 'pv_power', {
+    label: t('tile.sun'),
+    icon: 'sun',
+    color: 'var(--sun)',
+    value: num(w / 1000, 1),
+    unit: 'kW',
+    sub: w >= 50 ? t('word.sunOn') : t('word.sunOff'),
+    graphic: { kind: 'arc', share: w / top, off: w < 50 },
+    info: { what: t('info.sun.what'), source: t('info.sun.source') },
+  });
+}
+
+/** Consumption now: where it comes from (sun directly, battery, grid). */
+export function loadNowTile(data: DemoData): TileProps {
+  const load = Math.max(0, nowValue(data, 'load_power') || 0);
+  const fromBattery = Math.max(0, -(freshValue(data, 'battery_power') ?? 0));
+  const grid = freshValue(data, 'grid_power') ?? 0;
+  const fromGrid = Math.abs(grid) < 50 ? 0 : Math.max(0, -grid);
+  const fromSun = Math.max(0, load - fromBattery - fromGrid);
+  return staleOr(data, 'load_power', {
+    label: t('tile.home'),
+    icon: 'home',
+    color: 'var(--home)',
+    value: num(load / 1000, 1),
+    unit: 'kW',
+    sub: t('word.consumption'),
+    graphic: {
+      kind: 'origin',
+      parts: [
+        { value: fromSun, color: 'var(--sun-soft)', label: t('origin.sun') },
+        { value: fromBattery, color: 'var(--battery)', label: t('origin.battery') },
+        { value: fromGrid, color: 'var(--import)', label: t('origin.grid') },
+      ],
+    },
+    info: { what: t('info.home.what'), source: loadSource(data) },
+  });
+}
+
+/** Battery now: word for what it does. */
+export function batteryNowTile(data: DemoData): TileProps {
+  const flow = freshValue(data, 'battery_power') ?? 0;
+  const tile = batteryTile(data);
+  if (tile.value === '–') return tile;
+  return {
+    ...tile,
+    sub: flow >= 100 ? t('word.charging') : flow <= -100 ? t('word.discharging') : t('word.idle'),
+  };
+}
+
+/** Grid now: pendulum, feed-in positive to the right; under 50 W "balanced". */
+export function gridNowTile(data: DemoData): TileProps {
+  const w = nowValue(data, 'grid_power');
+  const quiet = Math.abs(w) < 50;
+  return staleOr(data, 'grid_power', {
+    label: t('tile.grid'),
+    icon: 'grid',
+    color: quiet || w > 0 ? 'var(--feed)' : 'var(--import)',
+    value: quiet ? num(0, 1) : signed(w / 1000, 1),
+    unit: 'kW',
+    sub: quiet ? t('word.balanced') : w > 0 ? t('word.feed') : t('word.import'),
+    graphic: {
+      kind: 'pendulum',
+      watts: quiet ? 0 : w,
+      range: peak(data, 'grid_power', 1000, 3000),
+    },
+    info: { what: t('info.grid.what'), source: t('info.grid.source') },
+  });
 }

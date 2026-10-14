@@ -4,6 +4,7 @@
    * level (good / fair / poor / open). Shows accuracy, never "learning progress".
    */
   import { num, t } from '../i18n/index.svelte';
+  import Icon from './Icon.svelte';
   import Sparkline from './Sparkline.svelte';
 
   interface Props {
@@ -34,36 +35,46 @@
     open: 'level.open',
   } as const;
   const color = $derived(`var(--${level})`);
+  const levelIcon = {
+    good: 'okCircle',
+    fair: 'lookCircle',
+    poor: 'actCircle',
+    open: 'clock',
+  } as const;
+
+  // Trend: last value against the one two steps earlier; under 3 points "same".
+  const trend = $derived.by(() => {
+    const v = history.filter((x): x is number => x !== null);
+    if (v.length < 2) return null;
+    const d = v[v.length - 1]! - v[Math.max(0, v.length - 3)]!;
+    if (Math.abs(d) < 3) return { text: t('acc.same'), cls: '' };
+    return d > 0
+      ? { text: t('acc.better', { d: num(d) }), cls: 'up' }
+      : { text: t('acc.worse', { d: num(-d) }), cls: 'down' };
+  });
 </script>
 
-<article class="card">
+<article class="card lv-{level}" class:collecting>
   <header>
-    <span class="label">{label}</span>
-    {#if !collecting}<span class="level {level}">{t(levelKey[level])}</span>{/if}
+    {#if collecting}
+      <span class="chip open"><Icon name="clock" size={16} />{t('acc.collecting')}</span>
+    {:else}
+      <span class="chip {level}"
+        ><Icon name={levelIcon[level]} size={16} />{t(levelKey[level])}</span
+      >
+    {/if}
+    {#if !collecting && pct !== null}<span class="n">n = {n}</span>{/if}
   </header>
+  <div class="name">{label}</div>
 
-  <div class="main">
-    <div class="value">
-      {#if collecting}
-        <span class="open">{t('acc.collecting')}</span>
-      {:else if pct === null}
-        <span class="open">{t('progress.open')}</span>
-      {:else}
-        {num(pct)}<span class="unit">%</span><span class="word">{t('progress.correct')}</span>
-      {/if}
-    </div>
-    <div class="trend">
-      {#if history.filter((v) => v !== null).length >= 2}
-        <Sparkline
-          values={history}
-          {color}
-          min={0}
-          max={100}
-          height={36}
-          label={t('progress.trend')}
-        />
-      {/if}
-    </div>
+  <div class="value">
+    {#if collecting}
+      <span class="open">{t('acc.collecting')}</span>
+    {:else if pct === null}
+      <span class="open">{t('progress.open')}</span>
+    {:else}
+      {num(pct)}<span class="unit">%</span><span class="word">{t('progress.correct')}</span>
+    {/if}
   </div>
 
   <div
@@ -85,13 +96,33 @@
       ></div>{/if}
   </div>
 
+  {#if !collecting && pct !== null && history.filter((v) => v !== null).length >= 2}
+    <div class="spark">
+      <div class="axis"><span>{t('acc.axisTop')}</span><span>0</span></div>
+      <div class="plot">
+        <Sparkline
+          values={history}
+          {color}
+          min={0}
+          max={100}
+          height={40}
+          label={t('progress.trend')}
+        />
+      </div>
+    </div>
+    <div class="foot">
+      <span>{t('progress.trend')}</span>
+      {#if trend}<span class="trend {trend.cls}">{trend.text}</span>{/if}
+    </div>
+  {/if}
+
   <div class="meta">
     {#if collecting}
       {t('acc.days', { have: collecting.have, need: collecting.need })} · {t('progress.from', {
         when: collecting.from,
       })}
-    {:else}
-      n = {n}{#if pct === null && openFrom}&nbsp;· {t('progress.from', { when: openFrom })}{/if}
+    {:else if pct === null}
+      n = {n}{#if openFrom}&nbsp;· {t('progress.from', { when: openFrom })}{/if}
     {/if}
     {#if note}<span class="note">{note}</span>{/if}
   </div>
@@ -100,13 +131,17 @@
 <style>
   .card {
     background: var(--surface);
-    border-radius: var(--radius);
+    border-radius: 18px;
     box-shadow: var(--shadow);
-    padding: 14px 16px 16px;
+    padding: 12px 14px 12px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 6px;
     min-width: 0;
+    border: 1.5px solid transparent;
+  }
+  .card.lv-poor:not(.collecting) {
+    border-color: color-mix(in srgb, var(--poor) 45%, transparent);
   }
   header {
     display: flex;
@@ -114,73 +149,117 @@
     align-items: center;
     gap: 8px;
   }
-  .label {
-    font-size: 15px;
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--open);
   }
-  .level {
-    font-size: var(--small);
-    padding: 2px 10px;
-    border-radius: 10px;
-    background: var(--surface-2);
-    color: var(--muted);
-    white-space: nowrap;
-  }
-  .level.good {
+  .chip.good {
     color: var(--good);
   }
-  .level.fair {
+  .chip.fair {
     color: var(--fair);
   }
-  .level.poor {
+  .chip.poor {
     color: var(--poor);
   }
-  .main {
-    display: flex;
-    align-items: flex-end;
-    gap: 16px;
+  .n {
+    font-size: var(--small);
+    color: var(--muted);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .name {
+    font-size: 15px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .value {
-    font-size: 28px;
-    font-weight: 600;
-    line-height: 1.1;
+    margin-top: 2px;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1;
     letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
   .unit {
-    font-size: 15px;
-    font-weight: 500;
+    font-size: 16px;
+    font-weight: 600;
     color: var(--muted);
     margin-left: 3px;
+    letter-spacing: 0;
   }
   .word {
-    font-size: 15px;
+    font-size: var(--small);
     font-weight: 400;
     color: var(--muted);
-    margin-left: 0.35em;
+    margin-left: 0.5em;
     letter-spacing: 0;
   }
   .open {
-    font-weight: 500;
+    font-size: 17px;
+    font-weight: 600;
     color: var(--open);
-  }
-  .trend {
-    flex: 1;
-    min-width: 0;
+    letter-spacing: 0;
   }
   .bar {
-    height: 8px;
-    border-radius: 4px;
-    background: var(--line);
+    height: 10px;
+    border-radius: 5px;
+    background: var(--track);
     overflow: hidden;
   }
   .fill {
     height: 100%;
-    border-radius: 4px;
+    border-radius: 5px;
   }
   .fill.collecting {
     background: var(--open);
     opacity: 0.6;
+  }
+  .spark {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .axis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 44px;
+    text-align: right;
+    white-space: nowrap;
+    font-size: var(--small);
+    line-height: 1;
+    color: var(--muted);
+    flex: none;
+  }
+  .plot {
+    flex: 1;
+    min-width: 0;
+    border-left: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+    margin-left: 50px;
+    font-size: var(--small);
+    color: var(--muted);
+  }
+  .trend.up {
+    color: var(--good);
+    font-weight: 600;
+  }
+  .trend.down {
+    color: var(--poor);
+    font-weight: 600;
   }
   .note {
     display: block;
@@ -189,5 +268,8 @@
     font-size: var(--small);
     color: var(--muted);
     font-variant-numeric: tabular-nums;
+  }
+  .meta:empty {
+    display: none;
   }
 </style>

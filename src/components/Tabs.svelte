@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
-   * Main areas as a bar. Desktop: icon + word. Phone: compact icon bar, only
-   * the active area shows its word; every tab keeps a 44 px target and a label.
+   * Main areas as one row of soft pills (icon + word), the active one tinted.
+   * Phone: the same row, swipeable instead of squeezed; 44 px targets.
    */
   import Icon, { type IconName } from './Icon.svelte';
 
@@ -40,57 +40,50 @@
   ul {
     list-style: none;
     margin: 0;
-    padding: 4px;
+    padding: 2px;
     display: flex;
-    gap: 2px;
-    background: var(--surface);
-    border-radius: 24px;
-    box-shadow: var(--shadow);
-    width: fit-content;
-    max-width: 100%;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  ul::-webkit-scrollbar {
+    display: none;
   }
   li {
-    flex: 1 1 auto;
-    min-width: 0;
+    flex: 0 0 auto;
   }
   button {
-    width: 100%;
     height: 44px;
-    padding: 0 16px;
+    padding: 0 16px 0 13px;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
+    gap: 7px;
     border: 0;
-    border-radius: 22px;
-    background: transparent;
-    color: var(--muted);
+    border-radius: 999px;
+    background: var(--gap);
+    color: var(--text-2);
     font-size: 15px;
+    font-weight: 500;
     white-space: nowrap;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
+  button:hover {
+    background: color-mix(in srgb, var(--gap) 160%, transparent);
+  }
   button.active {
-    background: var(--surface-2);
-    color: var(--text);
-    box-shadow: inset 0 0 0 1px var(--line);
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-weight: 650;
   }
 
   @media (max-width: 600px) {
     ul {
-      width: 100%;
-    }
-    li {
-      flex: 0 0 44px;
-    }
-    li:has(.active) {
-      flex: 1 1 auto;
+      margin: 0 -16px;
+      padding: 2px 16px;
     }
     button {
-      padding: 0 12px;
-    }
-    button:not(.active) .word {
-      display: none;
+      padding: 0 14px 0 11px;
     }
   }
 </style>
