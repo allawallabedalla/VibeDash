@@ -229,8 +229,8 @@ Einheitliches Datenmodell: `Entitaet` (id, Name, Art, Raum, Einheit) · `Messrei
 ## 12. Offene Entscheidungen (vom Menschen zu treffen)
 
 1. ~~Name~~ – entschieden: **VibeDash**.
-2. **Lizenz.** MIT (maximal offen) · Apache-2.0 (offen + Patentklausel) · AGPL-3.0 (Ableitungen müssen offen bleiben).
-3. **Sprache von Code und Doku.** Empfehlung: Code und README **englisch** (Reichweite), Oberfläche **mehrsprachig** ab Start (de + en).
+2. ~~Lizenz~~ – entschieden: **MIT** (`LICENSE`, Copyright allawallabedalla).
+3. ~~Sprache~~ – entschieden: Code und README **englisch**, Oberfläche **Deutsch + Englisch** ab Start.
 4. **Öffentlich ab Tag 1 oder erst ab v0.1?** Empfehlung: privat bis M2, dann öffentlich.
 
 ---
