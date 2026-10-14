@@ -197,7 +197,9 @@ export async function handleApi(
   if (path === '/api/entities') {
     return json(200, {
       timeZone: deps.mapping.timeZone,
-      entities: Object.values(deps.mapping.series).map((m) => ({ ...m.entity, stepMs: m.stepMs })),
+      entities: Object.values(deps.mapping.series)
+        .filter((m) => !m.helper)
+        .map((m) => ({ ...m.entity, stepMs: m.stepMs })),
     });
   }
 

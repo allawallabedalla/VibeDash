@@ -3,18 +3,12 @@
  * context ($derived) so texts follow the language switch.
  */
 import type { TileProps } from '../components/Tile.svelte';
-import {
-  BATTERY_CAPACITY_WH,
-  daily,
-  dayAheadForecasts,
-  last24h,
-  latest,
-  type DemoData,
-} from '../demo';
+import { daily, dayAheadForecasts, last24h, latest, type DemoData } from '../demo';
 import { sunToday, type SunForecast } from './sun-forecast';
 
 export { demoSunForecast, type SunForecast } from './sun-forecast';
 import { i18n, num, t, time } from '../i18n/index.svelte';
+import { steadyValue } from '../model/series';
 import { localDateKey } from '../model/time';
 
 const kw = (w: number | null) => (w === null ? null : w / 1000);
@@ -115,21 +109,78 @@ export function loadTile(data: DemoData): TileProps {
     unit: 'kW',
     sub: t('sub.now'),
     graphic: { kind: 'spark', values: last24h(data, 'load_power').map(kw), min: 0 },
-    info: { what: t('info.home.what'), source: t('info.home.source') },
+    info: { what: t('info.home.what'), source: loadSource(data) },
   });
+}
+
+/**
+ * Where the house load comes from. A derived consumption (integral of the
+ * load, see `home_energy` / `load_balance_energy` in the mapping) is named as
+ * such, with the car share and the inverter's own balance to compare.
+ */
+function loadSource(data: DemoData): string {
+  const today = localDateKey(data.now, data.timeZone);
+  const todayOf = (id: string) => {
+    if (!data.series[id]?.samples.length) return undefined;
+    const d = daily(data, id).at(-1);
+    return d && d.day === today ? d.value : undefined;
+  };
+  const balance = todayOf('load_balance_energy');
+  const home = todayOf('home_energy');
+  if (balance === undefined && home === undefined) return t('info.home.source');
+  const load = todayOf('load_energy');
+  const parts: string[] = [];
+  if (load !== undefined) parts.push(t('info.home.derived', { load: num(load, 1) }));
+  if (load !== undefined && home !== undefined) {
+    parts.push(t('info.home.car', { car: num(load - home, 1), home: num(home, 1) }));
+  }
+  if (load !== undefined && balance !== undefined && balance > 0) {
+    parts.push(
+      t('info.home.balance', {
+        balance: num(balance, 1),
+        diff: num(balance - load, 1),
+        pct: num(((balance - load) / balance) * 100),
+      }),
+    );
+  }
+  return parts.join(' ');
+}
+
+/**
+ * Nominal battery capacity in kWh as the device reports it (not a measured
+ * capacity): read errors (0, < 1 kWh, jumps > 10 %) dropped, the last valid
+ * value held. null if unknown – then the tile shows % only.
+ */
+export function batteryCapacityKwh(data: DemoData): number | null {
+  const s = data.series.battery_capacity;
+  if (!s?.samples.length) return null;
+  const unit = data.entities.find((e) => e.id === 'battery_capacity')?.unit;
+  const factor = unit === 'Wh' ? 0.001 : unit === 'kWh' ? 1 : null;
+  if (factor === null) return null;
+  const v = steadyValue(
+    s.samples.map((x) => ({ t: x.t, v: x.v * factor })),
+    { min: 1, maxJump: 0.1 },
+  );
+  return v;
 }
 
 export function batteryTile(data: DemoData): TileProps {
   const soc = nowValue(data, 'battery_soc');
+  const cap = batteryCapacityKwh(data);
   return staleOr(data, 'battery_soc', {
     label: t('tile.battery'),
     icon: 'battery',
     color: 'var(--battery)',
     value: num(soc),
     unit: '%',
-    sub: `${num(((soc / 100) * BATTERY_CAPACITY_WH) / 1000, 1)} / ${num(BATTERY_CAPACITY_WH / 1000)} kWh`,
+    sub: cap === null ? undefined : `${num((soc / 100) * cap, 1)} / ${num(cap, 1)} kWh`,
     graphic: { kind: 'ring', value: soc / 100 },
-    info: { what: t('info.battery.what'), source: t('info.battery.source') },
+    info: {
+      what: t('info.battery.what'),
+      source:
+        t('info.battery.source') +
+        (cap === null ? '' : ` ${t('info.battery.capacity', { cap: num(cap, 1) })}`),
+    },
   });
 }
 

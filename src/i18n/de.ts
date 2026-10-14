@@ -36,8 +36,15 @@ export const de = {
   'info.sun.source': 'Wechselrichter, alle 5 Minuten. Eine Lücke im Logger bleibt leer.',
   'info.home.what': 'Was das Haus gerade braucht.',
   'info.home.source': 'Hauszähler, alle 5 Minuten.',
+  'info.home.derived':
+    'Heute bisher {load} kWh – aus der Leistung aufsummiert, kein eigener Zähler; Lücken zählen nicht mit.',
+  'info.home.car': 'Davon Auto {car} kWh (Wallbox-Zähler), Haus ohne Auto {home} kWh.',
+  'info.home.balance':
+    'Bilanz laut Wechselrichter (direkt + Bezug + Akku entladen − Akku aus dem Netz geladen): {balance} kWh. Der Unterschied von {diff} kWh ({pct} %) sind Wandler- und Akkuverluste.',
   'info.battery.what': 'Ladestand des Hausakkus.',
   'info.battery.source': 'Batteriespeicher, Ladestand in Prozent.',
+  'info.battery.capacity':
+    'kWh = Ladestand × Nennkapazität laut Wechselrichter ({cap} kWh). Das ist keine gemessene Kapazität: ein gealterter Akku speichert weniger.',
   'info.grid.what': 'Plus = Strom geht ins Netz. Minus = Strom kommt aus dem Netz.',
   'info.grid.source':
     'Netzzähler. Zwei Meldungen in derselben Sekunde bleiben in Eingangsreihenfolge.',
@@ -156,6 +163,11 @@ export const de = {
   'q.title': 'Fragen an dich',
   'q.gap':
     '{name} hat am {date} von {from} bis {to} nichts gemeldet. Wurde da etwas neu gestartet?',
+  'q.gapMany':
+    '{name} haben am {date} von {from} bis {to} nichts gemeldet. Wurde da etwas neu gestartet?',
+  'q.gapRepeat':
+    '{name} hat seit {since} {n}-mal geschwiegen, am längsten am {date} von {from} bis {to}. Meldet der Sensor nur bei Änderungen, oder fällt er aus?',
+  'q.groupConfirm': 'Bestätigen',
   'q.reset':
     'Der Zähler {name} ist am {date} um {time} zurückgesprungen. Wurde er getauscht oder zurückgesetzt?',
   'q.open': 'Offen: {count}',
@@ -303,6 +315,9 @@ export const de = {
   'review.autarky': 'Eigen',
   'review.loggerGap': 'Logger-Lücke, Zähler vollständig',
   'review.unit': 'Alle Werte in kWh aus Zählerständen, Tage nach Ortszeit.',
+  'review.unitDerived':
+    'Alle Werte in kWh, Tage nach Ortszeit. Sonne, Einspeisung und Bezug aus Zählerständen; Verbrauch aus der Leistung aufsummiert (kein eigener Zähler).',
+  'review.gapDerived': 'Lücke: Zähler vollständig, Verbrauch ohne die Lücke (zu niedrig)',
   'nav.gallery': 'Bausteine',
   'model.load': 'Verbrauchsprognose',
   'tile.loadTomorrow': 'Verbrauch morgen',

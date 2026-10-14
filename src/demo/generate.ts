@@ -42,6 +42,13 @@ export const ENTITIES: Entity[] = [
   { id: 'load_power', name: 'House', kind: 'power', unit: 'W', confirmed: true },
   { id: 'battery_power', name: 'Battery', kind: 'power', unit: 'W', confirmed: true },
   { id: 'battery_soc', name: 'Battery', kind: 'state_of_charge', unit: '%', confirmed: true },
+  {
+    id: 'battery_capacity',
+    name: 'Battery capacity',
+    kind: 'capacity',
+    unit: 'kWh',
+    confirmed: true,
+  },
   { id: 'grid_power', name: 'Grid', kind: 'power', unit: 'W', confirmed: true },
   { id: 'pv_energy', name: 'PV', kind: 'energy_counter', unit: 'kWh', confirmed: true },
   { id: 'load_energy', name: 'House', kind: 'energy_counter', unit: 'kWh', confirmed: true },
@@ -154,6 +161,7 @@ export function generateDemo(seed = 42): DemoData {
     push('load_power', t, Math.round(load));
     push('battery_power', t, Math.round(battery));
     push('battery_soc', t, round1((soc / BATTERY_CAPACITY_WH) * 100));
+    push('battery_capacity', t, BATTERY_CAPACITY_WH / 1000);
     push('grid_power', t, Math.round(grid));
     if (t === sameSecondAt) push('grid_power', t, Math.round(grid) - 140);
     push('load_energy', t, round3(loadKwh));

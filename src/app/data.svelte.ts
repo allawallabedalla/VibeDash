@@ -52,12 +52,19 @@ function reasonOf(r: { status: number; body: unknown } | null): Reason {
 }
 
 /** Gaps and meter resets from real data become issues → questions to the person. */
-function detectIssues(series: Record<string, Series>, now: number): DemoIssue[] {
+function detectIssues(
+  series: Record<string, Series>,
+  entities: Entity[],
+  now: number,
+): DemoIssue[] {
   const out: DemoIssue[] = [];
+  const counters = new Set(entities.filter((e) => e.kind === 'energy_counter').map((e) => e.id));
   for (const s of Object.values(series)) {
     for (const g of findGaps(s)) {
       if (g.to > now - RECENT_MS) out.push({ kind: 'gap', entityIds: [s.entityId], ...g });
     }
+    // Only meters can be reset; power or temperature going down is normal.
+    if (!counters.has(s.entityId)) continue;
     for (const r of counterResets(s.samples)) {
       if (r.t > now - RECENT_MS) {
         out.push({ kind: 'artifact', entityIds: [s.entityId], from: r.t, to: r.t });
@@ -102,7 +109,7 @@ async function loadLive(timeZone: string, backends: Backend[]): Promise<State> {
     status: 'ready',
     source: 'live',
     backends,
-    data: { now, timeZone, entities, series, issues: detectIssues(series, now) },
+    data: { now, timeZone, entities, series, issues: detectIssues(series, entities, now) },
     missing: missing.sort((a, b) => a.id.localeCompare(b.id)),
   };
 }

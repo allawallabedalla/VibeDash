@@ -31,9 +31,10 @@ export function completeDailyValues(
   s: Series,
   timeZone: string,
   now: number,
+  maxPerDay?: number,
 ): { tag: string; wert: number }[] {
   const today = localDateKey(now, timeZone);
-  return dailyFromCounter(s.samples, (t) => localDateKey(t, timeZone))
+  return dailyFromCounter(s.samples, (t) => localDateKey(t, timeZone), maxPerDay)
     .filter((d) => d.day < today)
     .map((d) => ({ tag: d.day, wert: Math.round(d.value * 1000) / 1000 }));
 }
@@ -80,7 +81,7 @@ export function forecastBridge(deps: BridgeDeps) {
     const now = deps.now();
     const days = synced.has(name) ? LATER_SYNC_DAYS : FIRST_SYNC_DAYS;
     const s = await deps.series(src, now - days * DAY, now);
-    const werte = completeDailyValues(s, deps.mapping.timeZone, now);
+    const werte = completeDailyValues(s, deps.mapping.timeZone, now, src.entity.maxPerDay);
     const weather = f.weather ? await deps.weather().catch(() => null) : null;
     const merkmale = weather ? weatherFeatures(weather, deps.mapping.timeZone, now) : [];
     await call('/reihen', 'POST', { id: name, einheit: src.entity.unit });

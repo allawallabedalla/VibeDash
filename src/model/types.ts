@@ -3,20 +3,27 @@
  * display concern only (see ANLEITUNG.md section 6).
  */
 
+/** `capacity`: a nominal size (e.g. battery kWh) that should not change. */
 export type EntityKind =
-  'power' | 'energy_counter' | 'state_of_charge' | 'temperature' | 'humidity';
+  'power' | 'energy_counter' | 'state_of_charge' | 'capacity' | 'temperature' | 'humidity';
 
 export interface Entity {
   id: string;
   name: string;
   kind: EntityKind;
   room?: string;
+  /** Device it belongs to (inverter, wallbox …); questions are grouped by it. */
+  device?: string;
   unit: string;
   /**
    * false until the person has checked the value against something they know
    * (vendor app, meter). Shown as "being checked" (see RISIKEN.md).
    */
   confirmed?: boolean;
+  /** Energy counters: a day above this (in `unit`) is implausible and left out. */
+  maxPerDay?: number;
+  /** Computed from other series (no meter of its own); named as such in ⓘ. */
+  derived?: boolean;
 }
 
 /** One measurement. Order within a series is arrival order, never re-sorted by value. */

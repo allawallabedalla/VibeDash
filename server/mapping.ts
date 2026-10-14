@@ -9,8 +9,33 @@ import type { InfluxMapping } from '../src/adapters/influx1';
 import type { RoofPlane } from '../src/adapters/openmeteo';
 import type { EntityKind } from '../src/model/types';
 
-export type SeriesMapping =
-  ({ source: 'influx' } & InfluxMapping) | ({ source: 'homeassistant' } & HaMapping);
+/** One part of a derived counter: power to integrate or a meter to add/subtract. */
+export interface DerivedTerm {
+  how: 'integrate' | 'counter';
+  /** Name of an influx or homeassistant series in this mapping. */
+  series: string;
+  sign: 1 | -1;
+}
+
+/** A counter computed from other series (src/model/derive.ts); always kWh. */
+export interface DerivedMapping {
+  entity: InfluxMapping['entity'];
+  stepMs: number;
+  terms: DerivedTerm[];
+}
+
+export type SeriesMapping = (
+  | ({ source: 'influx' } & InfluxMapping)
+  | ({ source: 'homeassistant' } & HaMapping)
+  | ({ source: 'derived' } & DerivedMapping)
+) & {
+  /** Only an input for other series: not listed in /api/entities. */
+  helper?: boolean;
+};
+
+/** Factor from a unit to kW (power) or kWh (energy); undefined if not convertible. */
+export const POWER_TO_KW: Record<string, number> = { W: 0.001, kW: 1 };
+export const ENERGY_TO_KWH: Record<string, number> = { Wh: 0.001, kWh: 1 };
 
 /** A daily forecast made by the forecasting service from a meter reading. */
 export interface ForecastMapping {
@@ -58,13 +83,27 @@ const KINDS: EntityKind[] = [
   'power',
   'energy_counter',
   'state_of_charge',
+  'capacity',
   'temperature',
   'humidity',
 ];
 const NAME = /^[a-z][a-z0-9_]{0,63}$/;
-const COMMON_KEYS = ['source', 'name', 'kind', 'unit', 'room', 'scale', 'stepMs', 'confirmed'];
+const COMMON_KEYS = [
+  'source',
+  'name',
+  'kind',
+  'unit',
+  'room',
+  'device',
+  'scale',
+  'stepMs',
+  'confirmed',
+  'maxPerDay',
+  'helper',
+];
 const INFLUX_KEYS = [...COMMON_KEYS, 'measurement', 'field', 'tags'];
 const HA_KEYS = [...COMMON_KEYS, 'entityId', 'maxHoldMs', 'longTerm'];
+const DERIVED_KEYS = [...COMMON_KEYS, 'terms'];
 
 const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -108,11 +147,12 @@ export function validateMapping(
       continue;
     }
     const source = entry.source ?? 'influx';
-    if (source !== 'influx' && source !== 'homeassistant') {
-      errors.push(`${at}.source: "influx" or "homeassistant"`);
+    if (source !== 'influx' && source !== 'homeassistant' && source !== 'derived') {
+      errors.push(`${at}.source: "influx", "homeassistant" or "derived"`);
       continue;
     }
-    const allowed = source === 'influx' ? INFLUX_KEYS : HA_KEYS;
+    const allowed =
+      source === 'influx' ? INFLUX_KEYS : source === 'homeassistant' ? HA_KEYS : DERIVED_KEYS;
     for (const key of Object.keys(entry)) {
       if (!allowed.includes(key)) errors.push(`${at}.${key}: unknown key for source ${source}`);
     }
@@ -122,8 +162,22 @@ export function validateMapping(
     }
     if (!isText(entry.unit, 20)) errors.push(`${at}.unit: required text`);
     if (entry.room !== undefined && !isText(entry.room)) errors.push(`${at}.room: text`);
+    if (entry.device !== undefined && !isText(entry.device, 60)) {
+      errors.push(`${at}.device: text`);
+    }
     if (entry.confirmed !== undefined && typeof entry.confirmed !== 'boolean') {
       errors.push(`${at}.confirmed: true or false`);
+    }
+    if (entry.helper !== undefined && typeof entry.helper !== 'boolean') {
+      errors.push(`${at}.helper: true or false`);
+    }
+    if (
+      entry.maxPerDay !== undefined &&
+      (entry.kind !== 'energy_counter' ||
+        typeof entry.maxPerDay !== 'number' ||
+        !(entry.maxPerDay > 0))
+    ) {
+      errors.push(`${at}.maxPerDay: number > 0, only for energy_counter`);
     }
     if (
       entry.scale !== undefined &&
@@ -146,11 +200,15 @@ export function validateMapping(
       kind: entry.kind as EntityKind,
       unit: entry.unit as string,
       ...(entry.room ? { room: entry.room as string } : {}),
+      ...(entry.device ? { device: entry.device as string } : {}),
       // Unconfirmed until the person checked it against a source they trust.
       confirmed: entry.confirmed === true,
+      ...(typeof entry.maxPerDay === 'number' ? { maxPerDay: entry.maxPerDay } : {}),
+      ...(source === 'derived' ? { derived: true } : {}),
     };
     const common = {
       entity,
+      ...(entry.helper === true ? { helper: true } : {}),
       ...(entry.scale !== undefined ? { scale: entry.scale as number } : {}),
       stepMs: entry.stepMs as number,
     };
@@ -170,6 +228,35 @@ export function validateMapping(
         field: entry.field as string,
         ...(entry.tags ? { tags: entry.tags as Record<string, string> } : {}),
       };
+    } else if (source === 'derived') {
+      if (entry.kind !== 'energy_counter' || entry.unit !== 'kWh') {
+        errors.push(`${at}: a derived series is an energy_counter in kWh`);
+      }
+      if (entry.scale !== undefined) errors.push(`${at}.scale: not for derived series`);
+      const terms: DerivedTerm[] = [];
+      if (!Array.isArray(entry.terms) || entry.terms.length === 0 || entry.terms.length > 8) {
+        errors.push(`${at}.terms: 1 to 8 terms`);
+      } else {
+        entry.terms.forEach((x: unknown, i: number) => {
+          const ok =
+            isObj(x) &&
+            Object.keys(x).every((k) => ['integrate', 'counter', 'sign'].includes(k)) &&
+            (typeof x.integrate === 'string') !== (typeof x.counter === 'string') &&
+            (x.sign === undefined || x.sign === 1 || x.sign === -1);
+          if (!ok) {
+            errors.push(
+              `${at}.terms[${i}]: {"integrate": <power series>} or {"counter": <series>}, optional "sign": 1 | -1`,
+            );
+            return;
+          }
+          terms.push({
+            how: typeof x.integrate === 'string' ? 'integrate' : 'counter',
+            series: String(x.integrate ?? x.counter),
+            sign: x.sign === -1 ? -1 : 1,
+          });
+        });
+      }
+      series[id] = { source: 'derived', ...common, terms };
     } else {
       if (typeof entry.entityId !== 'string' || !isHaEntityId(entry.entityId)) {
         errors.push(`${at}.entityId: Home Assistant entity id like "sensor.example_power"`);
@@ -193,6 +280,24 @@ export function validateMapping(
         ...(entry.longTerm === false ? { longTerm: false } : {}),
       };
     }
+  }
+
+  // Derived terms must point at measured series of the right kind and unit.
+  for (const [id, m] of Object.entries(series)) {
+    if (m.source !== 'derived') continue;
+    m.terms.forEach((term, i) => {
+      const at = `mapping.series.${id}.terms[${i}]`;
+      const ref = Object.hasOwn(series, term.series) ? series[term.series] : undefined;
+      if (!ref || ref.source === 'derived') {
+        errors.push(`${at}: "${term.series}" must be an influx or homeassistant series`);
+      } else if (term.how === 'integrate') {
+        if (ref.entity.kind !== 'power' || !(ref.entity.unit in POWER_TO_KW)) {
+          errors.push(`${at}: "${term.series}" must be power in W or kW`);
+        }
+      } else if (ref.entity.kind !== 'energy_counter' || !(ref.entity.unit in ENERGY_TO_KWH)) {
+        errors.push(`${at}: "${term.series}" must be an energy_counter in Wh or kWh`);
+      }
+    });
   }
 
   const forecasts: Record<string, ForecastMapping> = {};
@@ -352,5 +457,8 @@ export function validateMapping(
 
 /** Which back-ends a mapping needs. */
 export function sourcesOf(mapping: Mapping): ('influx' | 'homeassistant')[] {
-  return [...new Set(Object.values(mapping.series).map((s) => s.source))].sort();
+  const measured = Object.values(mapping.series).flatMap((s) =>
+    s.source === 'derived' ? [] : [s.source],
+  );
+  return [...new Set(measured)].sort();
 }

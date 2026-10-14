@@ -2,8 +2,8 @@
   /** M2: first real page. First level tiles, then today, then look-back table, then questions. */
   import { onMount } from 'svelte';
   import { currentData, currentSource, store } from '../app/data.svelte';
-  import { questions } from '../app/questions';
-  import { reviewRows } from '../app/review';
+  import { groupQuestions, questions } from '../app/questions';
+  import { reviewNote, reviewRows } from '../app/review';
   import {
     autarkyTile,
     batteryTile,
@@ -35,6 +35,12 @@
   const locale = $derived(i18n.locale === 'de' ? 'de-DE' : 'en-GB');
 
   const qs = $derived(questions(house, currentSource()));
+  const qGroups = $derived(groupQuestions(qs));
+  // Open on wide screens, folded on the phone (tap to open).
+  let wide = $state(true);
+  onMount(() => {
+    wide = !window.matchMedia('(max-width: 600px)').matches;
+  });
   const status = $derived.by<StatusItem[]>(() => {
     const item = (area: 'energy' | 'battery' | 'climate'): StatusItem => {
       const n = qs.filter((q) => q.area === area).length;
@@ -168,7 +174,7 @@
   </div>
 
   <h2>{t('page.review')}</h2>
-  <Card title={t('review.title')} icon="clock" color="var(--muted)" note={t('review.unit')}>
+  <Card title={t('review.title')} icon="clock" color="var(--muted)" note={reviewNote(house)}>
     {#snippet actions()}
       <Segmented
         options={[
@@ -189,11 +195,21 @@
       icon="info"
       color="var(--fair)"
     >
-      <ul class="questions">
-        {#each qs as q (q.id)}
-          <li><span class="qicon"><Icon name="info" size={18} /></span>{q.text}</li>
-        {/each}
-      </ul>
+      {#each qGroups as g (g.name)}
+        <details class="qgroup" open={wide && qGroups.length <= 4}>
+          <summary>
+            <span class="qname">{g.name}</span>
+            <span class="qn"
+              >{g.items.length === 1 ? t('q.one') : t('q.count', { n: g.items.length })}</span
+            >
+          </summary>
+          <ul class="questions">
+            {#each g.items as q (q.id)}
+              <li><span class="qicon"><Icon name="info" size={18} /></span>{q.text}</li>
+            {/each}
+          </ul>
+        </details>
+      {/each}
     </Card>
   {/if}
 </div>
@@ -202,9 +218,43 @@
   .status {
     margin: 16px 0 16px;
   }
+  .qgroup + .qgroup {
+    border-top: 1px solid var(--line);
+  }
+  .qgroup summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    cursor: pointer;
+    list-style: none;
+  }
+  .qgroup summary::-webkit-details-marker {
+    display: none;
+  }
+  .qgroup summary::after {
+    content: '';
+    width: 8px;
+    height: 8px;
+    margin-left: 4px;
+    border-right: 2px solid var(--muted);
+    border-bottom: 2px solid var(--muted);
+    transform: rotate(-45deg);
+    transition: transform 0.15s;
+  }
+  .qgroup[open] summary::after {
+    transform: rotate(45deg);
+  }
+  .qname {
+    font-weight: 600;
+  }
+  .qn {
+    margin-left: auto;
+    color: var(--muted);
+  }
   .questions {
     list-style: none;
-    margin: 0;
+    margin: 0 0 12px;
     padding: 0;
     display: flex;
     flex-direction: column;
