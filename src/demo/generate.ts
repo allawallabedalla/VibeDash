@@ -50,6 +50,17 @@ export const ENTITIES: Entity[] = [
   { id: 'living_humidity', name: 'Living room', kind: 'humidity', room: 'living', unit: '%' },
 ];
 
+export const PV_PEAK_W = 6_000;
+
+/** Clear-sky PV output of the demo system at a local hour (no clouds). */
+export function clearSkyPower(hour: number): number {
+  const x = (hour - 5.5) / 15.5;
+  return x > 0 && x < 1 ? PV_PEAK_W * Math.sin(Math.PI * x) ** 2 : 0;
+}
+
+/** Clear-sky energy of a whole day in kWh (integral of the curve above). */
+export const CLEAR_SKY_DAY_KWH = (PV_PEAK_W / 1000) * 15.5 * 0.5;
+
 const bump = (x: number, mu: number, sigma: number) =>
   Math.exp(-((x - mu) ** 2) / (2 * sigma ** 2));
 
@@ -97,8 +108,7 @@ export function generateDemo(seed = 42): DemoData {
     cloud += (dayCloud - cloud) * 0.08 + gaussian(rand) * 0.04;
     cloud = Math.min(1, Math.max(0.08, cloud));
 
-    const x = (hour - 5.5) / 15.5;
-    const pv = x > 0 && x < 1 ? 6_000 * Math.sin(Math.PI * x) ** 2 * cloud : 0;
+    const pv = clearSkyPower(hour) * cloud;
 
     let load =
       340 +
