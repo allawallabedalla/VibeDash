@@ -15,7 +15,32 @@ Everything runs locally. No cloud, no CDN.
 > and a gallery of all building blocks; synthetic demo data, or InfluxDB 1.x and/or Home
 > Assistant via the server. Agent build guide incl. onboarding: [AGENT.md](AGENT.md) (German source: [INBETRIEBNAHME.md](INBETRIEBNAHME.md)). Project background and roadmap (German): [ANLEITUNG.md](ANLEITUNG.md).
 
-## Quick start
+<p>
+  <img src="docs/screenshots/overview-mac-light.png" alt="Overview, demo data, light" width="64%">
+  <img src="docs/screenshots/overview-iphone-dark.png" alt="Overview on the phone, dark" width="26%">
+</p>
+<p>
+  <img src="docs/screenshots/charging-mac-dark.png" alt="Charge plan, dark" width="64%">
+  <img src="docs/screenshots/charging-iphone-light.png" alt="Charge plan on the phone" width="26%">
+</p>
+
+All screenshots show the **synthetic demo household** – no real home.
+
+## Try it in 15 minutes
+
+With Docker (nothing else needed), the demo starts without any configuration:
+
+```sh
+git clone https://github.com/allawallabedalla/VibeDash.git && cd VibeDash
+docker build -t vibedash .
+docker run --rm -p 8080:8080 vibedash     # http://localhost:8080
+```
+
+Then connect your own data (next sections): copy `.env.example` to `.env`, create
+`local/mapping.json`, start again with `--env-file .env -v "$PWD/local:/app/local:ro"`.
+In someone else's home, go through [RISIKEN.md](RISIKEN.md) first.
+
+## Quick start (development)
 
 Requires Node 24 (current LTS) and pnpm 10.
 
@@ -182,7 +207,7 @@ src/components/  building blocks (Tile, Sparkline, Progress, …)
 src/i18n/        German and English UI texts
 src/styles/      design tokens, light and dark
 src/app/         app shell, router, shared tile definitions, data questions
-src/pages/       Overview, Now, Forecasts
+src/pages/       Overview, Now, Forecasts, Charging (charge plan + evcc)
 src/gallery/     gallery page
 src/adapters/    InfluxDB 1.x and Home Assistant adapters (pure, tested with fixtures)
 server/          read-only Node server: config, mapping schema, API, static files
@@ -194,19 +219,20 @@ tests/visual/    Playwright
 
 ## Building blocks
 
-| Component        | Purpose                                                           |
-| ---------------- | ----------------------------------------------------------------- |
-| `Tile`           | value + 1–2 words + one small graphic (ring, scale, spark), ⓘ     |
-| `TileRow`        | 2–6 tiles; two per row on the phone                               |
-| `Sparkline`      | soft line, optional range band, gaps stay open                    |
-| `Progress`       | bar 0–100 % with a word; "open" instead of a fake 100 %           |
-| `AccuracyCard`   | model accuracy: bar, trend, n, level (good / fair / poor / open)  |
-| `DayList`        | days as rows like a weather app, yield with range                 |
-| `SoftTimeSeries` | uPlot: actual line, separate forecast line with band, period pick |
-| `SourceArc`      | where the power comes from right now (sun / battery / grid)       |
-| `StatusBar`      | areas as calm dots; colour only when action is needed             |
-| `Tabs`           | main areas; compact icon bar on the phone                         |
-| `Explanation`    | content behind ⓘ: what it means, where the number comes from      |
+| Component        | Purpose                                                             |
+| ---------------- | ------------------------------------------------------------------- |
+| `Tile`           | value + 1–2 words + one small graphic (ring, scale, spark), ⓘ       |
+| `TileRow`        | 2–6 tiles; two per row on the phone                                 |
+| `Sparkline`      | soft line, optional range band, gaps stay open                      |
+| `Progress`       | bar 0–100 % with a word; "open" instead of a fake 100 %             |
+| `AccuracyCard`   | model accuracy: bar, trend, n, level (good / fair / poor / open)    |
+| `DayList`        | days as rows like a weather app, yield with range                   |
+| `SoftTimeSeries` | uPlot: actual line, separate forecast line with band, period pick   |
+| `SourceArc`      | where the power comes from right now (sun / battery / grid)         |
+| `StatusBar`      | areas as calm dots; colour only when action is needed               |
+| `Tabs`           | main areas; compact icon bar on the phone                           |
+| `Explanation`    | content behind ⓘ: what it means, where the number comes from        |
+| `PlanChart`      | charge plan per hour: PV band, house load, charging blocks, battery |
 
 ## Principles
 
