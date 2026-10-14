@@ -20,12 +20,15 @@ const WINDOW = 7;
 /** A day counts as "correct" if the actual yield is within ±20 % of the forecast. */
 export const CORRECT_TOLERANCE = 0.2;
 
-export interface DayForecast {
+export interface DailyForecast {
   day: string;
   /** Local midnight of the forecast day, UTC ms. */
   start: number;
   createdAt: number;
   energy: Estimate;
+}
+
+export interface DayForecast extends DailyForecast {
   /** Clear-sky factor quantiles used for the power curve. */
   factor: { value: number; low: number; high: number };
 }
@@ -58,7 +61,10 @@ export function dayAheadForecasts(data: DemoData): DayForecast[] {
 
   const out: DayForecast[] = [];
   for (const target of targets) {
-    const createdAt = target.start - 4 * HOUR; // 20:00 local the evening before
+    // 20:00 local the evening before; for tomorrow that moment has not come
+    // yet, so the forecast is "as of now" (shorter history is not possible,
+    // only the timestamp is honest).
+    const createdAt = Math.min(target.start - 4 * HOUR, data.now);
     // Only days that ended before createdAt.
     const known = days.filter((_, i) => starts[i]!.start + DAY <= createdAt).slice(-WINDOW);
     if (known.length < WINDOW) continue;
@@ -102,9 +108,13 @@ export function powerCurve(fc: DayForecast, timeZone: string, stepMs = 15 * 60_0
 }
 
 /** Compare each past day-ahead forecast with the meter reading. */
-export function checkForecasts(data: DemoData): DayCheck[] {
-  const actual = new Map(completeDays(data, 'pv_energy').map((d) => [d.day, d.value]));
-  return dayAheadForecasts(data)
+export function checkForecasts(
+  data: DemoData,
+  forecasts: DailyForecast[] = dayAheadForecasts(data),
+  counterId = 'pv_energy',
+): DayCheck[] {
+  const actual = new Map(completeDays(data, counterId).map((d) => [d.day, d.value]));
+  return forecasts
     .filter((f) => actual.has(f.day))
     .map((f) => {
       const a = actual.get(f.day)!;
@@ -115,6 +125,34 @@ export function checkForecasts(data: DemoData): DayCheck[] {
         correct: Math.abs(a - f.energy.value) <= CORRECT_TOLERANCE * f.energy.value,
       };
     });
+}
+
+/**
+ * Day-ahead forecast of the house's daily consumption: median of the last 7
+ * complete days, made the evening before. Same rules as the PV model.
+ */
+export function dayAheadLoad(data: DemoData): DailyForecast[] {
+  const days = completeDays(data, 'load_energy');
+  const starts = dayStarts(data);
+  const todayStart = data.now - 14 * HOUR;
+  const targets = [
+    ...starts,
+    { day: 'today', start: todayStart },
+    { day: 'tomorrow', start: todayStart + DAY },
+  ];
+  const out: DailyForecast[] = [];
+  for (const target of targets) {
+    const createdAt = Math.min(target.start - 4 * HOUR, data.now);
+    const known = days.filter((_, i) => starts[i]!.start + DAY <= createdAt).slice(-WINDOW);
+    if (known.length < WINDOW) continue;
+    out.push({
+      day: target.day,
+      start: target.start,
+      createdAt,
+      energy: estimate(known.map((d) => d.value)),
+    });
+  }
+  return out;
 }
 
 /** Share of correct days (0–100) overall and as a rolling 7-day trend; null while n < 7. */

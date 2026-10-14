@@ -17,11 +17,22 @@ const DAY = 86_400_000;
 describe('day-ahead forecast', () => {
   const forecasts = dayAheadForecasts(demo);
 
-  it('is made before the day starts, with equal lead time for all', () => {
+  it('is made before the day starts, with equal lead time for all evaluated days', () => {
     for (const f of forecasts) {
       expect(f.createdAt).toBeLessThan(f.start);
-      expect(f.start - f.createdAt).toBe(4 * 3_600_000);
+      expect(f.createdAt).toBeLessThanOrEqual(demo.now);
+      if (f.day !== 'tomorrow') expect(f.start - f.createdAt).toBe(4 * 3_600_000);
     }
+  });
+
+  it('consumption model follows the same rules', async () => {
+    const { dayAheadLoad } = await import('../../src/demo');
+    const load = dayAheadLoad(demo);
+    for (const f of load) {
+      expect(f.createdAt).toBeLessThan(f.start);
+      expect(f.energy.n).toBe(7);
+    }
+    expect(checkForecasts(demo, load, 'load_energy').length).toBe(21);
   });
 
   it('never uses data from the forecast day or later', () => {
