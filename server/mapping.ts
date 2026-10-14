@@ -204,7 +204,11 @@ export function validateMapping(
       // Unconfirmed until the person checked it against a source they trust.
       confirmed: entry.confirmed === true,
       ...(typeof entry.maxPerDay === 'number' ? { maxPerDay: entry.maxPerDay } : {}),
-      ...(source === 'derived' ? { derived: true } : {}),
+      ...(source === 'derived' &&
+      Array.isArray(entry.terms) &&
+      entry.terms.some((x: unknown) => isObj(x) && typeof x.integrate === 'string')
+        ? { derived: true }
+        : {}),
     };
     const common = {
       entity,

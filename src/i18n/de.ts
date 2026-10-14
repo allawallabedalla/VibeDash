@@ -39,8 +39,10 @@ export const de = {
   'info.home.derived':
     'Heute bisher {load} kWh – aus der Leistung aufsummiert, kein eigener Zähler; Lücken zählen nicht mit.',
   'info.home.car': 'Davon Auto {car} kWh (Wallbox-Zähler), Haus ohne Auto {home} kWh.',
-  'info.home.balance':
-    'Bilanz laut Wechselrichter (direkt + Bezug + Akku entladen − Akku aus dem Netz geladen): {balance} kWh. Der Unterschied von {diff} kWh ({pct} %) sind Wandler- und Akkuverluste.',
+  'info.home.meters':
+    'Heute bisher {load} kWh, aus Zählerständen bilanziert (wie die Hersteller-App).',
+  'info.home.loss':
+    'Davon bei den Geräten angekommen ≈ {devices} kWh (aus der Leistung aufsummiert), Verluste ≈ {loss} kWh ({pct} %) in Wandler und Akku.',
   'info.battery.what': 'Ladestand des Hausakkus.',
   'info.battery.source': 'Batteriespeicher, Ladestand in Prozent.',
   'info.battery.capacity':
