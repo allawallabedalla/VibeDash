@@ -6,13 +6,13 @@ from a fixed set of design building blocks, on top of checked data.
 VibeDash is not one big app. It ships three things:
 
 1. a **design language** (building blocks: tiles, sparklines, progress bars, …),
-2. **data adapters** (demo data first; InfluxDB, generic JSON API and Home Assistant later),
+2. **data adapters** (demo data and InfluxDB 1.x now; Home Assistant next, then evcc),
 3. a **build guide for the agent** that assembles one dashboard per home.
 
 Everything runs locally. No cloud, no CDN.
 
 > Status: early (milestones M0–M2, M3 in progress). Three pages (Overview, Now, Forecasts)
-> and a gallery of all building blocks; synthetic demo data or InfluxDB 1.x via the server. Agent build guide: [AGENT.md](AGENT.md). Project background and roadmap (German): [ANLEITUNG.md](ANLEITUNG.md).
+> and a gallery of all building blocks; synthetic demo data or InfluxDB 1.x via the server. Agent build guide incl. onboarding: [AGENT.md](AGENT.md) (German source: [INBETRIEBNAHME.md](INBETRIEBNAHME.md)). Project background and roadmap (German): [ANLEITUNG.md](ANLEITUNG.md).
 
 ## Quick start
 
