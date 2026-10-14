@@ -72,46 +72,85 @@ export function meanAbsPctError(pairs: readonly { actual: number; predicted: num
   return (sum / usable.length) * 100;
 }
 
+/** How long a meter reading may stay off before it counts as a real reset. */
+export const COUNTER_GLITCH_MS = 10 * 60_000;
+
+/**
+ * Drops read errors from a cumulative meter reading: a reading that goes
+ * down (often to 0) or jumps up and comes back to the previous level within
+ * `windowMs` is an outlier, not a reset. A lower reading that stays (more
+ * than `windowMs`) is kept: that is a real reset or meter swap.
+ */
+export function dropCounterGlitches(
+  samples: readonly Sample[],
+  windowMs = COUNTER_GLITCH_MS,
+): Sample[] {
+  const out: Sample[] = [];
+  let i = 0;
+  while (i < samples.length) {
+    const cur = samples[i]!;
+    const level = out.at(-1)?.v;
+    if (level !== undefined && cur.v !== level) {
+      // down: back to at least the level; up: back below the jump, not below the level
+      const back = (v: number) => (cur.v < level ? v >= level : v >= level && v < cur.v);
+      let j = i + 1;
+      while (j < samples.length && samples[j]!.t - cur.t <= windowMs && !back(samples[j]!.v)) j++;
+      if (j < samples.length && samples[j]!.t - cur.t <= windowMs) {
+        i = j; // samples i..j-1 were the outlier
+        continue;
+      }
+    }
+    out.push(cur);
+    i++;
+  }
+  return out;
+}
+
 /**
  * Daily energy from a cumulative meter reading (the source of truth, not an
- * integral of power). Days are cut in local time. Each step between two
- * readings counts for the day of the later reading; a step down (meter reset
- * or swap) counts as 0 and shows up in `counterResets` as a question. The
- * first day in the data has no previous reading and is left out.
+ * integral of power). Days are cut in local time. Read errors are dropped
+ * first (`dropCounterGlitches`). Each step between two readings counts for the
+ * day of the later reading; a step down (meter reset or swap) counts as 0 and
+ * shows up in `counterResets` as a question. The first day in the data has no
+ * previous reading and is left out. Days above `maxPerDay` are implausible and
+ * left out as well (shown as missing, never as a number).
  */
 export function dailyFromCounter(
   samples: readonly Sample[],
   dayKey: (t: number) => string,
+  maxPerDay = Infinity,
 ): { day: string; value: number }[] {
+  const clean = dropCounterGlitches(samples);
   const perDay = new Map<string, number>();
   let first: string | undefined;
-  for (let i = 0; i < samples.length; i++) {
-    const cur = samples[i]!;
+  for (let i = 0; i < clean.length; i++) {
+    const cur = clean[i]!;
     const day = dayKey(cur.t);
     if (i === 0) {
       first = day;
       continue;
     }
-    const step = cur.v - samples[i - 1]!.v;
+    const step = cur.v - clean[i - 1]!.v;
     perDay.set(day, (perDay.get(day) ?? 0) + Math.max(step, 0));
   }
   return [...perDay.entries()]
-    .filter(([day]) => day !== first)
+    .filter(([day, value]) => day !== first && value <= maxPerDay)
     .map(([day, value]) => ({ day, value }));
 }
 
 /**
- * Places where a cumulative meter reading goes down (meter swap, reset,
- * overflow). These must not become negative daily energy; they are
- * questions for the person.
+ * Places where a cumulative meter reading goes down and stays down (meter
+ * swap, reset, overflow; read errors are dropped first). These must not
+ * become negative daily energy; they are questions for the person.
  */
 export function counterResets(
   samples: readonly Sample[],
 ): { t: number; from: number; to: number }[] {
+  const clean = dropCounterGlitches(samples);
   const out: { t: number; from: number; to: number }[] = [];
-  for (let i = 1; i < samples.length; i++) {
-    const prev = samples[i - 1]!;
-    const cur = samples[i]!;
+  for (let i = 1; i < clean.length; i++) {
+    const prev = clean[i - 1]!;
+    const cur = clean[i]!;
     if (cur.v < prev.v) out.push({ t: cur.t, from: prev.v, to: cur.v });
   }
   return out;

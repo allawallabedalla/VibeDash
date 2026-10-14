@@ -10,17 +10,21 @@
  */
 import type { FetchLike } from '../src/adapters/influx1';
 import { fetchGti, type HourValue, type Location } from '../src/adapters/openmeteo';
+import { dropCounterGlitches } from '../src/model/series';
 import type { Series } from '../src/model/types';
 import type { Mapping, PvMapping, SeriesMapping } from './mapping';
 
 const H = 3_600_000;
 const DAY = 24 * H;
 
-/** kWh per UTC hour from a meter: reading at the hour end minus at the start; resets dropped. */
+/**
+ * kWh per UTC hour from a meter: reading at the hour end minus at the start;
+ * read errors and resets dropped.
+ */
 export function hourlyFromCounter(s: Series, now: number): { zeit: string; wert: number }[] {
   const boundary = new Map<number, number>();
   const maxAge = Math.max(s.stepMs * 2.5, 15 * 60_000);
-  for (const x of s.samples) {
+  for (const x of dropCounterGlitches(s.samples)) {
     const h = Math.ceil(x.t / H) * H; // the next hour boundary at or after the sample
     // the latest sample before (or at) the boundary is the reading at the boundary
     if (h - x.t <= maxAge) boundary.set(h, x.v);

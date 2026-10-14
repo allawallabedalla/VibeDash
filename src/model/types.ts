@@ -17,6 +17,8 @@ export interface Entity {
    * (vendor app, meter). Shown as "being checked" (see RISIKEN.md).
    */
   confirmed?: boolean;
+  /** Energy counters: a day above this (in `unit`) is implausible and left out. */
+  maxPerDay?: number;
 }
 
 /** One measurement. Order within a series is arrival order, never re-sorted by value. */

@@ -17,7 +17,12 @@ export function last24h(data: DemoData, id: string, stepMs = 15 * 60_000): (numb
 
 /** Daily energy per local day from the meter reading. */
 export function daily(data: DemoData, counterId: string): { day: string; value: number }[] {
-  return dailyFromCounter(data.series[counterId]!.samples, (t) => localDateKey(t, data.timeZone));
+  const max = data.entities.find((e) => e.id === counterId)?.maxPerDay;
+  return dailyFromCounter(
+    data.series[counterId]!.samples,
+    (t) => localDateKey(t, data.timeZone),
+    max,
+  );
 }
 
 /** Complete days only: today is still running and would bias everything low. */

@@ -62,7 +62,17 @@ const KINDS: EntityKind[] = [
   'humidity',
 ];
 const NAME = /^[a-z][a-z0-9_]{0,63}$/;
-const COMMON_KEYS = ['source', 'name', 'kind', 'unit', 'room', 'scale', 'stepMs', 'confirmed'];
+const COMMON_KEYS = [
+  'source',
+  'name',
+  'kind',
+  'unit',
+  'room',
+  'scale',
+  'stepMs',
+  'confirmed',
+  'maxPerDay',
+];
 const INFLUX_KEYS = [...COMMON_KEYS, 'measurement', 'field', 'tags'];
 const HA_KEYS = [...COMMON_KEYS, 'entityId', 'maxHoldMs', 'longTerm'];
 
@@ -126,6 +136,14 @@ export function validateMapping(
       errors.push(`${at}.confirmed: true or false`);
     }
     if (
+      entry.maxPerDay !== undefined &&
+      (entry.kind !== 'energy_counter' ||
+        typeof entry.maxPerDay !== 'number' ||
+        !(entry.maxPerDay > 0))
+    ) {
+      errors.push(`${at}.maxPerDay: number > 0, only for energy_counter`);
+    }
+    if (
       entry.scale !== undefined &&
       (typeof entry.scale !== 'number' || !Number.isFinite(entry.scale) || entry.scale === 0)
     ) {
@@ -148,6 +166,7 @@ export function validateMapping(
       ...(entry.room ? { room: entry.room as string } : {}),
       // Unconfirmed until the person checked it against a source they trust.
       confirmed: entry.confirmed === true,
+      ...(typeof entry.maxPerDay === 'number' ? { maxPerDay: entry.maxPerDay } : {}),
     };
     const common = {
       entity,
