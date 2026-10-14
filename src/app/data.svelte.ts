@@ -74,7 +74,11 @@ function detectIssues(
   return out;
 }
 
-async function loadLive(timeZone: string, backends: Backend[]): Promise<State> {
+async function loadLive(
+  timeZone: string,
+  backends: Backend[],
+  range: '24h' | '31d',
+): Promise<State> {
   const ents = await getJson('/api/entities');
   if (!ents || ents.status !== 200) return { status: 'error', reason: reasonOf(ents) };
   const mapped = (ents.body as { entities: (Entity & { stepMs: number })[] }).entities;
@@ -94,7 +98,7 @@ async function loadLive(timeZone: string, backends: Backend[]): Promise<State> {
         missing.push({ id, reason: 'not_mapped' });
         return;
       }
-      const r = await getJson(`/api/series/${id}?range=31d`);
+      const r = await getJson(`/api/series/${id}?range=${range}`);
       if (!r || r.status !== 200) {
         missing.push({ id, reason: reasonOf(r) });
         return;
@@ -114,7 +118,10 @@ async function loadLive(timeZone: string, backends: Backend[]): Promise<State> {
   };
 }
 
+let loads = 0;
+
 export async function load(): Promise<void> {
+  const run = ++loads;
   state = { status: 'loading' };
   const health = await getJson('/api/health');
   const body = health?.body as
@@ -131,7 +138,17 @@ export async function load(): Promise<void> {
   pv = body?.pv === true;
   plan = body?.plan === true;
   if (health?.status === 200 && body?.source === 'live' && body.timeZone) {
-    state = await loadLive(body.timeZone, body.backends ?? []);
+    // The last day first, so the page is there quickly; the month follows.
+    const quick = await loadLive(body.timeZone, body.backends ?? [], '24h');
+    if (run !== loads) return;
+    if (quick.status === 'ready') {
+      state = quick;
+      version++;
+    }
+    const full = await loadLive(body.timeZone, body.backends ?? [], '31d');
+    if (run !== loads) return;
+    // a failed month must not replace a working day
+    if (full.status === 'ready' || quick.status !== 'ready') state = full;
   } else {
     state = { status: 'ready', source: 'demo', backends: [], data: generateDemo(), missing: [] };
   }
