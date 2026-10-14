@@ -1,0 +1,46 @@
+{
+  "name": "vibedash",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Calm home dashboards, composed from design building blocks by an AI agent.",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && vite build --ssr server/main.ts --outDir dist-server --emptyOutDir && vite build --ssr server/inventory.ts --outDir dist-server --emptyOutDir false",
+    "preview": "vite preview --port 4173 --strictPort",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
+    "test": "vitest run",
+    "test:visual": "playwright test",
+    "test:visual:update": "playwright test --update-snapshots",
+    "start": "node dist-server/main.js",
+    "budget": "node scripts/check-budget.mjs",
+    "inventory": "node dist-server/inventory.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.56.1",
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "@types/node": "24.19.2",
+    "eslint": "10.12.0",
+    "eslint-plugin-svelte": "3.23.1",
+    "globals": "17.13.0",
+    "prettier": "3.9.10",
+    "prettier-plugin-svelte": "4.1.1",
+    "svelte": "5.56.10",
+    "svelte-check": "4.7.6",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.2",
+    "vite": "8.2.4",
+    "vitest": "5.0.3"
+  },
+  "dependencies": {
+    "uplot": "1.6.32"
+  }
+}

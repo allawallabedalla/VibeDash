@@ -15,6 +15,7 @@ Vollständiger Hintergrund, Architektur und Fahrplan: **ANLEITUNG.md** (zuerst l
   - Modelle zeigen Treffsicherheit (0–100 % korrekt + Verlauf), nicht Lernfortschritt; „offen“ statt Schein-100 %
   - Hinweise nur bei Handlungsbedarf
 - **Vorhersagen (Abschnitt 11):** einfachstes ausreichendes Verfahren gewinnt (Faustregel zuerst, komplexer nur bei gepaart ≥ 2 SE besser); Rückrechnung nur mit Vergangenheit und gleichem Vorlauf; angezeigt wird Treffsicherheit, kein Lernfortschritt; „sammelt Daten“ / „offen · n“ statt Schein-Prozent.
+- **Fremdes Haus / Inbetriebnahme:** vor jeder Einrichtung **RISIKEN.md** mit dem Menschen durchgehen (Pflicht), Ablauf aus INBETRIEBNAHME.md und AGENT.md; nur lesen, keine Portfreigaben, nie aus einem fremden Haus committen oder pushen. Steuerung nur nach LADESTEUERUNG.md Abschnitt 7.
 - **Datenwahrheit vor Darstellung** (Abschnitt 6): Zustand aus Aktor-Rückmeldung statt Befehl, Zählerstand statt Integral, Lücken sichtbar, gleiche Sekunde in Eingangsreihenfolge, Bewertung ohne Blick in die Zukunft und nie zirkulär, Fehler als Betrag mitteln. Auffälligkeiten als **Frage** an den Menschen, nicht als Bug.
 
 ## Arbeitsweise

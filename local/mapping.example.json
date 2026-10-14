@@ -1,0 +1,156 @@
+{
+  "$comment": "Example with made-up names. Copy to local/mapping.json (git-ignored) and adapt. Only these named series can ever be queried.",
+  "timeZone": "Europe/Berlin",
+  "series": {
+    "pv_power": {
+      "name": "PV",
+      "kind": "power",
+      "unit": "W",
+      "measurement": "example_inverter",
+      "field": "ac_power",
+      "stepMs": 60000
+    },
+    "load_power": {
+      "name": "House",
+      "kind": "power",
+      "unit": "W",
+      "measurement": "example_meter",
+      "field": "power",
+      "tags": {
+        "meter": "house"
+      },
+      "stepMs": 60000
+    },
+    "battery_power": {
+      "name": "Battery",
+      "kind": "power",
+      "unit": "W",
+      "measurement": "example_battery",
+      "field": "power",
+      "stepMs": 60000
+    },
+    "battery_soc": {
+      "name": "Battery",
+      "kind": "state_of_charge",
+      "unit": "%",
+      "measurement": "example_battery",
+      "field": "soc",
+      "stepMs": 60000
+    },
+    "grid_power": {
+      "name": "Grid",
+      "kind": "power",
+      "unit": "W",
+      "measurement": "example_meter",
+      "field": "power",
+      "tags": {
+        "meter": "grid"
+      },
+      "stepMs": 60000
+    },
+    "pv_energy": {
+      "name": "PV",
+      "kind": "energy_counter",
+      "unit": "kWh",
+      "measurement": "example_inverter",
+      "field": "energy_total_wh",
+      "scale": 0.001,
+      "stepMs": 300000
+    },
+    "load_energy": {
+      "name": "House",
+      "kind": "energy_counter",
+      "unit": "kWh",
+      "measurement": "example_meter",
+      "field": "energy_wh",
+      "tags": {
+        "meter": "house"
+      },
+      "scale": 0.001,
+      "stepMs": 300000
+    },
+    "feed_in_energy": {
+      "name": "Feed-in",
+      "kind": "energy_counter",
+      "unit": "kWh",
+      "measurement": "example_meter",
+      "field": "export_wh",
+      "tags": {
+        "meter": "grid"
+      },
+      "scale": 0.001,
+      "stepMs": 300000
+    },
+    "import_energy": {
+      "name": "Import",
+      "kind": "energy_counter",
+      "unit": "kWh",
+      "measurement": "example_meter",
+      "field": "import_wh",
+      "tags": {
+        "meter": "grid"
+      },
+      "scale": 0.001,
+      "stepMs": 300000
+    },
+    "living_temp": {
+      "name": "Living room",
+      "kind": "temperature",
+      "unit": "°C",
+      "room": "living",
+      "measurement": "example_climate",
+      "field": "temperature",
+      "tags": {
+        "room": "living"
+      },
+      "stepMs": 300000
+    },
+    "living_humidity": {
+      "name": "Living room",
+      "kind": "humidity",
+      "unit": "%",
+      "room": "living",
+      "measurement": "example_climate",
+      "field": "humidity",
+      "tags": {
+        "room": "living"
+      },
+      "stepMs": 300000
+    }
+  },
+  "pv": {
+    "from": "pv_energy",
+    "planes": [
+      {
+        "name": "south",
+        "tilt": 30,
+        "azimuth": 0,
+        "kwp": 6.2
+      },
+      {
+        "name": "west",
+        "tilt": 30,
+        "azimuth": 90,
+        "kwp": 3.1
+      }
+    ],
+    "maxKw": 8
+  },
+  "plan": {
+    "load": "load_energy",
+    "soc": "battery_soc",
+    "battery": {
+      "capacityKwh": 10,
+      "maxChargeKw": 5,
+      "maxDischargeKw": 5,
+      "minSocPct": 5,
+      "reserveKwh": 2
+    },
+    "vehicle": {
+      "capacityKwh": 60,
+      "phases": 3,
+      "minA": 6,
+      "maxA": 16
+    }
+  }
+}

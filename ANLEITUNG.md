@@ -133,6 +133,8 @@ Der Agent prüft Daten, **bevor** er sie darstellt oder Modelle darauf baut. Typ
 | `Reiter` | 6 Hauptbereiche als Leiste oben, auf dem Handy kompakt |
 | `Erklaerung` | ⓘ-Inhalt: „Was heißt das?“ + „Woher kommt die Zahl?“ |
 
+**Namen im Code (englisch):** Kachel = `Tile` · KachelReihe = `TileRow` · Sparkline = `Sparkline` · Fortschritt = `Progress` · TrefferKarte = `AccuracyCard` · Tagesleiste = `DayList` · ZeitreiheWeich = `SoftTimeSeries` · Herkunftsbogen = `SourceArc` · Ampelleiste = `StatusBar` · Reiter = `Tabs` · Erklaerung = `Explanation` (+ `InfoButton`).
+
 **Seitenvorlage (anpassbar je Haus):** Übersicht · Jetzt · Wartung · Garten · Geräte-Historie · Vorhersagen (Treffsicherheit).
 
 ---
@@ -141,9 +143,10 @@ Der Agent prüft Daten, **bevor** er sie darstellt oder Modelle darauf baut. Typ
 
 1. **Demo-Daten (synthetisch)** – für Entwicklung, Tests und Screenshots. Realistische Tagesgänge, Lücken, Fehler absichtlich eingebaut.
 2. **InfluxDB 1.x (InfluxQL)** – weit verbreitet in Homelabs.
-3. **Generische JSON-API** – für eigene Skripte.
-4. **Home Assistant** (REST/WebSocket) – größte Zielgruppe.
-5. Später: Prometheus, MQTT, CSV-Import.
+3. **Home Assistant** (REST/WebSocket) – größte Zielgruppe; direkt nach Influx (M3b).
+4. **evcc** – Energie/Wallbox mit vielen Gerätevorlagen (M6).
+5. **Generische JSON-API** – für eigene Skripte.
+6. Später: Prometheus, MQTT, CSV-Import.
 
 Einheitliches Datenmodell: `Entitaet` (id, Name, Art, Raum, Einheit) · `Messreihe` (Zeit, Wert, Quelle, Lückeninfo) · `Prognose` (Zeitpunkt, erstellt_am, Vorlauf, Wert, Spanne) · `Bewertung` (Modell, n, korrekt_pct, Verlauf).
 
@@ -166,10 +169,17 @@ Einheitliches Datenmodell: `Entitaet` (id, Name, Art, Raum, Einheit) · `Messrei
 | M1 Bausteine | 11 Bausteine + Demo-Daten + Galerie-Seite | Galerie sieht auf Mac und iPhone ruhig und stimmig aus |
 | M2 Übersicht | erste echte Seite aus Demo-Daten | Seite besteht die Prüfliste |
 | M3 InfluxDB-Anschluss | Adapter + Datenmodell-Abbildung | Übersicht läuft mit echter Influx (lokal, nicht im Repo) |
+| M3b Home Assistant | Adapter (REST/WebSocket), Entitäten → Datenmodell; **direkt nach Influx** (siehe INBETRIEBNAHME.md) | Übersicht läuft mit einer HA-Testinstanz |
 | M4 Jetzt + Vorhersagen | Echtzeit-Seite, Treffsicherheits-Karten | Prognosen mit Spanne und n, Bewertung fair |
-| M5 Agenten-Bauanleitung | `AGENT.md`/Skill: wie ein Agent ein Haus inventarisiert, prüft und Seiten baut | ein frischer Agent baut aus Demo-Daten eine Seite nur mit der Anleitung |
-| M6 Home Assistant | Adapter | Demo mit HA-Testinstanz |
-| v0.1 | Doku, Beispiel-Screenshots, Docker-Image | jemand Fremdes bekommt es in 15 min zum Laufen |
+| M5 Agenten-Bauanleitung | `AGENT.md`/Skill: wie ein Agent ein Haus inventarisiert, prüft und Seiten baut – **inkl. Inbetriebnahme-Ablauf** (INBETRIEBNAHME.md Abschnitt 3+4) | ein frischer Agent führt einen Menschen von „neuer PC“ bis „erste echte Kachel“, nur mit der Anleitung |
+| M6 evcc | Adapter: „jetzt“ aus `/api/state`, Ladehistorie direkt aus evcc (`/api/sessions`); Verlauf sonst über Influx/HA (INBETRIEBNAHME.md 2a) | Energie-Seite läuft mit evcc-Demo |
+| v0.1 | Doku, Beispiel-Screenshots, Docker-Image (`node:24-alpine`) | jemand Fremdes bekommt es in 15 min zum Laufen |
+| M7–M9 Prognose-Modul | siehe Abschnitt 11; der Python-Dienst liegt **hinter** dem Node-Server | Browser spricht weiterhin nur mit dem Node-Server |
+| M10 Geräte-Vorlagen | siehe INBETRIEBNAHME.md Abschnitt 5 (nur lesend) | Vorlage + Gegenprobe-Test je Gerät |
+| M11 PV-Prognose | Stundenmodell, Dachflächen, Analogtag-Szenarien, p10/p50/p90 (LADESTEUERUNG.md); **Voraussetzung: mehrere Wochen Stundenverlauf in Influx oder HA** | Demo-Anlage: Tagesprognose mit Spanne, faire Treffsicherheit |
+| M12 Ladeplan (Stufe A) | Lastmodell, Akkusimulation, 300 Szenarien, Plan + Infografik + Rückrechnung | Rückrechnung auf Demo-Daten: 0 kWh Netzbezug durchs Auto, Plan stabil |
+| M12b Was-wäre-wenn | Schieber im Browser | Antwort < 1 s am iPhone |
+| M13 Steuerung (Stufe B) | evcc-Anbindung **oder** eigener Wächter, alle Regeln aus LADESTEUERUNG.md Abschnitt 7; im fremden Haus zusätzlich RISIKEN.md | 4 Wochen Stufe A live ohne Fehlplanung; Wächter-Tests (Totmann, Stopp-Vorrang, Ausfall der Messung) grün |
 
 ---
 
@@ -229,9 +239,10 @@ Einheitliches Datenmodell: `Entitaet` (id, Name, Art, Raum, Einheit) · `Messrei
 ## 12. Offene Entscheidungen (vom Menschen zu treffen)
 
 1. ~~Name~~ – entschieden: **VibeDash**.
-2. **Lizenz.** MIT (maximal offen) · Apache-2.0 (offen + Patentklausel) · AGPL-3.0 (Ableitungen müssen offen bleiben).
-3. **Sprache von Code und Doku.** Empfehlung: Code und README **englisch** (Reichweite), Oberfläche **mehrsprachig** ab Start (de + en).
+2. ~~Lizenz~~ – entschieden: **MIT** (`LICENSE`, Copyright allawallabedalla).
+3. ~~Sprache~~ – entschieden: Code und README **englisch**, Oberfläche **Deutsch + Englisch** ab Start.
 4. **Öffentlich ab Tag 1 oder erst ab v0.1?** Empfehlung: privat bis M2, dann öffentlich.
+5. ~~Server~~ – entschieden (M3): reiner Node-Server (Node 24 LTS), führt nur benannte Abfragen aus `local/mapping.json` aus, nie InfluxQL aus dem Browser; Influx-Zugang nur mit Lese-Benutzer in `.env`; jede Anfrage mit 10 s Timeout und sichtbarem Fehlerzustand.
 
 ---
 

@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm check
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm budget
+
+  screenshots:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:visual
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: |
+            screenshots/
+            playwright-report/
+          retention-days: 14
+
+  forecast:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: forecast
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.11.32'
+      - run: uv sync --locked
+      - run: uv run ruff format --check .
+      - run: uv run ruff check .
+      - run: uv run pytest -q
+
+  docker:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t vibedash:ci .
+      - name: Smoke test (demo mode)
+        run: |
+          docker run -d --name vd -p 8080:8080 vibedash:ci
+          for i in $(seq 1 20); do curl -fsS localhost:8080/api/health && break; sleep 1; done
+          curl -fsS localhost:8080/api/health | grep -q '"source":"demo"'
+          curl -fsS -o /dev/null localhost:8080/
+          test "$(docker exec vd id -un)" = node
+          docker rm -f vd
+      - run: docker build -t vibedash-forecast:ci forecast
+      - name: Smoke test forecasting service
+        run: |
+          docker run -d --name vdf -p 8090:8090 vibedash-forecast:ci
+          for i in $(seq 1 30); do curl -fsS localhost:8090/gesund && break; sleep 1; done
+          curl -fsS localhost:8090/gesund | grep -q '"ok":true'
+          test "$(docker exec vdf id -un)" = app
+          docker rm -f vdf

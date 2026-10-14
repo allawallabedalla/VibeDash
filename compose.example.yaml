@@ -1,0 +1,26 @@
+# Example: copy to compose.yaml, create .env and local/mapping.json, then `docker compose up -d`.
+services:
+  vibedash:
+    build: .
+    image: vibedash:local
+    restart: unless-stopped
+    ports:
+      - '8080:8080'
+    env_file: .env
+    environment:
+      FORECAST_URL: http://forecast:8090
+    volumes:
+      - ./local:/app/local
+    depends_on:
+      - forecast
+
+  # Forecasting service: no published port – only the VibeDash server talks to it.
+  forecast:
+    build: ./forecast
+    image: vibedash-forecast:local
+    restart: unless-stopped
+    volumes:
+      - forecast-data:/data
+
+volumes:
+  forecast-data:

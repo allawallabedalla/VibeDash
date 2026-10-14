@@ -1,0 +1,127 @@
+/**
+ * Hourly PV forecast (M11) bridge: sends the plant, hourly generation from the
+ * meter reading and the GTI forecast per roof plane to the forecasting service.
+ *
+ * GTI timestamps of "known when" (stand):
+ * - current forecast: now (only hours of days that have not begun count, the
+ *   service checks this);
+ * - archive (first sync): Open-Meteo's day-ahead forecasts (previous_day1),
+ *   stamped one day before the hour – what was known then.
+ */
+import type { FetchLike } from '../src/adapters/influx1';
+import { fetchGti, type HourValue, type Location } from '../src/adapters/openmeteo';
+import type { Series } from '../src/model/types';
+import type { Mapping, PvMapping, SeriesMapping } from './mapping';
+
+const H = 3_600_000;
+const DAY = 24 * H;
+
+/** kWh per UTC hour from a meter: reading at the hour end minus at the start; resets dropped. */
+export function hourlyFromCounter(s: Series, now: number): { zeit: string; wert: number }[] {
+  const boundary = new Map<number, number>();
+  const maxAge = Math.max(s.stepMs * 2.5, 15 * 60_000);
+  for (const x of s.samples) {
+    const h = Math.ceil(x.t / H) * H; // the next hour boundary at or after the sample
+    // the latest sample before (or at) the boundary is the reading at the boundary
+    if (h - x.t <= maxAge) boundary.set(h, x.v);
+  }
+  const out: { zeit: string; wert: number }[] = [];
+  for (const [h, v] of boundary) {
+    const prev = boundary.get(h - H);
+    if (prev === undefined || h > now) continue;
+    const kwh = v - prev;
+    if (kwh < 0) continue; // meter reset: no value rather than a wrong one
+    out.push({ zeit: new Date(h - H).toISOString(), wert: Math.round(kwh * 1000) / 1000 });
+  }
+  return out.sort((a, b) => a.zeit.localeCompare(b.zeit));
+}
+
+export interface PvBridgeDeps {
+  url: string;
+  mapping: Mapping & { pv: PvMapping };
+  fetchFn: FetchLike;
+  series: (m: SeriesMapping, from: number, to: number) => Promise<Series>;
+  location: () => Promise<Location | null>;
+  weatherOn: boolean;
+  now: () => number;
+  log: (msg: string) => void;
+  timeoutMs?: number;
+}
+
+export function pvBridge(deps: PvBridgeDeps) {
+  const timeout = deps.timeoutMs ?? 10_000;
+  let archived = false;
+
+  async function call(path: string, method = 'GET', body?: unknown) {
+    const res = await deps.fetchFn(`${deps.url.replace(/\/$/, '')}${path}`, {
+      method,
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      signal: AbortSignal.timeout(timeout),
+    });
+    return { status: res.status, body: await res.json() };
+  }
+
+  async function sync() {
+    const pv = deps.mapping.pv;
+    const l = deps.weatherOn ? await deps.location() : null;
+    if (!l) {
+      deps.log('pv: no location or WEATHER=off – hourly PV forecast paused');
+      return;
+    }
+    const now = deps.now();
+    await call('/pv/pv/anlage', 'PUT', {
+      lat: l.lat,
+      lon: l.lon,
+      tz: deps.mapping.timeZone,
+      flaechen: pv.planes.map((p) => ({
+        name: p.name,
+        neigung: p.tilt,
+        azimut: p.azimuth,
+        kwp: p.kwp,
+      })),
+      ...(pv.maxKw ? { max_kw: pv.maxKw } : {}),
+    });
+    const src = deps.mapping.series[pv.from]!;
+    const s = await deps.series(src, now - (archived ? 3 : 62) * DAY, now);
+    const gti: { zeit: string; flaeche: string; wert: number; stand: string }[] = [];
+    for (const plane of pv.planes) {
+      const add = (rows: HourValue[], stand: (t: number) => number) => {
+        for (const r of rows) {
+          gti.push({
+            zeit: new Date(r.t).toISOString(),
+            flaeche: plane.name,
+            wert: r.v,
+            stand: new Date(stand(r.t)).toISOString(),
+          });
+        }
+      };
+      add(await fetchGti(deps.fetchFn, l, plane, false, timeout), () => now);
+      if (!archived) {
+        add(await fetchGti(deps.fetchFn, l, plane, true, timeout), (t) => t - DAY - 60_000);
+      }
+    }
+    const r = await call('/pv/pv/daten', 'PUT', { stunden: hourlyFromCounter(s, now), gti });
+    if (r.status === 200) archived = true;
+  }
+
+  return {
+    async syncAll() {
+      try {
+        await sync();
+      } catch (e) {
+        deps.log(`pv: ${(e as Error).name}`);
+      }
+    },
+    async read(what: 'prognose' | 'guete' | 'status') {
+      try {
+        return await call(`/pv/pv/${what}`);
+      } catch (e) {
+        const err = e as Error;
+        return err.name === 'TimeoutError' || err.name === 'AbortError'
+          ? { status: 504, body: { error: 'timeout' } }
+          : { status: 502, body: { error: 'upstream' } };
+      }
+    },
+  };
+}

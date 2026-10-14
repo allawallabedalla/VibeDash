@@ -1,0 +1,127 @@
+/* Design tokens. Few colours, soft surfaces, light and dark. */
+:root {
+  color-scheme: light;
+  --bg: #f4f3ef;
+  --surface: #ffffff;
+  --surface-2: #f9f8f5;
+  --line: #e6e3dc;
+  --text: #22252a;
+  --muted: #6d7177;
+  --faint: #a3a6aa;
+
+  --sun: #d99a1e;
+  --home: #7b6bb5;
+  --battery: #3b9670;
+  --feed: #3b9670;
+  --import: #c26a5a;
+  --climate: #4a82b8;
+  --open: #9a9da2;
+  --good: #3b9670;
+  --fair: #c9932c;
+  --poor: #c26a5a;
+
+  --gap: rgba(120, 120, 120, 0.12);
+  --shadow: 0 1px 2px rgba(40, 36, 28, 0.04), 0 6px 20px rgba(40, 36, 28, 0.06);
+  --radius: 20px;
+  /* Small print: 13 px on large screens, never below 14 px on phones. */
+  --small: 13px;
+  --radius-sm: 12px;
+  --font:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #131518;
+  --surface: #1c1f23;
+  --surface-2: #22262b;
+  --line: #2c3036;
+  --text: #ebe8e2;
+  --muted: #9a9ea4;
+  --faint: #6a6e74;
+
+  --sun: #e8b24a;
+  --home: #a597de;
+  --battery: #5bbf93;
+  --feed: #5bbf93;
+  --import: #e08e7d;
+  --climate: #78aee0;
+  --open: #80848a;
+  --good: #5bbf93;
+  --fair: #e0b057;
+  --poor: #e08e7d;
+
+  --gap: rgba(200, 200, 200, 0.08);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #131518;
+    --surface: #1c1f23;
+    --surface-2: #22262b;
+    --line: #2c3036;
+    --text: #ebe8e2;
+    --muted: #9a9ea4;
+    --faint: #6a6e74;
+
+    --sun: #e8b24a;
+    --home: #a597de;
+    --battery: #5bbf93;
+    --feed: #5bbf93;
+    --import: #e08e7d;
+    --climate: #78aee0;
+    --open: #80848a;
+    --good: #5bbf93;
+    --fair: #e0b057;
+    --poor: #e08e7d;
+
+    --gap: rgba(200, 200, 200, 0.08);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--climate);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  :root {
+    --small: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

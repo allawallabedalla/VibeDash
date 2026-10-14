@@ -25,6 +25,21 @@
 
 Fahrplan-Folge: **Home-Assistant-Adapter direkt nach dem Influx-Adapter** (vor M5/M6 ziehen), evcc-Adapter danach.
 
+### 2a. Wo der Verlauf herkommt (Datenhaltung)
+
+- **evcc speichert Ladevorgänge selbst** (eigene Datenbank) und liefert sie per `GET /api/sessions` (JSON, mit `?format=csv` als CSV, filterbar nach `year`/`month`): je Ladung Start/Ende, Ladepunkt, Fahrzeug, geladene kWh (`chargedEnergy`), Sonnenanteil (`solarPercentage`), Preis, CO₂, Ladestand Anfang/Ende. → **Ladehistorie direkt aus evcc**, ohne Influx oder HA. (Geprüft am evcc-Quellcode, Okt. 2026.)
+- **`/api/state` von evcc liefert nur „jetzt“** (PV, Haus, Netz, Akku, Wallbox) – keinen Verlauf. Vorzeichen bei evcc: Netzbezug und Akku-Entladen positiv; VibeDash dreht das um (Einspeisung und Akku-Laden positiv).
+- **Verlauf für Leistung und Zähler** kommt aus einem Speicher, den es schon gibt: InfluxDB oder Home Assistant.
+- **Weder Influx noch HA vorhanden?** → Einrichtung einer **InfluxDB vorschlagen**: ein Container (InfluxDB 1.x, z. B. `influxdb:1.11` – Version vor Einrichtung prüfen), eigener Schreib-Benutzer für evcc, eigener **Lese-Benutzer** für VibeDash. evcc schreibt per Schalter hinein (Abschnitt `influx:` in der evcc-Konfiguration). Danach Influx-Adapter wie gewohnt.
+- **Eigener Speicher in VibeDash nur als letzter Ausweg** (mehr Teile, Lücken wenn VibeDash aus ist, doppelte Wahrheit).
+
+### 2b. Voraussetzung für PV-Prognose und Ladeplan (M11/M12)
+
+PV-Prognose und Ladeplan brauchen den **Stundenverlauf über mehrere Wochen** (Erzeugung, Hausverbrauch, Akku, Wallbox). Dafür ist **InfluxDB oder Home Assistant Voraussetzung**:
+- **InfluxDB:** reicht, sobald evcc oder der Wechselrichter einige Wochen hineingeschrieben hat.
+- **Home Assistant:** der normale Verlauf hält standardmäßig nur **10 Tage** (`purge_keep_days`). VibeDash liest für ältere Zeiträume die **Langzeit-Statistik** von HA (stündlich, unbegrenzt) – das reicht für M11/M12, **aber nur für Sensoren mit `state_class`** (bei Energiezählern meist gesetzt). Fehlt sie, den Recorder auf mindestens 60 Tage stellen.
+- Nur evcc ohne Influx/HA reicht dafür **nicht**: evcc liefert Ladungen, aber keinen Stundenverlauf von PV und Haus.
+
 ## 3. Agenten-Inbetriebnahme (das Besondere an VibeDash)
 
 Ablauf, den der Agent Schritt für Schritt mit dem Menschen geht:

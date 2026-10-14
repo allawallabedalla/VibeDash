@@ -1,0 +1,74 @@
+/* Page layout shared by all pages. */
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 32px 48px;
+}
+
+.page h1 {
+  margin: 8px 0 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.page h2 {
+  margin: 32px 0 12px;
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.page .lead {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.cards.wide-left {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+
+.row-gap {
+  height: 16px;
+}
+
+.muted-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: var(--small);
+}
+
+@media (max-width: 1000px) {
+  .cards.wide-left {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .page {
+    padding: 0 16px 40px;
+  }
+  .page h1 {
+    font-size: 20px;
+  }
+  .page h2 {
+    margin: 24px 0 10px;
+    font-size: 14px;
+  }
+  .cards {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .row-gap {
+    height: 10px;
+  }
+}

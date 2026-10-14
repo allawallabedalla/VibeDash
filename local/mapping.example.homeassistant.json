@@ -1,0 +1,98 @@
+{
+  "$comment": "Home Assistant example with made-up entity ids. Sources can be mixed with InfluxDB in one local/mapping.json. Run `pnpm inventory` for a draft.",
+  "timeZone": "Europe/Berlin",
+  "series": {
+    "pv_power": {
+      "source": "homeassistant",
+      "name": "PV",
+      "kind": "power",
+      "unit": "W",
+      "entityId": "sensor.example_inverter_power",
+      "stepMs": 60000
+    },
+    "load_power": {
+      "source": "homeassistant",
+      "name": "House",
+      "kind": "power",
+      "unit": "W",
+      "entityId": "sensor.example_house_power",
+      "stepMs": 60000
+    },
+    "battery_power": {
+      "source": "homeassistant",
+      "name": "Battery",
+      "kind": "power",
+      "unit": "W",
+      "entityId": "sensor.example_battery_power",
+      "stepMs": 60000
+    },
+    "battery_soc": {
+      "source": "homeassistant",
+      "name": "Battery",
+      "kind": "state_of_charge",
+      "unit": "%",
+      "entityId": "sensor.example_battery_soc",
+      "stepMs": 300000
+    },
+    "grid_power": {
+      "source": "homeassistant",
+      "name": "Grid",
+      "kind": "power",
+      "unit": "W",
+      "entityId": "sensor.example_grid_power",
+      "stepMs": 60000
+    },
+    "pv_energy": {
+      "source": "homeassistant",
+      "name": "PV",
+      "kind": "energy_counter",
+      "unit": "kWh",
+      "entityId": "sensor.example_inverter_energy_total",
+      "stepMs": 300000
+    },
+    "load_energy": {
+      "source": "homeassistant",
+      "name": "House",
+      "kind": "energy_counter",
+      "unit": "kWh",
+      "entityId": "sensor.example_house_energy_total",
+      "stepMs": 300000
+    },
+    "feed_in_energy": {
+      "source": "homeassistant",
+      "name": "Feed-in",
+      "kind": "energy_counter",
+      "unit": "kWh",
+      "entityId": "sensor.example_grid_export_total",
+      "stepMs": 300000
+    },
+    "import_energy": {
+      "source": "homeassistant",
+      "name": "Import",
+      "kind": "energy_counter",
+      "unit": "kWh",
+      "entityId": "sensor.example_grid_import_total",
+      "stepMs": 300000
+    },
+    "living_temp": {
+      "source": "homeassistant",
+      "name": "Living room",
+      "kind": "temperature",
+      "unit": "°C",
+      "room": "living",
+      "entityId": "sensor.example_living_temperature",
+      "stepMs": 300000,
+      "maxHoldMs": 7200000
+    },
+    "living_humidity": {
+      "source": "homeassistant",
+      "name": "Living room",
+      "kind": "humidity",
+      "unit": "%",
+      "room": "living",
+      "entityId": "sensor.example_living_humidity",
+      "stepMs": 300000,
+      "maxHoldMs": 7200000
+    }
+  }
+}
