@@ -127,6 +127,7 @@ export const en: Record<MessageKey, string> = {
     'Forecast made the evening before; correct = actual within ±20 %. Checked against the meter.',
   'acc.title': 'Accuracy per model',
   'acc.collecting': 'collecting data',
+  'acc.checking': 'data base being checked',
   'acc.days': '{have} of {need} days',
   'acc.service': 'Forecasting service',
   'acc.live': 'from real forecasts',

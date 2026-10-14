@@ -125,6 +125,7 @@ export const de = {
     'Vorhersage am Vorabend, korrekt = Ist innerhalb ±20 %. Geprüft gegen den Zählerstand.',
   'acc.title': 'Treffsicherheit je Modell',
   'acc.collecting': 'sammelt Daten',
+  'acc.checking': 'Datenbasis wird geprüft',
   'acc.days': '{have} von {need} Tagen',
   'acc.service': 'Prognose-Dienst',
   'acc.live': 'aus echten Vorhersagen',

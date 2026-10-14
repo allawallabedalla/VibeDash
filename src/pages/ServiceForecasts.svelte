@@ -17,7 +17,8 @@
     schlaegt_faustregel_pct?: number;
   }
   interface Status {
-    zustand: 'sammelt' | 'offen' | 'bewertbar';
+    zustand: 'sammelt' | 'offen' | 'bewertbar' | 'pruefung';
+    gruende?: string[];
     tage?: number;
     benoetigt?: number;
     ab_ca?: string;
@@ -96,6 +97,14 @@
           n={0}
           history={[]}
           note={t(`reason.${it.error as 'timeout' | 'upstream'}`)}
+        />
+      {:else if it.status?.zustand === 'pruefung'}
+        <AccuracyCard
+          label={label(it.name)}
+          pct={null}
+          n={0}
+          history={[]}
+          note={`${t('acc.checking')}: ${(it.status.gruende ?? []).join('; ')}`}
         />
       {:else if it.status?.zustand === 'sammelt'}
         <AccuracyCard

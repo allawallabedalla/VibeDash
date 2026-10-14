@@ -5,7 +5,7 @@ from datetime import UTC, date, datetime, timedelta
 import numpy as np
 
 from vibedash_forecast import engine
-from vibedash_forecast.methods import LEAD_DAYS, known, ridge
+from vibedash_forecast.methods import LEAD_DAYS, cutoff_for, fit_ridge, known
 from vibedash_forecast.store import Store
 
 START = date(2026, 5, 1)
@@ -33,12 +33,12 @@ def test_known_respects_lead_time():
 def test_no_look_into_the_future():
     history, features = pv_like(60)
     target = START + timedelta(days=50)
-    before = ridge(history, features, target)
+    before = fit_ridge(history, features, cutoff_for(target), "wert")(target)
     changed = dict(history)
     for d in changed:
         if d >= target - timedelta(days=1):
             changed[d] = 9999.0
-    assert ridge(changed, features, target) == before
+    assert fit_ridge(changed, features, cutoff_for(target), "wert")(target) == before
 
 
 def test_rule_of_thumb_wins_without_information():
@@ -50,13 +50,53 @@ def test_rule_of_thumb_wins_without_information():
     assert choice.beats_rule_pct == 0.0
 
 
-def test_ridge_wins_only_with_a_paired_2se_advantage():
+def test_a_learner_wins_only_with_a_paired_2se_advantage():
     history, features = pv_like(120)
     bt = engine.backtest(history, features)
     choice = engine.choose(bt)
-    assert choice.method == "ridge"
+    assert choice.method in ("ridge", "boosting")
     assert choice.paired_diff > engine.SE_FACTOR * choice.paired_se
     assert choice.beats_rule_pct > 0
+    # The ladder is documented step by step.
+    assert [s["verfahren"] for s in choice.steps] == ["ridge", "boosting"]
+
+
+def test_boosting_must_beat_ridge_not_just_the_rule():
+    # Linear relation: Ridge captures it; boosting has no paired 2 SE advantage over Ridge.
+    history, features = pv_like(150, seed=5)
+    choice = engine.choose(engine.backtest(history, features))
+    step = choice.steps[1]
+    assert step["gegen"] == "ridge" or choice.method != "boosting"
+    if choice.method == "boosting":
+        assert step["vorteil"] > engine.SE_FACTOR * step["standardfehler"]
+
+
+def test_yes_no_target_gives_probabilities_and_absolute_error_accuracy():
+    rng = np.random.default_rng(2)
+    history, features = {}, {}
+    for i in range(90):
+        d = START + timedelta(days=i)
+        dark = float(rng.uniform(0, 1))
+        features[d] = {"dunkel": dark}
+        history[d] = 1.0 if rng.uniform() < dark else 0.0
+    bt = engine.backtest(history, features, "janein")
+    choice = engine.choose(bt)
+    target = max(history) + timedelta(days=1)
+    features[target] = {"dunkel": 0.9}
+    f = engine.forecast(history, features, target, bt, choice, True, "janein")
+    assert f is not None and 0.0 <= f.p50 <= 1.0 and f.p10 == f.p50 == f.p90
+    g = engine.guete(bt, choice, [], "janein")
+    assert 0 <= g["korrekt_pct"] <= 100 and "Wahrscheinlichkeit" in g["definition"]
+
+
+def test_doubtful_data_base_is_named_not_scored():
+    history, _ = pv_like(40)
+    history[START + timedelta(days=5)] = -3.0
+    s = engine.status(history, engine.backtest(history, {}), nonnegative=True)
+    assert s["zustand"] == "pruefung" and "negative" in s["gruende"][0]
+    history, _ = pv_like(40)
+    history[START + timedelta(days=5)] = 5000.0
+    assert engine.status(history, engine.backtest(history, {}))["zustand"] == "pruefung"
 
 
 def test_range_and_n():

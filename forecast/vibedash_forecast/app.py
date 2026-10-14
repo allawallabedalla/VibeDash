@@ -20,7 +20,7 @@ class ReiheIn(BaseModel):
     id: str = Field(pattern=ID)
     einheit: str = Field(min_length=1, max_length=20)
     takt: Literal["tag"] = "tag"
-    ziel: Literal["wert"] = "wert"
+    ziel: Literal["wert", "janein"] = "wert"
     nichtnegativ: bool = True
 
 
@@ -51,21 +51,40 @@ def create_app(store: Store | None = None, now=lambda: datetime.now(UTC)) -> Fas
             raise HTTPException(404, "unbekannte Reihe")
         return r
 
+    cache: dict[str, tuple[tuple, tuple]] = {}
+
     def compute(rid: str):
+        """Backtest + choice, cached until the stored data changes."""
+        r = reihe_or_404(rid)
         history = dict(db.werte(rid))
         features = db.merkmale(rid)
-        bt = engine.backtest(history, features)
-        return history, features, bt, engine.choose(bt)
+        key = (
+            r.ziel,
+            len(history),
+            max(history, default=None),
+            sum(history.values()),
+            sum(len(f) for f in features.values()),
+        )
+        hit = cache.get(rid)
+        if hit and hit[0] == key:
+            return hit[1]
+        bt = engine.backtest(history, features, r.ziel)
+        result = (history, features, bt, engine.choose(bt))
+        cache[rid] = (key, result)
+        return result
 
     def scheduled_run(r: Reihe) -> list[engine.Forecast]:
         """Forecast today and tomorrow; the first stored run per day counts."""
         history, features, bt, choice = compute(r.id)
-        if not history or engine.status(history, bt)["zustand"] == "sammelt":
+        if not history or engine.status(history, bt, r.nichtnegativ, r.ziel)["zustand"] in (
+            "sammelt",
+            "pruefung",
+        ):
             return []
         last = max(history)
         out = []
         for target in (last + timedelta(days=1), last + timedelta(days=LEAD_DAYS)):
-            f = engine.forecast(history, features, target, bt, choice, r.nichtnegativ)
+            f = engine.forecast(history, features, target, bt, choice, r.nichtnegativ, r.ziel)
             if f is None:
                 continue
             made = now()
@@ -117,8 +136,11 @@ def create_app(store: Store | None = None, now=lambda: datetime.now(UTC)) -> Fas
 
     @app.get("/reihen/{rid}/guete")
     def get_accuracy(rid: SeriesId) -> dict:
-        reihe_or_404(rid)
+        r = reihe_or_404(rid)
         history, features, bt, choice = compute(rid)
+        doubts = engine.data_doubts(history, r.nichtnegativ, r.ziel)
+        if doubts:
+            return {"reihe": rid, "zustand": "pruefung", "gruende": doubts}
         live = [
             (p["p50"], history[date.fromisoformat(p["tag"])])
             for p in db.prognosen(rid)
@@ -126,14 +148,14 @@ def create_app(store: Store | None = None, now=lambda: datetime.now(UTC)) -> Fas
         ]
         return {
             "reihe": rid,
-            **engine.guete(bt, choice, live),
-            "modellkarte": engine.model_card(history, features, bt, choice),
+            **engine.guete(bt, choice, live, r.ziel),
+            "modellkarte": engine.model_card(history, features, bt, choice, r.ziel),
         }
 
     @app.get("/reihen/{rid}/status")
     def get_status(rid: SeriesId) -> dict:
-        reihe_or_404(rid)
+        r = reihe_or_404(rid)
         history, _f, bt, _c = compute(rid)
-        return {"reihe": rid, **engine.status(history, bt)}
+        return {"reihe": rid, **engine.status(history, bt, r.nichtnegativ, r.ziel)}
 
     return app
