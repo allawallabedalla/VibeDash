@@ -1,7 +1,11 @@
 <script lang="ts">
   import {
+    batteryNowTile,
     batteryTile,
+    gridNowTile,
     gridTile,
+    loadNowTile,
+    sunNowTile,
     humidityTile,
     loadTile,
     sunTile,
@@ -18,7 +22,7 @@
   import Card from '../components/Card.svelte';
   import Progress from '../components/Progress.svelte';
   import Sparkline from '../components/Sparkline.svelte';
-  import Tile from '../components/Tile.svelte';
+  import Tile, { type TileProps } from '../components/Tile.svelte';
   import {
     accuracy,
     generateDemo,
@@ -53,6 +57,66 @@
 
   const row1 = $derived([sunTile(demo), loadTile(demo), batteryTile(demo), gridTile(demo)]);
   const row2 = $derived([tempTile(demo), humidityTile(demo), yieldTodayTile(demo)]);
+  const rowNow = $derived([
+    sunNowTile(demo),
+    loadNowTile(demo),
+    batteryNowTile(demo),
+    gridNowTile(demo),
+  ]);
+  // The small graphics a tile can carry beyond the house tiles above.
+  const rowKinds = $derived<TileProps[]>([
+    {
+      label: t('tile.autarky'),
+      icon: 'target',
+      color: 'var(--battery)',
+      value: num(82),
+      unit: '%',
+      sub: t('gallery.kind.ring'),
+      graphic: { kind: 'ring', value: 0.82 },
+    },
+    {
+      label: t('gallery.kind.dryDays'),
+      icon: 'cloudSun',
+      color: 'var(--climate)',
+      value: '5 / 7',
+      sub: t('gallery.kind.share'),
+      graphic: { kind: 'share', have: 5, of: 7 },
+    },
+    {
+      label: t('gallery.kind.manual'),
+      icon: 'bolt',
+      color: 'var(--fair)',
+      value: num(3),
+      sub: t('gallery.kind.dots'),
+      graphic: { kind: 'dots', value: 3, max: 10 },
+    },
+    {
+      label: t('gallery.kind.week'),
+      icon: 'forecast',
+      color: 'var(--sun)',
+      value: num(41),
+      unit: 'kWh',
+      sub: t('gallery.kind.compare'),
+      graphic: { kind: 'compare', now: 41, before: 35 },
+    },
+    {
+      label: t('gallery.kind.inside'),
+      icon: 'thermometer',
+      color: 'var(--climate)',
+      value: `${num(21)}–${num(23)}`,
+      unit: '°C',
+      sub: t('gallery.kind.range'),
+      graphic: {
+        kind: 'scale',
+        min: 16,
+        max: 28,
+        zone: { low: 20, high: 23 },
+        range: { low: 21, high: 23.4 },
+        temperature: true,
+        ends: ['16°', '28°'],
+      },
+    },
+  ]);
 
   const sunAccuracy = accuracy(checkForecasts(demo));
   const days = outlook(demo, mulberry32(7));
@@ -72,6 +136,7 @@
       rainMm: d.rainMm,
       sunHours: d.sunHours,
       energy: d.energy,
+      when: d.offset === 0 ? 'today' : d.offset < 0 ? 'past' : 'forecast',
     })),
   );
 
@@ -132,6 +197,16 @@
   <div class="row-gap"></div>
   <TileRow count={3}>
     {#each row2 as tile (tile.label)}<Tile {...tile} />{/each}
+  </TileRow>
+
+  <h2>{t('gallery.nowTiles')}</h2>
+  <TileRow count={4}>
+    {#each rowNow as tile (tile.label)}<Tile {...tile} />{/each}
+  </TileRow>
+
+  <h2>{t('gallery.kinds')}</h2>
+  <TileRow count={5}>
+    {#each rowKinds as tile (tile.label)}<Tile {...tile} />{/each}
   </TileRow>
 
   <h2>{t('gallery.sources')}</h2>

@@ -1,13 +1,21 @@
 <script lang="ts" module>
+  import type { OriginPart } from './OriginBar.svelte';
+
   export type TileGraphic =
     | { kind: 'ring'; value: number; color?: string }
     | {
         kind: 'scale';
-        value: number;
+        value?: number;
         min: number;
         max: number;
         band?: { low: number; high: number };
+        /** Comfort zone, green. */
+        zone?: { low: number; high: number };
+        /** Spread of several readings, dark. */
+        range?: { low: number; high: number };
         tick?: number;
+        temperature?: boolean;
+        ends?: string[];
         color?: string;
       }
     | {
@@ -19,7 +27,21 @@
         signed?: boolean;
         band?: { low: (number | null)[]; high: (number | null)[] };
         min?: number;
-      };
+      }
+    /** Sun now as a half arc, share 0–1 of the plant's peak. */
+    | { kind: 'arc'; share: number; off?: boolean }
+    /** Where the power comes from right now. */
+    | { kind: 'origin'; parts: OriginPart[] }
+    /** Battery filling with the charge; flow in W (> 0 charging). */
+    | { kind: 'battery'; soc: number; flow?: number }
+    /** Grid from the middle: W > 0 feed-in (right), < 0 import (left). */
+    | { kind: 'pendulum'; watts: number; range?: number }
+    /** Count as dots, e.g. 3 of 10. */
+    | { kind: 'dots'; value: number; max: number; color?: string }
+    /** a of b: dots up to 12, a bar above. */
+    | { kind: 'share'; have: number; of: number; color?: string }
+    /** Now against before (two bars). */
+    | { kind: 'compare'; now: number; before: number; color?: string };
 
   export interface TileProps {
     label: string;
@@ -45,9 +67,15 @@
   import Explanation from './Explanation.svelte';
   import Icon from './Icon.svelte';
   import InfoButton from './InfoButton.svelte';
+  import BatteryGauge from './BatteryGauge.svelte';
+  import Compare from './Compare.svelte';
+  import Dots from './Dots.svelte';
+  import OriginBar from './OriginBar.svelte';
+  import Pendulum from './Pendulum.svelte';
   import Ring from './Ring.svelte';
   import Scale from './Scale.svelte';
   import Sparkline from './Sparkline.svelte';
+  import SunArc from './SunArc.svelte';
 
   let {
     label,
@@ -100,29 +128,56 @@
       {/if}
     </div>
 
-    {#if graphic?.kind === 'scale'}
+    {#if graphic && graphic.kind !== 'ring'}
       <div class="graphic">
-        <Scale
-          value={graphic.value}
-          min={graphic.min}
-          max={graphic.max}
-          band={graphic.band}
-          tick={graphic.tick}
-          color={graphic.color ?? color}
-        />
-      </div>
-    {:else if graphic?.kind === 'spark'}
-      <div class="graphic">
-        <Sparkline
-          values={graphic.values}
-          forecast={graphic.forecast}
-          color={graphic.color ?? color}
-          signed={graphic.signed}
-          band={graphic.band}
-          min={graphic.min}
-          height={40}
-          {label}
-        />
+        {#if graphic.kind === 'scale'}
+          <Scale
+            value={graphic.value}
+            min={graphic.min}
+            max={graphic.max}
+            band={graphic.band}
+            zone={graphic.zone}
+            range={graphic.range}
+            tick={graphic.tick}
+            temperature={graphic.temperature}
+            ends={graphic.ends}
+            color={graphic.color ?? (graphic.temperature ? 'var(--text)' : color)}
+          />
+        {:else if graphic.kind === 'spark'}
+          <Sparkline
+            values={graphic.values}
+            forecast={graphic.forecast}
+            color={graphic.color ?? color}
+            signed={graphic.signed}
+            band={graphic.band}
+            min={graphic.min}
+            height={40}
+            {label}
+          />
+        {:else if graphic.kind === 'arc'}
+          <SunArc share={graphic.share} off={graphic.off} />
+        {:else if graphic.kind === 'origin'}
+          <OriginBar parts={graphic.parts} />
+        {:else if graphic.kind === 'battery'}
+          <BatteryGauge soc={graphic.soc} flow={graphic.flow} />
+        {:else if graphic.kind === 'pendulum'}
+          <Pendulum watts={graphic.watts} range={graphic.range} />
+        {:else if graphic.kind === 'dots'}
+          <Dots value={graphic.value} max={graphic.max} color={graphic.color ?? color} />
+        {:else if graphic.kind === 'share'}
+          {#if graphic.of <= 12}
+            <Dots value={graphic.have} max={graphic.of} color={graphic.color ?? color} />
+          {:else}
+            <div class="share">
+              <span
+                style:width="{(100 * graphic.have) / Math.max(1, graphic.of)}%"
+                style:background={graphic.color ?? color}
+              ></span>
+            </div>
+          {/if}
+        {:else if graphic.kind === 'compare'}
+          <Compare now={graphic.now} before={graphic.before} color={graphic.color ?? color} />
+        {/if}
       </div>
     {/if}
   {/if}
@@ -131,12 +186,12 @@
 <style>
   .tile {
     background: var(--surface);
-    border-radius: var(--radius);
+    border-radius: 18px;
     box-shadow: var(--shadow);
-    padding: 14px 16px 16px;
+    padding: 12px 14px 14px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     min-height: 150px;
     min-width: 0;
     position: relative;
@@ -146,16 +201,20 @@
     align-items: center;
     gap: 6px;
     min-height: 20px;
-    padding-right: 26px;
+    padding-right: 30px;
   }
   .icon {
     display: inline-flex;
   }
   .label {
     font-size: 14px;
-    color: var(--muted);
+    font-weight: 600;
+    color: var(--text-2);
     line-height: 1.2;
     min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   /* ⓘ sits in the corner (44 px target) so the label keeps its width. */
   header > :global(.info) {
@@ -185,9 +244,9 @@
   }
   .value {
     font-size: 30px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    line-height: 1.1;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.05;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
@@ -197,10 +256,10 @@
     margin-right: 2px;
   }
   .unit {
-    font-size: 15px;
-    font-weight: 500;
+    font-size: 14px;
+    font-weight: 600;
     color: var(--muted);
-    margin-left: 4px;
+    margin-left: 3px;
     letter-spacing: 0;
   }
   .sub {
@@ -211,6 +270,18 @@
   }
   .graphic {
     margin-top: auto;
+    padding-top: 4px;
+  }
+  .share {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--track);
+    overflow: hidden;
+  }
+  .share span {
+    display: block;
+    height: 100%;
+    border-radius: 4px;
   }
   .pending {
     display: inline-block;
@@ -227,9 +298,9 @@
 
   @media (max-width: 600px) {
     .tile {
-      padding: 12px 12px 14px;
-      min-height: 140px;
-      border-radius: 18px;
+      padding: 10px 12px 12px;
+      min-height: 130px;
+      border-radius: 14px;
     }
     .value {
       font-size: 26px;

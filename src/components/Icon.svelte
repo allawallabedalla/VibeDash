@@ -25,6 +25,9 @@
     plugCar:
       'M5 13.5l1.6-4.3A2 2 0 0 1 8.5 8h7a2 2 0 0 1 1.9 1.2l1.6 4.3M4.5 13.5h15a1 1 0 0 1 1 1V17a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1v-2.5a1 1 0 0 1 1-1zM7 18v1.5M17 18v1.5M7.5 15.8h.01M16.5 15.8h.01',
     close: 'M7 7l10 10M17 7 7 17',
+    okCircle: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM8.2 12.3l2.6 2.6 5-5.4',
+    lookCircle: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM12 7.6V13M12 16.2v.2',
+    actCircle: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM9 9l6 6M15 9l-6 6',
     contrast: 'M12 3.5a8.5 8.5 0 1 0 0 17zM12 3.5a8.5 8.5 0 1 1 0 17',
   } as const;
   export type IconName = keyof typeof paths;
@@ -46,4 +49,8 @@
   aria-hidden="true"
 >
   <path d={paths[name]} />
+  {#if name === 'sun'}
+    <!-- the sun is filled: as an outline it read like a gear -->
+    <circle cx="12" cy="12" r="4" fill="currentColor" />
+  {/if}
 </svg>

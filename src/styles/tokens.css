@@ -1,85 +1,109 @@
 /* Design tokens. Few colours, soft surfaces, light and dark. */
 :root {
   color-scheme: light;
-  --bg: #f4f3ef;
+  --bg: #f5f5f7;
   --surface: #ffffff;
-  --surface-2: #f9f8f5;
-  --line: #e6e3dc;
-  --text: #22252a;
-  --muted: #6d7177;
-  --faint: #a3a6aa;
+  --surface-2: #f2f2f5;
+  --line: #e8e8ed;
+  --text: #1d1d1f;
+  --text-2: #424245;
+  --muted: #86868b;
+  --faint: #c7c7cc;
+  --track: #efeff4;
 
-  --sun: #d99a1e;
-  --home: #7b6bb5;
-  --battery: #3b9670;
-  --feed: #3b9670;
-  --import: #c26a5a;
-  --climate: #4a82b8;
-  --open: #9a9da2;
-  --good: #3b9670;
-  --fair: #c9932c;
-  --poor: #c26a5a;
+  --sun: #e0a100;
+  --sun-soft: #ffb340;
+  --home: #5e5ce6;
+  --battery: #34c77b;
+  --feed: #8e8e93;
+  --import: #af52de;
+  --climate: #2e9bd6;
+  --open: #8e8e93;
+  --good: #2e9e5b;
+  --fair: #e8a317;
+  --poor: #d64545;
+  --accent: #0a6fcc;
+  --accent-bg: rgba(10, 132, 255, 0.14);
+  --look-bg: #fff6e5;
+  --act-bg: #ffecea;
 
-  --gap: rgba(120, 120, 120, 0.12);
-  --shadow: 0 1px 2px rgba(40, 36, 28, 0.04), 0 6px 20px rgba(40, 36, 28, 0.06);
+  --gap: rgba(127, 127, 127, 0.12);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.05);
+  --shadow-high: 0 1px 2px rgba(0, 0, 0, 0.05), 0 10px 28px rgba(0, 0, 0, 0.09);
   --radius: 20px;
   /* Small print: 13 px on large screens, never below 14 px on phones. */
   --small: 13px;
   --radius-sm: 12px;
   --font:
-    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, Roboto,
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, 'Segoe UI', system-ui, Roboto,
     'Helvetica Neue', Arial, sans-serif;
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #131518;
-  --surface: #1c1f23;
-  --surface-2: #22262b;
-  --line: #2c3036;
-  --text: #ebe8e2;
-  --muted: #9a9ea4;
-  --faint: #6a6e74;
+  --bg: #000000;
+  --surface: #1c1c1e;
+  --surface-2: #2c2c2e;
+  --line: #38383a;
+  --text: #f5f5f7;
+  --text-2: #d1d1d6;
+  --muted: #98989d;
+  --faint: #636366;
+  --track: #2c2c2e;
 
-  --sun: #e8b24a;
-  --home: #a597de;
-  --battery: #5bbf93;
-  --feed: #5bbf93;
-  --import: #e08e7d;
-  --climate: #78aee0;
-  --open: #80848a;
-  --good: #5bbf93;
-  --fair: #e0b057;
-  --poor: #e08e7d;
+  --sun: #ffb340;
+  --sun-soft: #ffc76b;
+  --home: #7d7aff;
+  --battery: #30d158;
+  --feed: #98989d;
+  --import: #bf5af2;
+  --climate: #64b5f6;
+  --open: #98989d;
+  --good: #30d158;
+  --fair: #ffb340;
+  --poor: #ff6961;
+  --accent: #64a8ff;
+  --accent-bg: rgba(10, 132, 255, 0.24);
+  --look-bg: #3a2e14;
+  --act-bg: #3d1f1d;
 
   --gap: rgba(200, 200, 200, 0.08);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+  --shadow-high: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.35);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
-    --bg: #131518;
-    --surface: #1c1f23;
-    --surface-2: #22262b;
-    --line: #2c3036;
-    --text: #ebe8e2;
-    --muted: #9a9ea4;
-    --faint: #6a6e74;
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --surface-2: #2c2c2e;
+    --line: #38383a;
+    --text: #f5f5f7;
+    --text-2: #d1d1d6;
+    --muted: #98989d;
+    --faint: #636366;
+    --track: #2c2c2e;
 
-    --sun: #e8b24a;
-    --home: #a597de;
-    --battery: #5bbf93;
-    --feed: #5bbf93;
-    --import: #e08e7d;
-    --climate: #78aee0;
-    --open: #80848a;
-    --good: #5bbf93;
-    --fair: #e0b057;
-    --poor: #e08e7d;
+    --sun: #ffb340;
+    --sun-soft: #ffc76b;
+    --home: #7d7aff;
+    --battery: #30d158;
+    --feed: #98989d;
+    --import: #bf5af2;
+    --climate: #64b5f6;
+    --open: #98989d;
+    --good: #30d158;
+    --fair: #ffb340;
+    --poor: #ff6961;
+    --accent: #64a8ff;
+    --accent-bg: rgba(10, 132, 255, 0.24);
+    --look-bg: #3a2e14;
+    --act-bg: #3d1f1d;
 
     --gap: rgba(200, 200, 200, 0.08);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+    --shadow-high: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.35);
   }
 }
 
@@ -99,7 +123,7 @@ body {
   color: var(--text);
   font-family: var(--font);
   font-size: 15px;
-  line-height: 1.4;
+  line-height: 1.35;
   -webkit-font-smoothing: antialiased;
 }
 

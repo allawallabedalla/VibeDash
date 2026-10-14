@@ -1,7 +1,14 @@
 <script lang="ts">
   /** "Now": current values first, where the power comes from, last 24 hours. */
   import { currentData } from '../app/data.svelte';
-  import { batteryTile, gridTile, humidityTile, loadTile, sunTile, tempTile } from '../app/tiles';
+  import {
+    batteryNowTile,
+    gridNowTile,
+    humidityTile,
+    loadNowTile,
+    sunNowTile,
+    tempTile,
+  } from '../app/tiles';
   import Card from '../components/Card.svelte';
   import SourceArc from '../components/SourceArc.svelte';
   import Sparkline from '../components/Sparkline.svelte';
@@ -14,7 +21,12 @@
   const house = currentData();
 
   const kw = (w: number | null) => (w === null ? null : w / 1000);
-  const energy = $derived([sunTile(house), loadTile(house), batteryTile(house), gridTile(house)]);
+  const energy = $derived([
+    sunNowTile(house),
+    loadNowTile(house),
+    batteryNowTile(house),
+    gridNowTile(house),
+  ]);
   const climate = $derived([tempTile(house), humidityTile(house)]);
 
   const src = sourcesAt(house, house.now - 60_000);
