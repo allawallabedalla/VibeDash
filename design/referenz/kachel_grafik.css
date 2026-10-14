@@ -1,0 +1,33 @@
+
+.hw { --t1: #1D1D1F; --t2: #6C6C70; --link: #2a78d6; font-family: "HausIcons", Inter, -apple-system, Helvetica, Arial, sans-serif;
+  color: var(--t1); height: 100%; box-sizing: border-box; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+  gap: 6px 14px; align-content: start; container-type: inline-size; overflow: hidden; padding: 2px 2px 0; }
+.k { display: block; min-width: 0; text-decoration: none; color: inherit; border-radius: 10px; padding: 3px 4px; }
+a.k:hover { background: var(--fl); }
+.kn { font-size: 13px; color: var(--t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kw { font-size: 23px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ku { font-size: 12px; color: var(--t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g { margin: 5px 0 3px; }
+.gs { position: relative; height: 8px; border-radius: 4px; background: rgba(127,127,127,.14); }
+.gz { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: rgba(52,199,123,.22); }
+.gb { position: absolute; top: 2px; bottom: 2px; border-radius: 3px; opacity: .35; }
+.gp { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: #fff;
+  border: 3px solid; box-sizing: border-box; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.gl, .gv { height: 8px; border-radius: 4px; background: rgba(127,127,127,.14); overflow: hidden; display: flex; flex-direction: column; }
+.gl span { display: block; height: 100%; border-radius: 4px; }
+.gv { height: 10px; gap: 2px; background: none; }
+.gv span { display: block; height: 4px; border-radius: 2px; }
+.gv .dv { background: rgba(127,127,127,.35); }
+.gd { display: flex; gap: 3px; flex-wrap: wrap; }
+.gd i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid rgba(127,127,127,.35); box-sizing: border-box; }
+.gr { width: 26px; height: 26px; border-radius: 50%; -webkit-mask: radial-gradient(farthest-side, transparent 58%, #000 60%);
+  mask: radial-gradient(farthest-side, transparent 58%, #000 60%); }
+.gk { width: 100%; height: 26px; display: block; }
+@container (max-width: 700px) {
+  .hw { grid-template-columns: repeat(var(--handy), minmax(0, 1fr)); gap: 2px 8px; padding-top: 0; }
+  .k { padding: 2px 2px; }
+  .kn { font-size: 11.5px; }
+  .kw { font-size: 18px; line-height: 1.12; }
+  .ku { font-size: 11px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .h2 .ku { white-space: nowrap; display: block; }
+}

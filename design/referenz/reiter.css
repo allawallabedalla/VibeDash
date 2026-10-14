@@ -1,0 +1,18 @@
+
+.krume { display: block; box-sizing: border-box; padding: 0 4px 0; font-family: "HausIcons", Inter, Helvetica, Arial,
+  sans-serif; color: var(--k-text, #ccccdc); }
+.tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 1px 2px 2px; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 2px 11px 2px 9px; border-radius: 999px;
+  font-size: 13px; line-height: 20px; font-weight: 500; color: var(--k-text, #ccccdc); text-decoration: none; cursor: pointer;
+  background: rgba(127, 127, 127, .10); white-space: nowrap; }
+.tab i { font-style: normal; font-family: "HausIcons"; font-size: 14px; opacity: .85; }
+.tab:hover { background: rgba(127, 127, 127, .18); }
+.tab.aktiv { background: var(--k-knopf, rgba(10, 132, 255, .14)); color: var(--k-link, #6e9fff); font-weight: 650; }
+.pfad { font-size: 12.5px; line-height: 18px; color: var(--k-text2, #8e8e99); white-space: nowrap; overflow-x: auto;
+  scrollbar-width: none; padding: 0 4px; }
+.pfad::-webkit-scrollbar { display: none; }
+.krume a.weg { color: var(--k-link, #6e9fff); text-decoration: none; cursor: pointer; }
+.krume a.weg:hover { text-decoration: underline; }
+.krume b { font-weight: 600; color: var(--k-text, #ccccdc); }
+.krume .trenner { padding: 0 0.6em; }

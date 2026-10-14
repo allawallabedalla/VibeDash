@@ -1,0 +1,33 @@
+
+:host { font-family: Inter, -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; color: #1b1b1a; }
+.l { display: flex; flex-direction: column; width: 100%; box-sizing: border-box; padding: 0 4px; }
+.z { display: grid; grid-template-columns: 84px 30px 64px 46px 1fr 46px 56px 70px; align-items: center;
+     column-gap: 8px; height: 30px; border-bottom: 1px solid #ecebe6; font-size: 15px; }
+.z.kopf { height: 22px; font-size: 11px; color: #77756e; border-bottom: none; text-transform: uppercase; letter-spacing: .03em; }
+.z.kopf .kwh { text-transform: none; }   /* Einheit „kWh“ nicht als „KWH“ (Audit 11.10.) */
+.z.heute { font-weight: 700; background: #f6f5f1; border-radius: 4px; }
+.z.vergangen .tg { color: #55544f; }
+.z.vorhersage .kwh, .z.heute .kwh { color: #77756e; }
+.tg { white-space: nowrap; }
+.sym { font-size: 19px; text-align: center; color: transparent; -webkit-text-stroke: 1.2px #55544f; }   /* Outline (BL-192) */
+.sym.voll { color: #55544f; -webkit-text-stroke: 0; }   /* Sonne gefüllt (Nutzer 14.10.2026: Umriss wirkte wie ein Zahnrad) */
+.q { display: block; font-size: 10px; line-height: 11px; color: #a0522d; }
+.tg { line-height: 14px; }
+.z.mod .bal { opacity: .45; }
+.z.mod .t { color: #77756e; }
+.re { color: #2a78d6; font-size: 13px; white-space: nowrap; }
+.t { text-align: right; font-variant-numeric: tabular-nums; }
+.t.lo { color: #55544f; }
+.t.frost { color: #2a78d6; font-weight: 700; }
+.bahn { position: relative; height: 6px; background: #ecebe6; border-radius: 3px; }
+.bal { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+.null { position: absolute; top: -4px; bottom: -4px; width: 2px; background: #2a78d6; opacity: .7; }
+.so, .kwh { text-align: right; font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.trenner { font-size: 11px; color: #77756e; margin: 8px 0 2px; text-transform: uppercase; letter-spacing: .03em; }
+@media (max-width: 560px) {
+  .z { grid-template-columns: 50px 24px 38px 34px 1fr 34px 48px; column-gap: 5px; font-size: 14px; }
+  .z .so { display: none; } .z.kopf .so { display: none; }
+  .re { font-size: 12px; } .so, .kwh { font-size: 12px; }
+  .tg .dat { display: block; font-size: 10px; line-height: 11px; color: #77756e; }   /* Datum auch am iPhone (BL-189) */
+  .q { display: none; }   /* am iPhone nur „≈“ (Legende in der Zwischenzeile) */
+}
