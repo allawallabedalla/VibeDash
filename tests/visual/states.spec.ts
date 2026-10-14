@@ -32,7 +32,11 @@ const json = (body: unknown, status = 200) => ({
   body: JSON.stringify(body),
 });
 
-async function influxMode(page: Page, series: (id: string) => ReturnType<typeof json>) {
+async function influxMode(
+  page: Page,
+  series: (id: string) => ReturnType<typeof json>,
+  entities: typeof ENTITIES = ENTITIES,
+) {
   await page.route('**/api/health', (r) =>
     r.fulfill(
       json({
@@ -44,7 +48,7 @@ async function influxMode(page: Page, series: (id: string) => ReturnType<typeof 
     ),
   );
   await page.route('**/api/entities', (r) =>
-    r.fulfill(json({ timeZone: 'Europe/Berlin', entities: ENTITIES })),
+    r.fulfill(json({ timeZone: 'Europe/Berlin', entities })),
   );
   await page.route('**/api/series/*', (r) => {
     const id = new URL(r.request().url()).pathname.split('/').pop()!;
@@ -114,6 +118,8 @@ test('one series times out: page renders, tile says "keine Daten", notice names 
     'wird geprüft',
   );
   await expect(page.locator('.tile', { hasText: 'Wohnzimmer' })).toContainText('Daten fehlen seit');
+  // No battery capacity mapped: % only, never the demo's kWh.
+  await expect(page.locator('.tile', { hasText: 'Akku' }).first()).not.toContainText('kWh');
   // Question groups are folded on the phone; a tap opens them.
   const confirm = page.getByText('Ein Wert ist noch nicht bestätigt');
   if (!(await confirm.isVisible())) {
@@ -124,6 +130,36 @@ test('one series times out: page renders, tile says "keine Daten", notice names 
     path: `screenshots/state-partial-${info.project.name}.png`,
     fullPage: true,
   });
+});
+
+test('battery kWh from the nominal capacity; derived consumption named', async ({ page }) => {
+  const entities = [
+    ...ENTITIES.map((e) => (e.id === 'load_energy' ? { ...e, derived: true } : e)),
+    {
+      ...ENTITIES[0]!,
+      id: 'battery_capacity',
+      name: 'Battery capacity',
+      kind: 'capacity',
+      unit: 'kWh',
+    },
+  ];
+  await influxMode(
+    page,
+    (id) => {
+      if (id !== 'battery_capacity') return synthetic(id);
+      // constant 12.5 kWh with one read error (0) as the latest value
+      const now = Date.now();
+      const samples = [3, 2, 1, 0].map((h) => [now - h * 3_600_000, h === 0 ? 0 : 12.5]);
+      return json({ name: id, samples });
+    },
+    entities,
+  );
+  await page.goto('/?lang=de');
+  const battery = page.locator('.tile', { hasText: 'Akku' }).first();
+  await expect(battery).toContainText('7,5 / 12,5 kWh');
+  await battery.getByRole('button').first().click();
+  await expect(battery).toContainText('Nennkapazität laut Wechselrichter (12,5 kWh)');
+  await expect(page.getByText('Verbrauch aus der Leistung aufsummiert')).toBeVisible();
 });
 
 test('no made-up weather outlook with real data', async ({ page }) => {

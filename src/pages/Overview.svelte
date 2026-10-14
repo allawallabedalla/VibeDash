@@ -3,7 +3,7 @@
   import { onMount } from 'svelte';
   import { currentData, currentSource, store } from '../app/data.svelte';
   import { groupQuestions, questions } from '../app/questions';
-  import { reviewRows } from '../app/review';
+  import { reviewNote, reviewRows } from '../app/review';
   import {
     autarkyTile,
     batteryTile,
@@ -174,7 +174,7 @@
   </div>
 
   <h2>{t('page.review')}</h2>
-  <Card title={t('review.title')} icon="clock" color="var(--muted)" note={t('review.unit')}>
+  <Card title={t('review.title')} icon="clock" color="var(--muted)" note={reviewNote(house)}>
     {#snippet actions()}
       <Segmented
         options={[

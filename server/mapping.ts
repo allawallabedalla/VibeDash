@@ -83,6 +83,7 @@ const KINDS: EntityKind[] = [
   'power',
   'energy_counter',
   'state_of_charge',
+  'capacity',
   'temperature',
   'humidity',
 ];
@@ -203,6 +204,7 @@ export function validateMapping(
       // Unconfirmed until the person checked it against a source they trust.
       confirmed: entry.confirmed === true,
       ...(typeof entry.maxPerDay === 'number' ? { maxPerDay: entry.maxPerDay } : {}),
+      ...(source === 'derived' ? { derived: true } : {}),
     };
     const common = {
       entity,

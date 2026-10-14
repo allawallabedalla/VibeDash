@@ -45,6 +45,8 @@ export const en: Record<MessageKey, string> = {
     'Balance from the inverter (direct + import + battery discharge − battery charged from the grid): {balance} kWh. The difference of {diff} kWh ({pct} %) is conversion and battery loss.',
   'info.battery.what': 'State of charge of the home battery.',
   'info.battery.source': 'Battery storage, state of charge in percent.',
+  'info.battery.capacity':
+    'kWh = state of charge × nominal capacity from the inverter ({cap} kWh). This is not a measured capacity: an aged battery stores less.',
   'info.grid.what': 'Plus = power goes to the grid. Minus = power comes from the grid.',
   'info.grid.source': 'Grid meter. Two messages in the same second keep their arrival order.',
   'info.temp.what': 'Room temperature. The light band is the comfort range.',
@@ -310,6 +312,9 @@ export const en: Record<MessageKey, string> = {
   'review.autarky': 'Self',
   'review.loggerGap': 'Logger gap, meter complete',
   'review.unit': 'All values in kWh from meter readings, days in local time.',
+  'review.unitDerived':
+    'All values in kWh, days in local time. Solar, feed-in and import from meter readings; usage summed up from the power (no meter of its own).',
+  'review.gapDerived': 'Gap: meters complete, usage without the gap (too low)',
   'nav.gallery': 'Building blocks',
   'model.load': 'Usage forecast',
   'tile.loadTomorrow': 'Usage tomorrow',

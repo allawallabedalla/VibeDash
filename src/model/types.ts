@@ -3,8 +3,9 @@
  * display concern only (see ANLEITUNG.md section 6).
  */
 
+/** `capacity`: a nominal size (e.g. battery kWh) that should not change. */
 export type EntityKind =
-  'power' | 'energy_counter' | 'state_of_charge' | 'temperature' | 'humidity';
+  'power' | 'energy_counter' | 'state_of_charge' | 'capacity' | 'temperature' | 'humidity';
 
 export interface Entity {
   id: string;
@@ -21,6 +22,8 @@ export interface Entity {
   confirmed?: boolean;
   /** Energy counters: a day above this (in `unit`) is implausible and left out. */
   maxPerDay?: number;
+  /** Computed from other series (no meter of its own); named as such in ⓘ. */
+  derived?: boolean;
 }
 
 /** One measurement. Order within a series is arrival order, never re-sorted by value. */

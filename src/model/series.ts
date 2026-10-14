@@ -72,6 +72,40 @@ export function meanAbsPctError(pairs: readonly { actual: number; predicted: num
   return (sum / usable.length) * 100;
 }
 
+/**
+ * The value of something that should stay constant (a nominal capacity),
+ * robust against read errors: values below `min` are dropped, and a jump of
+ * more than `maxJump` (share) from the last valid value is dropped unless the
+ * new value holds for `confirm` samples in a row (a real change). Returns the
+ * last valid value, or null if there is none.
+ */
+export function steadyValue(
+  samples: readonly Sample[],
+  { min, maxJump, confirm = 3 }: { min: number; maxJump: number; confirm?: number },
+): number | null {
+  let valid: number | null = null;
+  let candidate: number | null = null;
+  let seen = 0;
+  for (const { v } of samples) {
+    if (!Number.isFinite(v) || v < min) continue;
+    if (valid === null || Math.abs(v - valid) <= maxJump * valid) {
+      valid = v;
+      candidate = null;
+      continue;
+    }
+    if (candidate !== null && Math.abs(v - candidate) <= maxJump * candidate) seen++;
+    else {
+      candidate = v;
+      seen = 1;
+    }
+    if (seen >= confirm) {
+      valid = v;
+      candidate = null;
+    }
+  }
+  return valid;
+}
+
 /** How long a meter reading may stay off before it counts as a real reset. */
 export const COUNTER_GLITCH_MS = 10 * 60_000;
 
