@@ -49,7 +49,14 @@
         need: Number(r.body.benoetigt ?? 14),
       };
     } else if (r.body.zustand === 'fehlt') {
-      planState = { s: 'needs', what: String(r.body.was ?? '') };
+      const code = String(r.body.was ?? '');
+      const known = ['pv', 'last', 'temperatur', 'zeit', 'akku_jetzt'] as const;
+      planState = {
+        s: 'needs',
+        what: (known as readonly string[]).includes(code)
+          ? t(`plan.missing.${code as (typeof known)[number]}`)
+          : code,
+      };
     } else {
       const code = r.body.error;
       planState = {

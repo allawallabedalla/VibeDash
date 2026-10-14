@@ -11,7 +11,7 @@ VibeDash is not one big app. It ships three things:
 
 Everything runs locally. No cloud, no CDN.
 
-> Status: early (milestones M0–M2, M3 in progress). Three pages (Overview, Now, Forecasts)
+> Status: early. Pages Overview, Now, Forecasts and Charging (charge plan, stage A)
 > and a gallery of all building blocks; synthetic demo data, or InfluxDB 1.x and/or Home
 > Assistant via the server. Agent build guide incl. onboarding: [AGENT.md](AGENT.md) (German source: [INBETRIEBNAHME.md](INBETRIEBNAHME.md)). Project background and roadmap (German): [ANLEITUNG.md](ANLEITUNG.md).
 
@@ -66,7 +66,7 @@ Home Assistant stores state **changes**: an unchanged value is held (it is still
 (`maxHoldMs`) so a device that goes silent does not look alive.
 
 API (read-only, `GET` only): `/api/health`, `/api/entities`,
-`/api/series/<name>?range=1h|24h|7d|31d`. Every Influx request times out after 10 s; the
+`/api/series/<name>?range=1h|24h|7d|31d`, `/api/plan`, `/api/plan/guete`. Every Influx request times out after 10 s; the
 page then shows "keine Daten" with the reason and a retry button, never endless loading.
 
 ## evcc (charging)
@@ -113,6 +113,35 @@ Then set `FORECAST_URL=http://127.0.0.1:8090` in `.env` and name daily forecasts
 
 Every hour the server sends complete days (from the meter reading) and, with
 `"weather": true`, the weather forecast for coming days as features known in advance.
+
+## Charge plan (stage A: plan and show)
+
+The **Charging** tab shows how much the car can charge **without grid power** – now,
+tonight and tomorrow – from the hourly PV forecast, a load forecast (temperature,
+weekend), 300 paired scenarios and an hourly battery simulation (`LADESTEUERUNG.md`). A
+charging hour is only planned if, in 30 of 31 cases, it causes no extra grid import, also
+not later because the home battery would be empty. Tiles: kWh with range and n, window and
+current, battery tomorrow 6 am; an hour chart; and **"what if …?"** (charge now with 6–16 A
+for 1–6 h), computed in the browser on the same scenarios. The forecasts page shows the
+plan's accuracy from a backtest that replans hourly like live.
+
+**VibeDash never switches the wallbox.** Control (stage B, M13) needs ≥ 4 weeks of stage A
+without wrong plans, the grid-operator question settled and every rule from
+`LADESTEUERUNG.md` §7 – it is not part of v0.x.
+
+Needs the forecasting service, `pv` in `local/mapping.json` and:
+
+```json
+"plan": {
+  "load": "load_energy", "carEnergy": "car_energy", "soc": "battery_soc",
+  "battery": { "capacityKwh": 10, "maxChargeKw": 5, "maxDischargeKw": 5, "minSocPct": 5, "reserveKwh": 2 },
+  "vehicle": { "capacityKwh": 60, "phases": 3, "minA": 6, "maxA": 16 }
+}
+```
+
+`load` is the house counter, `carEnergy` (optional) the wallbox counter that is subtracted
+and gives "charged today". At least 21 days of hourly history are needed. The demo computes
+everything in the browser for a made-up car (the demo home has none).
 
 ## Docker
 

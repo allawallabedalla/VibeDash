@@ -67,6 +67,7 @@ class PvForecast:
     n_fit: int
     n_analog: int
     factors: list[float] = field(default_factory=list)
+    scenarios: np.ndarray | None = None  # analog days x hours, kWh per hour
 
 
 def local_days(hours_utc: list[datetime], tz: str) -> dict[date, list[int]]:
@@ -142,6 +143,7 @@ def forecast_day(target: DayData, history: list[DayData], plant: Plant) -> PvFor
         n_fit=min(len(train), FIT_DAYS),
         n_analog=len(scored),
         factors=[float(x) for x in k],
+        scenarios=s,
     )
 
 

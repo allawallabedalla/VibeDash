@@ -56,7 +56,7 @@ describe('config', () => {
     if (!r.ok) throw new Error('invalid');
     expect(r.mapping.series.pv_power!.entity.confirmed).toBe(false);
     const ok = validateMapping({
-      ...example,
+      timeZone: example.timeZone,
       series: { pv_power: { ...example.series.pv_power, confirmed: true } },
     });
     if (!ok.ok) throw new Error('invalid');

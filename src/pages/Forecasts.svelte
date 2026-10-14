@@ -23,6 +23,7 @@
   import WeatherCard from './WeatherCard.svelte';
   import ServiceForecasts from './ServiceForecasts.svelte';
   import PvForecastCard from './PvForecastCard.svelte';
+  import PlanAccuracyCard from './PlanAccuracyCard.svelte';
   import { store } from '../app/data.svelte';
 
   const house = currentData();
@@ -112,6 +113,7 @@
     <div class="cards">
       <AccuracyCard label={t('model.sun')} pct={sun.pct} n={sun.n} history={sun.history} />
       <AccuracyCard label={t('model.load')} pct={load.pct} n={load.n} history={load.history} />
+      {#if showOutlook}<PlanAccuracyCard demo />{/if}
     </div>
     <p class="muted-note">{t('page.method')}</p>
   {/if}
@@ -151,6 +153,9 @@
     </Card>
   {:else}
     {#if store.pv}<PvForecastCard timeZone={tz} />{/if}
+    {#if store.plan}
+      <div class="cards"><PlanAccuracyCard demo={false} /></div>
+    {/if}
     <WeatherCard timeZone={tz} />
   {/if}
 </div>

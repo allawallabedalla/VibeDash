@@ -180,3 +180,34 @@ export async function fetchGti(
     archive ? 'global_tilted_irradiance_previous_day1' : 'global_tilted_irradiance',
   );
 }
+
+/**
+ * Hourly air temperature for the load model (M12): the current forecast, or the
+ * day-ahead forecasts of past days (`previous_day1`) for an honest backtest.
+ */
+export function temperatureUrl(l: Location, archive: boolean, pastDays = 60): string {
+  const r = roundLocation(l);
+  const p = new URLSearchParams({
+    latitude: String(r.lat),
+    longitude: String(r.lon),
+    hourly: archive ? 'temperature_2m_previous_day1' : 'temperature_2m',
+    timezone: 'GMT',
+    ...(archive ? { past_days: String(pastDays), forecast_days: '1' } : { forecast_days: '3' }),
+  });
+  const host = archive ? 'https://previous-runs-api.open-meteo.com' : 'https://api.open-meteo.com';
+  return `${host}/v1/forecast?${p}`;
+}
+
+export async function fetchTemperature(
+  fetchFn: FetchLike,
+  l: Location,
+  archive: boolean,
+  timeoutMs = 10_000,
+): Promise<HourValue[]> {
+  const res = await fetchFn(temperatureUrl(l, archive), {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!res.ok) throw new WeatherError(`HTTP ${res.status}`);
+  return parseHourly(await res.json(), archive ? 'temperature_2m_previous_day1' : 'temperature_2m');
+}

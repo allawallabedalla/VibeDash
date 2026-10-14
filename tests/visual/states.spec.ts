@@ -394,3 +394,81 @@ test('hourly PV forecast: day totals with range and n, hourly band, accuracy', a
   await page.screenshot({ path: `screenshots/pv-hourly-${info.project.name}.png`, fullPage: true });
   expect(isMobile !== undefined).toBe(true);
 });
+
+test('charge plan from the forecasting service (live): tiles, chart, what-if', async ({
+  page,
+}, info) => {
+  await influxMode(page, synthetic);
+  await page.route('**/api/health', (r) =>
+    r.fulfill(
+      json({
+        ok: true,
+        source: 'live',
+        backends: ['influx'],
+        plan: true,
+        timeZone: 'Europe/Berlin',
+      }),
+    ),
+  );
+  const h0 = Math.floor(Date.now() / 3_600_000) * 3_600_000;
+  const n = 30;
+  const hours = Array.from({ length: n }, (_, i) => new Date(h0 + i * 3_600_000).toISOString());
+  const sun = (k: number) =>
+    hours.map((_, i) => Math.max(0, Math.sin((((i % 24) - 2) / 12) * Math.PI)) * k);
+  await page.route('**/api/plan', (r) =>
+    r.fulfill(
+      json({
+        zustand: 'bereit',
+        stunden: hours,
+        auto_kw: hours.map((_, i) => (i >= 3 && i < 6 ? 4.14 : 0)),
+        kwh: 12.4,
+        spanne: [8.3, 16.6],
+        grund: 'sunBattery',
+        pv_listen: [sun(6), sun(4)],
+        last_listen: [hours.map(() => 0.5), hours.map(() => 0.7)],
+        paar_pv: Array.from({ length: 300 }, (_, i) => i % 2),
+        paar_last: Array.from({ length: 300 }, (_, i) => (i >> 1) % 2),
+        akku: {
+          kapazitaet_kwh: 10,
+          max_laden_kw: 5,
+          max_entladen_kw: 5,
+          min_soc_pct: 5,
+          reserve_kwh: 2,
+        },
+        auto: { kapazitaet_kwh: 60, phasen: 3, min_a: 6, max_a: 16 },
+        soc_kwh: 6,
+        geladen_kwh: 0,
+        n_pv: 30,
+        n_last: 40,
+        ungeprueft: true,
+      }),
+    ),
+  );
+  await page.goto('/?lang=de#/charging');
+  await expect(page.locator('.tile', { hasText: 'Auto laden' })).toContainText('12');
+  await expect(page.locator('.tile', { hasText: 'Auto laden' })).toContainText('n = 300');
+  await expect(page.getByText('ungeprüft: noch keine Daten bei dieser Temperatur')).toBeVisible();
+  await expect(page.locator('.answer')).toBeVisible();
+  await page.screenshot({ path: `screenshots/plan-live-${info.project.name}.png`, fullPage: true });
+});
+
+test('charge plan still collecting: says how many days, no plan', async ({ page }) => {
+  await influxMode(page, synthetic);
+  await page.route('**/api/health', (r) =>
+    r.fulfill(
+      json({
+        ok: true,
+        source: 'live',
+        backends: ['influx'],
+        plan: true,
+        timeZone: 'Europe/Berlin',
+      }),
+    ),
+  );
+  await page.route('**/api/plan', (r) =>
+    r.fulfill(json({ plan: 'haus', zustand: 'sammelt', tage: 9, benoetigt: 21 })),
+  );
+  await page.goto('/?lang=de#/charging');
+  await expect(page.getByText('9 von 21 Tagen')).toBeVisible();
+  await expect(page.locator('.tile', { hasText: 'Auto laden' })).toHaveCount(0);
+});

@@ -190,6 +190,12 @@ it beats them by ≥ 2 standard errors, paired); "collecting data · 12 of 28 da
   days → "open", never 100 %.
 - Every approximation carries its range and n: `≈ 29 kWh · 18–41 · n = 7`.
 
+### Charge plan (M12, stage A)
+
+Only with the person's battery and car data confirmed (capacity, charge/discharge limits,
+reserve, phases, 6–16 A) in `mapping.plan`. It plans and shows; it never switches. Check
+the backtest card (grid import via the car ≈ 0, n ≥ 7) before the person relies on it.
+
 ## 5. Build the pages
 
 Template (adapt per home, drop what the home does not have):

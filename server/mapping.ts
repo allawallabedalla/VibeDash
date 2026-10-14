@@ -28,11 +28,30 @@ export interface PvMapping {
   maxKw?: number;
 }
 
+/** The charge plan (M12, stage A: plan and show only); needs `pv`. */
+export interface PlanMapping {
+  /** Energy counter of the whole house (including the wallbox). */
+  load: string;
+  /** Energy counter of the wallbox; subtracted from `load` and used for "charged today". */
+  carEnergy?: string;
+  /** Home battery state of charge in %. */
+  soc: string;
+  battery: {
+    capacityKwh: number;
+    maxChargeKw: number;
+    maxDischargeKw: number;
+    minSocPct: number;
+    reserveKwh: number;
+  };
+  vehicle: { capacityKwh: number; phases: 1 | 3; minA: number; maxA: number };
+}
+
 export interface Mapping {
   timeZone: string;
   series: Record<string, SeriesMapping>;
   forecasts: Record<string, ForecastMapping>;
   pv?: PvMapping;
+  plan?: PlanMapping;
 }
 
 const KINDS: EntityKind[] = [
@@ -68,7 +87,7 @@ export function validateMapping(
   if (!isObj(raw)) return { ok: false, errors: ['mapping: must be a JSON object'] };
 
   for (const key of Object.keys(raw)) {
-    if (!['timeZone', 'series', 'forecasts', 'pv', '$comment'].includes(key)) {
+    if (!['timeZone', 'series', 'forecasts', 'pv', 'plan', '$comment'].includes(key)) {
       errors.push(`mapping.${key}: unknown key`);
     }
   }
@@ -258,10 +277,76 @@ export function validateMapping(
     }
   }
 
+  let plan: PlanMapping | undefined;
+  if (raw.plan !== undefined) {
+    const at = 'mapping.plan';
+    const p = raw.plan;
+    if (!isObj(p)) errors.push(`${at}: must be an object`);
+    else {
+      for (const key of Object.keys(p)) {
+        if (!['load', 'carEnergy', 'soc', 'battery', 'vehicle'].includes(key)) {
+          errors.push(`${at}.${key}: unknown key`);
+        }
+      }
+      if (!pv) errors.push(`${at}: needs mapping.pv (hourly PV forecast)`);
+      const kindOf = (name: unknown) =>
+        typeof name === 'string' && Object.hasOwn(series, name) ? series[name]!.entity.kind : null;
+      if (kindOf(p.load) !== 'energy_counter') {
+        errors.push(`${at}.load: name of the house energy_counter series`);
+      }
+      if (p.carEnergy !== undefined && kindOf(p.carEnergy) !== 'energy_counter') {
+        errors.push(`${at}.carEnergy: name of the wallbox energy_counter series`);
+      }
+      if (kindOf(p.soc) !== 'state_of_charge') {
+        errors.push(`${at}.soc: name of the battery state_of_charge series`);
+      }
+      const num = (o: unknown, k: string, lo: number, hi: number, def?: number) => {
+        const v = isObj(o) ? o[k] : undefined;
+        if (v === undefined && def !== undefined) return def;
+        if (typeof v !== 'number' || !(v >= lo && v <= hi)) {
+          errors.push(`${at}.${k}: number ${lo}–${hi}`);
+          return NaN;
+        }
+        return v;
+      };
+      if (!isObj(p.battery)) errors.push(`${at}.battery: must be an object`);
+      if (!isObj(p.vehicle)) errors.push(`${at}.vehicle: must be an object`);
+      const b = p.battery;
+      const v = p.vehicle;
+      const phases = isObj(v) ? (v.phases ?? 3) : 3;
+      if (phases !== 1 && phases !== 3) errors.push(`${at}.vehicle.phases: 1 or 3`);
+      plan = {
+        load: String(p.load),
+        ...(typeof p.carEnergy === 'string' ? { carEnergy: p.carEnergy } : {}),
+        soc: String(p.soc),
+        battery: {
+          capacityKwh: num(b, 'capacityKwh', 0.1, 1000),
+          maxChargeKw: num(b, 'maxChargeKw', 0.1, 1000),
+          maxDischargeKw: num(b, 'maxDischargeKw', 0.1, 1000),
+          minSocPct: num(b, 'minSocPct', 0, 100, 5),
+          reserveKwh: num(b, 'reserveKwh', 0, 1000, 2),
+        },
+        vehicle: {
+          capacityKwh: num(v, 'capacityKwh', 1, 300),
+          phases: phases as 1 | 3,
+          minA: num(v, 'minA', 6, 32, 6),
+          maxA: num(v, 'maxA', 6, 32, 16),
+        },
+      };
+      if (plan.vehicle.minA > plan.vehicle.maxA) errors.push(`${at}.vehicle: minA > maxA`);
+    }
+  }
+
   if (errors.length > 0) return { ok: false, errors };
   return {
     ok: true,
-    mapping: { timeZone: raw.timeZone as string, series, forecasts, ...(pv ? { pv } : {}) },
+    mapping: {
+      timeZone: raw.timeZone as string,
+      series,
+      forecasts,
+      ...(pv ? { pv } : {}),
+      ...(plan ? { plan } : {}),
+    },
   };
 }
 

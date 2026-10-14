@@ -4,12 +4,14 @@ and listens on localhost only; the browser never talks to it directly."""
 import os
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Literal
+from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, HTTPException, Path, Query
 from pydantic import BaseModel, Field
 
-from . import engine, pv
+from . import engine, plan_live, pv
 from .methods import LEAD_DAYS
+from .plan_store import PlanStore
 from .pv_store import PvStore
 from .store import Reihe, Store
 
@@ -57,6 +59,11 @@ class StundeIn(BaseModel):
     wert: float = Field(allow_inf_nan=False, ge=0)
 
 
+class TempIn(BaseModel):
+    zeit: datetime
+    wert: float = Field(allow_inf_nan=False, ge=-60, le=60)
+
+
 class GtiIn(BaseModel):
     zeit: datetime
     flaeche: str = Field(pattern=r"^[a-z][a-z0-9_]{0,31}$")
@@ -67,6 +74,33 @@ class GtiIn(BaseModel):
 class PvDatenIn(BaseModel):
     stunden: list[StundeIn] = Field(default_factory=list, max_length=20000)
     gti: list[GtiIn] = Field(default_factory=list, max_length=80000)
+
+
+class AkkuIn(BaseModel):
+    kapazitaet_kwh: float = Field(gt=0, le=1000)
+    max_laden_kw: float = Field(gt=0, le=1000)
+    max_entladen_kw: float = Field(gt=0, le=1000)
+    min_soc_pct: float = Field(default=5.0, ge=0, le=100)
+    reserve_kwh: float = Field(default=2.0, ge=0, le=1000)
+
+
+class AutoIn(BaseModel):
+    kapazitaet_kwh: float = Field(gt=0, le=300)
+    phasen: Literal[1, 3] = 3
+    min_a: int = Field(default=6, ge=6, le=32)
+    max_a: int = Field(default=16, ge=6, le=32)
+
+
+class PlanIn(BaseModel):
+    pv: str = Field(pattern=ID)
+    akku: AkkuIn
+    auto: AutoIn
+
+
+class PlanDatenIn(BaseModel):
+    last: list[StundeIn] = Field(default_factory=list, max_length=20000)
+    soc: list[StundeIn] = Field(default_factory=list, max_length=20000)
+    temp: list[TempIn] = Field(default_factory=list, max_length=20000)
 
 
 class WerteIn(BaseModel):
@@ -237,6 +271,91 @@ def create_app(store: Store | None = None, now=lambda: datetime.now(UTC)) -> Fas
         if len(days) < needed:
             return {"anlage": pid, "zustand": "sammelt", "tage": len(days), "benoetigt": needed}
         return {"anlage": pid, "zustand": "bereit", "tage": len(days)}
+
+    plan_db = PlanStore(db.db)
+    PLAN_BATCH = 10  # backtest days computed per request (bounded time)
+
+    def plan_context(pid: str, charged: float = 0.0) -> plan_live.Context:
+        c = plan_db.config(pid)
+        if not c:
+            raise HTTPException(404, "unbekannter Plan")
+        plant = plant_or_404(c["pv"])
+        return plan_live.Context(
+            plant=plant,
+            pv_days={d.day: d for d in pv_days(c["pv"], plant)},
+            last=plan_db.hours(pid, "last"),
+            soc=plan_db.hours(pid, "soc"),
+            temp=plan_db.hours(pid, "temp"),
+            battery=plan_live.battery_of(c),
+            car=plan_live.car_of(c, charged),
+        )
+
+    @app.put("/plan/{pid}/anlage")
+    def put_plan(pid: SeriesId, body: PlanIn) -> dict:
+        if body.auto.min_a > body.auto.max_a:
+            raise HTTPException(422, "min_a > max_a")
+        if plan_db.config(pid) != body.model_dump():
+            plan_db.put_config(pid, body.model_dump())
+        return {"id": pid}
+
+    @app.put("/plan/{pid}/daten")
+    def put_plan_data(pid: SeriesId, body: PlanDatenIn) -> dict:
+        if not plan_db.config(pid):
+            raise HTTPException(404, "unbekannter Plan")
+        for kind, rows in (("last", body.last), ("soc", body.soc), ("temp", body.temp)):
+            plan_db.put_hours(pid, kind, [(r.zeit.astimezone(UTC), r.wert) for r in rows])
+        return {"last": len(body.last), "soc": len(body.soc), "temp": len(body.temp)}
+
+    @app.get("/plan/{pid}")
+    def get_plan(
+        pid: SeriesId,
+        soc_kwh: Annotated[float, Query(ge=0, le=1000)],
+        geladen_kwh: Annotated[float, Query(ge=0, le=300)] = 0.0,
+    ) -> dict:
+        ctx = plan_context(pid, geladen_kwh)
+        days = len(plan_live.load_days(ctx, now().astimezone(ZoneInfo(ctx.plant.tz)).date()))
+        if days < plan_live.MIN_LOAD_DAYS:
+            return {
+                "plan": pid,
+                "zustand": "sammelt",
+                "tage": days,
+                "benoetigt": plan_live.MIN_LOAD_DAYS,
+            }
+        soc = min(soc_kwh, ctx.battery.capacity_kwh)
+        return {"plan": pid, **plan_live.live(ctx, now(), soc)}
+
+    @app.get("/plan/{pid}/guete")
+    def get_plan_accuracy(pid: SeriesId) -> dict:
+        ctx = plan_context(pid)
+        today = now().astimezone(ZoneInfo(ctx.plant.tz)).date()
+        candidates = sorted(d for d in ctx.pv_days if d + timedelta(days=1) < today)
+        checks, pending, budget = [], 0, PLAN_BATCH
+        for d in candidates:
+            hit = plan_db.check(pid, d, "v1")
+            if hit is None and budget > 0:
+                budget -= 1
+                hit = plan_live.backtest_day(ctx, d) or {"leer": True}
+                plan_db.put_check(pid, d, "v1", hit)
+            elif hit is None:
+                pending += 1
+                continue
+            if not hit.get("leer"):
+                checks.append(hit)
+        return {
+            "plan": pid,
+            **plan_live.summary(checks),
+            "rechnet_noch": pending,
+            "modellkarte": {
+                "verfahren": "szenarien_300_vorsichtiges_quantil",
+                "alpha": "1/31",
+                "neuplanung": "stündlich ab 8 Uhr",
+                "aufloesung": "1 Stunde",
+                "grenzen": [
+                    "Stundenraster statt 15 min: schneller, etwas gröber.",
+                    "Heute bereits Gesehenes fließt nur über den Akkustand ein.",
+                ],
+            },
+        }
 
     @app.get("/gesund")
     def health() -> dict:

@@ -36,6 +36,10 @@ export interface ApiDeps {
   pv?: {
     read: (what: 'prognose' | 'guete' | 'status') => Promise<{ status: number; body: unknown }>;
   };
+  plan?: {
+    read: () => Promise<{ status: number; body: unknown }>;
+    accuracy: () => Promise<{ status: number; body: unknown }>;
+  };
   forecast?: {
     names: string[];
     read: (
@@ -158,6 +162,7 @@ export async function handleApi(
       backends: deps.mapping ? sourcesOf(deps.mapping) : [],
       evcc: Boolean(deps.evcc),
       pv: Boolean(deps.pv),
+      plan: Boolean(deps.plan),
       timeZone: deps.mapping?.timeZone ?? null,
     });
   }
@@ -170,6 +175,12 @@ export async function handleApi(
   if (pvm) {
     if (!deps.pv) return json(404, { error: 'no_pv_forecast' });
     const r = await deps.pv.read(pvm[1] as 'prognose' | 'guete' | 'status');
+    return json(r.status, r.body);
+  }
+
+  if (path === '/api/plan' || path === '/api/plan/guete') {
+    if (!deps.plan) return json(404, { error: 'no_charge_plan' });
+    const r = path === '/api/plan' ? await deps.plan.read() : await deps.plan.accuracy();
     return json(r.status, r.body);
   }
 

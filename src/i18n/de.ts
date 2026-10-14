@@ -255,6 +255,11 @@ export const de = {
   'plan.collecting':
     'Für den Ladeplan sammelt VibeDash noch Daten: {have} von {need} Tagen Stundenverlauf.',
   'plan.needs': 'Für den Ladeplan fehlen: {what}.',
+  'plan.missing.pv': 'PV-Prognose für heute und morgen (Wetter je Dachfläche)',
+  'plan.missing.last': 'Hausverbrauch je Stunde (mindestens 21 Tage)',
+  'plan.missing.temperatur': 'Temperatur für heute und morgen',
+  'plan.missing.zeit': 'passende Stunde (Uhrzeit des Servers prüfen)',
+  'plan.missing.akku_jetzt': 'aktueller Ladestand des Hausakkus (älter als 30 min)',
   'page.asOf': 'Stand {date}, {time} · {source}',
   'source.demo': 'Demo-Daten',
   'source.influx': 'InfluxDB',

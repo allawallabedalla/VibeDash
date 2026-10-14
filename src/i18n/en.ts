@@ -253,6 +253,11 @@ export const en: Record<MessageKey, string> = {
   'plan.collecting':
     'VibeDash is still collecting data for the charge plan: {have} of {need} days of hourly history.',
   'plan.needs': 'Missing for the charge plan: {what}.',
+  'plan.missing.pv': 'PV forecast for today and tomorrow (weather per roof plane)',
+  'plan.missing.last': 'hourly house load (at least 21 days)',
+  'plan.missing.temperatur': 'temperature for today and tomorrow',
+  'plan.missing.zeit': 'matching hour (check the server clock)',
+  'plan.missing.akku_jetzt': 'current home battery state (older than 30 min)',
   'page.asOf': 'As of {date}, {time} · {source}',
   'source.demo': 'demo data',
   'source.influx': 'InfluxDB',

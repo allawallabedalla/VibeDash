@@ -10,6 +10,7 @@ import { handleApi, type ApiDeps } from './api';
 import { createBackends } from './backends';
 import { evccClient } from '../src/adapters/evcc';
 import { forecastBridge } from './forecast-bridge';
+import { planBridge } from './plan-bridge';
 import { pvBridge } from './pv-bridge';
 import { weatherClient } from '../src/adapters/openmeteo';
 import { fromEnv, fromHomeAssistant, readSettings, writeSettings } from './location';
@@ -105,12 +106,30 @@ if (process.env.FORECAST_URL && deps.mapping && deps.series) {
       })
     : null;
   if (pvb) deps.pv = { read: pvb.read };
-  const run = () => {
+  // Charge plan (stage A): plans and shows only, never switches.
+  const plb =
+    mapping.pv && mapping.plan
+      ? planBridge({
+          url: process.env.FORECAST_URL,
+          mapping: { ...mapping, plan: mapping.plan },
+          fetchFn: fetch,
+          series: deps.series,
+          location: async () => (deps.weather?.enabled ? await deps.weather.location() : null),
+          weatherOn: deps.weather?.enabled ?? false,
+          now: Date.now,
+          log,
+          timeoutMs: config.timeoutMs,
+        })
+      : null;
+  if (plb) deps.plan = { read: plb.read, accuracy: plb.accuracy };
+  const run = async () => {
     void bridge.syncAll();
-    if (pvb) void pvb.syncAll();
+    // the plan needs the PV plant first
+    if (pvb) await pvb.syncAll();
+    if (plb) await plb.syncAll();
   };
-  setTimeout(run, 5_000);
-  setInterval(run, 3_600_000).unref();
+  setTimeout(() => void run(), 5_000);
+  setInterval(() => void run(), 3_600_000).unref();
   log(`forecast service: ${Object.keys(deps.mapping.forecasts).length} daily forecasts`);
 }
 

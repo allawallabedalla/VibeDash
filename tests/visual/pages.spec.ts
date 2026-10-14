@@ -119,3 +119,11 @@ test('look-back table switches from 7 to 30 days', async ({ page, isMobile }) =>
   await tap(page, isMobile, card.getByRole('button', { name: '30 Tage' }));
   await expect(table.locator('tbody tr')).toHaveCount(29);
 });
+
+test('charge plan accuracy (demo backtest in a worker)', async ({ page }, info) => {
+  await page.goto('/?lang=de#/forecasts');
+  const card = page.locator('.card', { hasText: 'Ladeplan' });
+  await expect(card).toContainText('Netzstrom durchs Auto', { timeout: 20_000 });
+  await expect(card).toContainText(/n = \d+/);
+  await card.screenshot({ path: `screenshots/plan-accuracy-${info.project.name}.png` });
+});

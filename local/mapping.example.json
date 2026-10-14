@@ -16,7 +16,9 @@
       "unit": "W",
       "measurement": "example_meter",
       "field": "power",
-      "tags": { "meter": "house" },
+      "tags": {
+        "meter": "house"
+      },
       "stepMs": 60000
     },
     "battery_power": {
@@ -41,7 +43,9 @@
       "unit": "W",
       "measurement": "example_meter",
       "field": "power",
-      "tags": { "meter": "grid" },
+      "tags": {
+        "meter": "grid"
+      },
       "stepMs": 60000
     },
     "pv_energy": {
@@ -59,7 +63,9 @@
       "unit": "kWh",
       "measurement": "example_meter",
       "field": "energy_wh",
-      "tags": { "meter": "house" },
+      "tags": {
+        "meter": "house"
+      },
       "scale": 0.001,
       "stepMs": 300000
     },
@@ -69,7 +75,9 @@
       "unit": "kWh",
       "measurement": "example_meter",
       "field": "export_wh",
-      "tags": { "meter": "grid" },
+      "tags": {
+        "meter": "grid"
+      },
       "scale": 0.001,
       "stepMs": 300000
     },
@@ -79,7 +87,9 @@
       "unit": "kWh",
       "measurement": "example_meter",
       "field": "import_wh",
-      "tags": { "meter": "grid" },
+      "tags": {
+        "meter": "grid"
+      },
       "scale": 0.001,
       "stepMs": 300000
     },
@@ -90,7 +100,9 @@
       "room": "living",
       "measurement": "example_climate",
       "field": "temperature",
-      "tags": { "room": "living" },
+      "tags": {
+        "room": "living"
+      },
       "stepMs": 300000
     },
     "living_humidity": {
@@ -100,8 +112,45 @@
       "room": "living",
       "measurement": "example_climate",
       "field": "humidity",
-      "tags": { "room": "living" },
+      "tags": {
+        "room": "living"
+      },
       "stepMs": 300000
+    }
+  },
+  "pv": {
+    "from": "pv_energy",
+    "planes": [
+      {
+        "name": "south",
+        "tilt": 30,
+        "azimuth": 0,
+        "kwp": 6.2
+      },
+      {
+        "name": "west",
+        "tilt": 30,
+        "azimuth": 90,
+        "kwp": 3.1
+      }
+    ],
+    "maxKw": 8
+  },
+  "plan": {
+    "load": "load_energy",
+    "soc": "battery_soc",
+    "battery": {
+      "capacityKwh": 10,
+      "maxChargeKw": 5,
+      "maxDischargeKw": 5,
+      "minSocPct": 5,
+      "reserveKwh": 2
+    },
+    "vehicle": {
+      "capacityKwh": 60,
+      "phases": 3,
+      "minA": 6,
+      "maxA": 16
     }
   }
 }
