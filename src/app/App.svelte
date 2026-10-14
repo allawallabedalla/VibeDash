@@ -2,6 +2,7 @@
   import Icon from '../components/Icon.svelte';
   import Tabs from '../components/Tabs.svelte';
   import { i18n, t } from '../i18n/index.svelte';
+  import Charging from '../pages/Charging.svelte';
   import Forecasts from '../pages/Forecasts.svelte';
   import Now from '../pages/Now.svelte';
   import Overview from '../pages/Overview.svelte';
@@ -20,6 +21,9 @@
     { id: 'overview', label: t('page.overview'), icon: 'overview' as const },
     { id: 'now', label: t('page.now'), icon: 'bolt' as const },
     { id: 'forecasts', label: t('page.forecasts'), icon: 'forecast' as const },
+    ...(store.evcc
+      ? [{ id: 'charging', label: t('page.charging'), icon: 'plugCar' as const }]
+      : []),
   ]);
 
   function toggleTheme() {
@@ -97,6 +101,8 @@
         <Now />
       {:else if router.route === 'forecasts'}
         <Forecasts />
+      {:else if router.route === 'charging'}
+        <Charging />
       {:else}
         <Overview />
       {/if}

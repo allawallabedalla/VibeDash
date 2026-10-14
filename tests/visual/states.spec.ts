@@ -236,3 +236,94 @@ test('forecasting service: collecting, open and assessable states', async ({ pag
   expect(overflow).toBeLessThanOrEqual(0);
   await page.screenshot({ path: `screenshots/service-${info.project.name}.png`, fullPage: true });
 });
+
+test('charging page from evcc: now, sessions, weighted solar share', async ({
+  page,
+  isMobile,
+}, info) => {
+  await page.route('**/api/health', (r) =>
+    r.fulfill(json({ ok: true, source: 'demo', backends: [], evcc: true, timeZone: null })),
+  );
+  const now = Date.now();
+  await page.route('**/api/evcc/now', (r) =>
+    r.fulfill(
+      json({
+        pvW: 5200,
+        homeW: 700,
+        gridW: 300,
+        batteryW: 0,
+        batterySoc: 90,
+        loadpoints: [
+          {
+            title: 'Garage',
+            connected: true,
+            charging: true,
+            chargePowerW: 4200,
+            sessionEnergyKWh: 6.4,
+            sessionSolarPct: null,
+            vehicleSoc: 58,
+          },
+        ],
+      }),
+    ),
+  );
+  await page.route('**/api/evcc/sessions*', (r) => {
+    const year = new URL(r.request().url()).searchParams.get('year');
+    if (year !== String(new Date().getFullYear())) return r.fulfill(json({ sessions: [] }));
+    return r.fulfill(
+      json({
+        sessions: [
+          {
+            start: now - 2 * 86_400_000,
+            end: now - 2 * 86_400_000 + 4 * 3_600_000,
+            loadpoint: 'Garage',
+            vehicle: 'Beispielauto',
+            energyKWh: 20,
+            solarPct: 90,
+            price: null,
+            socStart: 30,
+            socEnd: 70,
+          },
+          {
+            start: now - 5 * 86_400_000,
+            end: now - 5 * 86_400_000 + 3 * 3_600_000,
+            loadpoint: 'Garage',
+            vehicle: 'Beispielauto',
+            energyKWh: 10,
+            solarPct: 30,
+            price: null,
+            socStart: 50,
+            socEnd: 70,
+          },
+          {
+            start: now - 6 * 86_400_000,
+            end: now - 6 * 86_400_000 + 3_600_000,
+            loadpoint: 'Garage',
+            vehicle: 'Beispielauto',
+            energyKWh: 5,
+            solarPct: null,
+            price: null,
+            socStart: null,
+            socEnd: null,
+          },
+        ],
+      }),
+    );
+  });
+  await page.goto('/?lang=de');
+  const tab = page.getByRole('button', { name: 'Laden' });
+  if (isMobile) await tab.tap();
+  else await tab.click();
+  await expect(page).toHaveURL(/#\/charging$/);
+  await expect(page.locator('.tile', { hasText: 'Garage' })).toContainText('4,2');
+  const solar = page.locator('.tile', { hasText: 'Sonnenanteil' });
+  await expect(solar).toContainText('70'); // weighted by energy, not the plain mean (60)
+  await expect(solar).toContainText('n = 2');
+  await expect(solar).toContainText('1 ohne Angabe');
+  await expect(page.locator('tbody tr')).toHaveCount(3);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+  await page.screenshot({ path: `screenshots/charging-${info.project.name}.png`, fullPage: true });
+});

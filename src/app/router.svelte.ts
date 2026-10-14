@@ -1,6 +1,6 @@
-/** Minimal hash router: #/ , #/now, #/forecasts, #/gallery. No dependency needed. */
-export type Route = 'overview' | 'now' | 'forecasts' | 'gallery';
-const routes: Route[] = ['overview', 'now', 'forecasts', 'gallery'];
+/** Minimal hash router: #/ , #/now, #/forecasts, #/charging, #/gallery. No dependency needed. */
+export type Route = 'overview' | 'now' | 'forecasts' | 'charging' | 'gallery';
+const routes: Route[] = ['overview', 'now', 'forecasts', 'charging', 'gallery'];
 
 function parse(hash: string): Route {
   const name = hash.replace(/^#\/?/, '');

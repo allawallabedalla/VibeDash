@@ -30,6 +30,7 @@ const RECENT_MS = 48 * 3_600_000; // only ask about gaps from the last two days
 
 let state = $state<State>({ status: 'loading' });
 let version = $state(0);
+let evcc = $state(false);
 
 async function getJson(url: string): Promise<{ status: number; body: unknown } | null> {
   try {
@@ -108,7 +109,8 @@ export async function load(): Promise<void> {
   state = { status: 'loading' };
   const health = await getJson('/api/health');
   const body = health?.body as
-    { source?: string; timeZone?: string; backends?: Backend[] } | undefined;
+    { source?: string; timeZone?: string; backends?: Backend[]; evcc?: boolean } | undefined;
+  evcc = body?.evcc === true;
   if (health?.status === 200 && body?.source === 'live' && body.timeZone) {
     state = await loadLive(body.timeZone, body.backends ?? []);
   } else {
@@ -120,6 +122,10 @@ export async function load(): Promise<void> {
 export const store = {
   get state(): State {
     return state;
+  },
+  /** evcc is connected: charging page with sessions. */
+  get evcc(): boolean {
+    return evcc;
   },
   /** Changes on every (re)load; pages are keyed on it. */
   get version(): number {
