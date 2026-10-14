@@ -37,7 +37,7 @@ Fahrplan-Folge: **Home-Assistant-Adapter direkt nach dem Influx-Adapter** (vor M
 
 PV-Prognose und Ladeplan brauchen den **Stundenverlauf über mehrere Wochen** (Erzeugung, Hausverbrauch, Akku, Wallbox). Dafür ist **InfluxDB oder Home Assistant Voraussetzung**:
 - **InfluxDB:** reicht, sobald evcc oder der Wechselrichter einige Wochen hineingeschrieben hat.
-- **Home Assistant:** der Recorder behält standardmäßig nur **10 Tage** (`purge_keep_days`) – für M11/M12 auf mindestens 60 Tage erhöhen (Speicherplatz beachten). Die Langzeit-Statistik von HA (stündlich, unbegrenzt) liest VibeDash noch nicht (bräuchte die WebSocket-Schnittstelle).
+- **Home Assistant:** der normale Verlauf hält standardmäßig nur **10 Tage** (`purge_keep_days`). VibeDash liest für ältere Zeiträume die **Langzeit-Statistik** von HA (stündlich, unbegrenzt) – das reicht für M11/M12, **aber nur für Sensoren mit `state_class`** (bei Energiezählern meist gesetzt). Fehlt sie, den Recorder auf mindestens 60 Tage stellen.
 - Nur evcc ohne Influx/HA reicht dafür **nicht**: evcc liefert Ladungen, aber keinen Stundenverlauf von PV und Haus.
 
 ## 3. Agenten-Inbetriebnahme (das Besondere an VibeDash)

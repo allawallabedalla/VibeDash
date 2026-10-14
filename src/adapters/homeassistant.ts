@@ -10,6 +10,12 @@
  * - Times are parsed from ISO strings into UTC milliseconds.
  */
 import type { Entity, EntityKind, Sample, Series } from '../model/types';
+import {
+  fetchStatistics,
+  nativeSocket,
+  parseStatistics,
+  type SocketFactory,
+} from './ha-statistics';
 import type { FetchLike } from './influx1';
 
 export interface HaConfig {
@@ -32,7 +38,12 @@ export interface HaMapping {
    * "unavailable". Default 24 h.
    */
   maxHoldMs?: number;
+  /** Use HA's long-term statistics (hourly) for data older than 48 h. Default true. */
+  longTerm?: boolean;
 }
+
+/** The normal history is used for the most recent part; older data comes from statistics. */
+export const RECENT_MS = 48 * 3_600_000;
 
 export const DEFAULT_MAX_HOLD_MS = 24 * 3_600_000;
 
@@ -167,7 +178,12 @@ export function suggestFromStates(states: unknown): HaSuggestion[] {
  * Minimal client. Bearer token in a header, never in the URL. Every request
  * is aborted after `timeoutMs` (default 10 s).
  */
-export function haClient(config: HaConfig, fetchFn: FetchLike, timeoutMs = 10_000) {
+export function haClient(
+  config: HaConfig,
+  fetchFn: FetchLike,
+  timeoutMs = 10_000,
+  openSocket: SocketFactory = nativeSocket,
+) {
   const base = config.url.replace(/\/$/, '');
   async function get(path: string): Promise<unknown> {
     const res = await fetchFn(`${base}${path}`, {
@@ -178,29 +194,55 @@ export function haClient(config: HaConfig, fetchFn: FetchLike, timeoutMs = 10_00
     return res.json();
   }
 
+  async function history(m: HaMapping, fromMs: number, toMs: number): Promise<Sample[]> {
+    const params = new URLSearchParams({
+      filter_entity_id: m.haEntityId,
+      end_time: new Date(toMs).toISOString(),
+      minimal_response: '',
+      no_attributes: '',
+      significant_changes_only: '0',
+    });
+    const body = await get(
+      `/api/history/period/${encodeURIComponent(new Date(fromMs).toISOString())}?${params}`,
+    );
+    const changes = parseHistory(body, m.haEntityId);
+    return toSamples(changes, fromMs, toMs, m.stepMs, m.scale, m.maxHoldMs);
+  }
+
   return {
     get,
+    history,
     async states(): Promise<unknown> {
       return get('/api/states');
     },
     async series(m: HaMapping, fromMs: number, toMs: number): Promise<Series> {
       if (!isHaEntityId(m.haEntityId)) throw new HaError('invalid entity id');
-      const params = new URLSearchParams({
-        filter_entity_id: m.haEntityId,
-        end_time: new Date(toMs).toISOString(),
-        minimal_response: '',
-        no_attributes: '',
-        significant_changes_only: '0',
-      });
-      const body = await get(
-        `/api/history/period/${encodeURIComponent(new Date(fromMs).toISOString())}?${params}`,
-      );
-      const changes = parseHistory(body, m.haEntityId);
+      const split = toMs - RECENT_MS;
+      const useStats = m.longTerm !== false && split > fromMs;
+      const recentFrom = useStats ? split : fromMs;
+      const [older, recent] = await Promise.all([
+        useStats
+          ? fetchStatistics(config, m.haEntityId, fromMs, split, openSocket, timeoutMs)
+              .then((r) =>
+                toSamples(
+                  parseStatistics(r, m.haEntityId, m.entity.kind),
+                  fromMs,
+                  split,
+                  m.stepMs,
+                  m.scale,
+                  2 * 3_600_000, // an hourly value is held at most two hours
+                ),
+              )
+              // Statistics are an extra: if they fail, the older part stays a visible gap.
+              .catch(() => [] as Sample[])
+          : Promise.resolve([] as Sample[]),
+        history(m, recentFrom, toMs),
+      ]);
       return {
         entityId: m.entity.id,
         source: `homeassistant:${m.haEntityId}`,
         stepMs: m.stepMs,
-        samples: toSamples(changes, fromMs, toMs, m.stepMs, m.scale, m.maxHoldMs),
+        samples: [...older, ...recent],
       };
     },
   };

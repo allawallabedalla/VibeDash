@@ -49,8 +49,9 @@ All three adapters exist (Home Assistant, evcc, InfluxDB 1.x).
   `influx:` setting, with a separate read-only user for VibeDash. An own store inside
   VibeDash is the very last resort.
 - **PV forecast and charge planning (M11/M12) need weeks of hourly history** → InfluxDB or
-  Home Assistant is a prerequisite. HA keeps 10 days by default: raise `purge_keep_days`
-  (e.g. 60) and tell the person.
+  Home Assistant is a prerequisite. VibeDash reads HA's long-term statistics (hourly,
+  unlimited) for data older than 48 h – only for sensors with a `state_class`. Without
+  it, raise `purge_keep_days` (e.g. 60) and tell the person.
 
 ### 1.2 Agent-led onboarding, step by step with the person
 

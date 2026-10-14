@@ -37,8 +37,9 @@ listed in `local/mapping.json` – there is no way to send a query from the brow
    ```
 
    For **Home Assistant**, create a dedicated **non-admin** user and a long-lived access
-   token for it (profile → Security). Note: the HA recorder keeps 10 days by default
-   (`purge_keep_days`); older days then show as gaps, and forecasts need ≥ 7 days.
+   token for it (profile → Security). The normal HA history keeps 10 days by default;
+   older data comes from HA's hourly long-term statistics (sensors with a `state_class`,
+   switch off per series with `"longTerm": false`).
 
 2. Copy `.env.example` to `.env` and fill in what you use (`INFLUX_*`, `HA_URL`/`HA_TOKEN`).
    `.env` is git-ignored. Credentials never go into the URL.
@@ -78,7 +79,9 @@ history; for power/meter history use InfluxDB or Home Assistant.
 **PV forecast and charge planning (M11/M12) need several weeks of hourly history**, so
 InfluxDB or Home Assistant is a prerequisite there. No Influx and no HA? Run an InfluxDB
 1.x container and switch on evcc's `influx:` output; VibeDash reads it with a read-only
-user. Home Assistant keeps only 10 days by default – raise `purge_keep_days`.
+user. For Home Assistant, VibeDash reads the **long-term statistics** (hourly, kept
+without limit) for data older than 48 h – for sensors with a `state_class`; otherwise
+raise `purge_keep_days`.
 
 ## Weather
 

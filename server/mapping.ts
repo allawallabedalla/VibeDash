@@ -35,7 +35,7 @@ const KINDS: EntityKind[] = [
 const NAME = /^[a-z][a-z0-9_]{0,63}$/;
 const COMMON_KEYS = ['source', 'name', 'kind', 'unit', 'room', 'scale', 'stepMs', 'confirmed'];
 const INFLUX_KEYS = [...COMMON_KEYS, 'measurement', 'field', 'tags'];
-const HA_KEYS = [...COMMON_KEYS, 'entityId', 'maxHoldMs'];
+const HA_KEYS = [...COMMON_KEYS, 'entityId', 'maxHoldMs', 'longTerm'];
 
 const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -145,6 +145,9 @@ export function validateMapping(
       if (typeof entry.entityId !== 'string' || !isHaEntityId(entry.entityId)) {
         errors.push(`${at}.entityId: Home Assistant entity id like "sensor.example_power"`);
       }
+      if (entry.longTerm !== undefined && typeof entry.longTerm !== 'boolean') {
+        errors.push(`${at}.longTerm: true or false`);
+      }
       if (
         entry.maxHoldMs !== undefined &&
         (typeof entry.maxHoldMs !== 'number' ||
@@ -158,6 +161,7 @@ export function validateMapping(
         ...common,
         haEntityId: entry.entityId as string,
         ...(entry.maxHoldMs !== undefined ? { maxHoldMs: entry.maxHoldMs as number } : {}),
+        ...(entry.longTerm === false ? { longTerm: false } : {}),
       };
     }
   }
