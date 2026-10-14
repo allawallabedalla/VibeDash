@@ -1,6 +1,6 @@
-# Projektanleitung: ruhige Haus-Dashboards, von einem KI-Agenten gebaut
+# VibeDash – Projektanleitung: ruhige Haus-Dashboards, von einem KI-Agenten gebaut
 
-> Arbeitstitel: **„Hausblick“** (Platzhalter – Namensvorschläge unten).
+> Projektname: **VibeDash** · Repo: github.com/allawallabedalla/VibeDash
 > Diese Datei ist die Übergabe an eine neue Claude-Code-Sitzung in einem **neuen, leeren Repo**.
 > Sie enthält bewusst **keine Daten aus einem echten Haus** (keine Adressen, IPs, Gruppenadressen, Grundrisse, Namen).
 
@@ -61,6 +61,7 @@
 | Server | kleiner Node/Bun-Server **oder** gar keiner (App liest direkt eine JSON-API) | Adapter brauchen einen Ort für Zugangsdaten |
 | Tests | Vitest (Logik) + Playwright (Screenshots Mac 1440 px / iPhone 390 px) | Optik ist das Produkt – sie muss getestet werden |
 | Auslieferung | ein Docker-Image **und** ein statischer Build | Homelab-üblich |
+| Prognose-Dienst (ab M7) | eigener kleiner Python-Dienst (FastAPI + scikit-learn) | ML-Werkzeuge sind in Python am besten; siehe Abschnitt 11 |
 
 **Leistungsbudget:** erste Seite < 200 KB JavaScript, sichtbar < 1 s im Heimnetz am iPhone. Keine CDNs, alles lokal gebündelt.
 
@@ -172,16 +173,69 @@ Einheitliches Datenmodell: `Entitaet` (id, Name, Art, Raum, Einheit) · `Messrei
 
 ---
 
-## 11. Offene Entscheidungen (vom Menschen zu treffen)
+## 11. Vorhersagen für beliebige Messreihen („Prognose-Modul“)
 
-1. **Name.** Vorschläge: *Hausblick*, *ruhig*, *Calmboard*, *Glance Home*, *stillstand* (Wortspiel). Kurz prüfen: frei auf GitHub/npm?
+**Idee:** Jede angebundene Messreihe (Influx, Home Assistant, JSON-Endpunkt, Webhook) kann mit einem Klick eine Vorhersage bekommen. Ein lokaler Dienst lernt daran, bewertet sich ehrlich selbst und liefert Prognose + Spanne an die Bausteine.
+
+### Architektur
+- **Eigener lokaler Dienst** (Python: FastAPI + scikit-learn, optional LightGBM) – ML ist in Python am stärksten; die Oberfläche bleibt TypeScript.
+- API (Vorschlag):
+  - `POST /reihen` – Messreihe anmelden (Quelle, Einheit, Takt: Stunde/Tag, Ziel: Wert oder Ja/Nein)
+  - `GET  /reihen/{id}/prognose?bis=…` – p10 / p50 / p90 je Zeitschritt, `erstellt_am`, `vorlauf_h`
+  - `GET  /reihen/{id}/guete` – Treffsicherheit (siehe unten) inkl. Verlauf
+  - `GET  /reihen/{id}/status` – Zustand und Klartext („sammelt Daten · 12 von 28 Tagen · ab ca. 03.11.“)
+- Merkmale automatisch: Uhrzeit, Wochentag, Wochenende/Feiertag, **dunkel ja/nein** (Sonnenstand, berechnet), optional Wetterprognose (Open-Meteo – abschaltbar, da extern), optional andere Messreihen als Einflussgrößen.
+
+### Verfahrens-Leiter (immer in dieser Reihenfolge, das einfachste Ausreichende gewinnt)
+1. **Faustregeln:** wie gestern · wie vor 7 Tagen · gleitender Mittelwert · Mittel je Uhrzeit+Wochentag.
+2. **Lineare/Ridge-Regression** mit Kalender + Wetter (extrapoliert sauber in neue Jahreszeiten).
+3. **Gradient Boosting** mit Regularisierung (min. Blattgröße ≥ 20).
+4. **Quantil-Regression** bzw. empirische Restfehler für die Spanne (p10/p90).
+- Gewählt wird per **rollierender Rückrechnung** (nur Vergangenheit, gleicher Vorlauf wie live). Ein komplexeres Verfahren wird nur genommen, wenn es die Faustregel **gepaart um ≥ 2 Standardfehler** schlägt – sonst gewinnt die Faustregel. (Erfahrung aus der Praxis: Random Forest, KNN, SVM brachten bei Haus-Daten fast nie einen belegbaren Gewinn; KNN/Bäume extrapolieren nicht in neue Jahreszeiten.)
+- Bei Ja/Nein-Zielen (z. B. „Licht an?“): **Wahrscheinlichkeiten** ausgeben, Dauer = Summe der Wahrscheinlichkeiten – nie hartes Ja/Nein mit Klassengewichten (blähte in der Praxis Dauern um +60–100 % auf).
+
+### Status und Treffsicherheit (was der Mensch sieht)
+| Zustand | Anzeige |
+|---|---|
+| zu wenig Daten | „sammelt Daten · 12 von 28 Tagen · ab ca. 03.11.“ (Fortschrittsbalken nur hier) |
+| bewertbar, n klein | „offen · n = 6“ – **keine** Prozentzahl als Urteil |
+| bewertbar | Treffsicherheits-Karte: Balken 0–100 % „korrekt“ + Sparkline des Verlaufs + n + Stufe gut/mäßig/schlecht + „schlägt Faustregel um x %“ |
+| Datenbasis zweifelhaft | „Datenbasis wird geprüft“ statt Zahl |
+- „Korrekt“ je Zieltyp klar definiert (z. B. Anteil Tage im 80-%-Band, oder 100 % − mittlerer |Fehler| in %), im ⓘ erklärt.
+- **Kein Lernfortschritt-Theater** (Epochen, Loss-Kurven) – nur rückblickende Treffsicherheit.
+
+### Ehrlichkeit (Pflicht, automatisch geprüft)
+- Bewertung nur mit Daten **vor** dem bewerteten Zeitpunkt; Prognose wird zum Zeitpunkt der Entscheidung festgehalten (`erstellt_am`, `vorlauf_h`) und erst später gegen das Ist gehalten.
+- Nie gegen sich selbst prüfen (z. B. Ist-Wert, der aus derselben Quelle stammt wie die Vorhersage).
+- Fehler als **Betrag** mitteln; Richtung (zu hoch/zu niedrig) separat zeigen.
+- Mehrere Läufe am Tag: nur der planmäßige zählt.
+- **Jahreszeit-Warnung:** Liegt die Vorhersage außerhalb des gelernten Bereichs (z. B. erster Winter), steht „ungeprüft: noch keine Winterdaten“ dabei.
+- Pro Reihe eine kurze **Modellkarte** (ⓘ): Verfahren, Merkmale, Trainingszeitraum, n, Treffsicherheit, bekannte Grenzen.
+
+### In den Infografiken
+- `Kachel`: „≈ 18 kWh“ + Spanne „(12–25)“ + Mini-Grafik mit Prognose als **eigener** gestrichelter Linie.
+- `Sparkline`/`ZeitreiheWeich`: Ist durchgezogen, Prognose eigene Linie mit Band, Übergang sichtbar getrennt.
+- `TrefferKarte` je Modell auf einer Seite „Vorhersagen“.
+
+### Fahrplan-Ergänzung
+| Meilenstein | Inhalt | Fertig, wenn … |
+|---|---|---|
+| M7 Prognose-Dienst | API, Faustregeln + Ridge, Rückrechnung, Status | Demo-Reihe (PV-Tag) bekommt Prognose + Spanne + ehrliche Güte |
+| M8 Verfahrens-Leiter komplett | Boosting, Quantile, Ja/Nein-Ziele, Wetter optional | Leiter wählt pro Demo-Reihe nachvollziehbar, Modellkarte vorhanden |
+| M9 Einbindung | Kachel/Sparkline/TrefferKarte zeigen Prognosen | Prüfliste Abschnitt 9 + Ehrlichkeitsregeln automatisch getestet |
+
+---
+
+## 12. Offene Entscheidungen (vom Menschen zu treffen)
+
+1. ~~Name~~ – entschieden: **VibeDash**.
 2. **Lizenz.** MIT (maximal offen) · Apache-2.0 (offen + Patentklausel) · AGPL-3.0 (Ableitungen müssen offen bleiben).
 3. **Sprache von Code und Doku.** Empfehlung: Code und README **englisch** (Reichweite), Oberfläche **mehrsprachig** ab Start (de + en).
 4. **Öffentlich ab Tag 1 oder erst ab v0.1?** Empfehlung: privat bis M2, dann öffentlich.
 
 ---
 
-## 12. Erster Auftrag an Claude Code (zum Kopieren)
+## 13. Erster Auftrag an Claude Code (zum Kopieren)
 
 ```
 Lies ANLEITUNG.md und CLAUDE.md vollständig. Das ist ein neues, leeres Repo.

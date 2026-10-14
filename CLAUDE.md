@@ -14,6 +14,7 @@ Vollständiger Hintergrund, Architektur und Fahrplan: **ANLEITUNG.md** (zuerst l
   - jede Näherung mit Spanne/± und n; Prognose eigene Linie; Einspeisung oben/positiv
   - Modelle zeigen Treffsicherheit (0–100 % korrekt + Verlauf), nicht Lernfortschritt; „offen“ statt Schein-100 %
   - Hinweise nur bei Handlungsbedarf
+- **Vorhersagen (Abschnitt 11):** einfachstes ausreichendes Verfahren gewinnt (Faustregel zuerst, komplexer nur bei gepaart ≥ 2 SE besser); Rückrechnung nur mit Vergangenheit und gleichem Vorlauf; angezeigt wird Treffsicherheit, kein Lernfortschritt; „sammelt Daten“ / „offen · n“ statt Schein-Prozent.
 - **Datenwahrheit vor Darstellung** (Abschnitt 6): Zustand aus Aktor-Rückmeldung statt Befehl, Zählerstand statt Integral, Lücken sichtbar, gleiche Sekunde in Eingangsreihenfolge, Bewertung ohne Blick in die Zukunft und nie zirkulär, Fehler als Betrag mitteln. Auffälligkeiten als **Frage** an den Menschen, nicht als Bug.
 
 ## Arbeitsweise
