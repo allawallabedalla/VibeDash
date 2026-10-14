@@ -156,7 +156,7 @@
     height: 8px;
     border-radius: 50%;
     flex: none;
-    margin-left: 2px;
+    margin-left: 4px;
   }
   .status.look {
     background: var(--fair);
