@@ -66,3 +66,17 @@ describe('dailyFromCounter', () => {
     ]);
   });
 });
+
+describe('dailyFromCounter with a meter reset', () => {
+  it('never produces negative days', () => {
+    const key = (t: number) => (t < 10 ? 'd1' : 'd2');
+    const samples = [
+      { t: 1, v: 100 },
+      { t: 9, v: 105 },
+      { t: 11, v: 107 },
+      { t: 12, v: 1 },
+      { t: 15, v: 4 },
+    ];
+    expect(dailyFromCounter(samples, key)).toEqual([{ day: 'd2', value: 5 }]);
+  });
+});

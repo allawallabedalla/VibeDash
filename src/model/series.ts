@@ -74,19 +74,45 @@ export function meanAbsPctError(pairs: readonly { actual: number; predicted: num
 
 /**
  * Daily energy from a cumulative meter reading (the source of truth, not an
- * integral of power). Days are cut in local time. The first day in the data
- * has no previous reading and is therefore left out.
+ * integral of power). Days are cut in local time. Each step between two
+ * readings counts for the day of the later reading; a step down (meter reset
+ * or swap) counts as 0 and shows up in `counterResets` as a question. The
+ * first day in the data has no previous reading and is left out.
  */
 export function dailyFromCounter(
   samples: readonly Sample[],
   dayKey: (t: number) => string,
 ): { day: string; value: number }[] {
-  const lastPerDay = new Map<string, number>();
-  for (const s of samples) lastPerDay.set(dayKey(s.t), s.v);
-  const days = [...lastPerDay.entries()];
-  const out: { day: string; value: number }[] = [];
-  for (let i = 1; i < days.length; i++) {
-    out.push({ day: days[i]![0], value: days[i]![1] - days[i - 1]![1] });
+  const perDay = new Map<string, number>();
+  let first: string | undefined;
+  for (let i = 0; i < samples.length; i++) {
+    const cur = samples[i]!;
+    const day = dayKey(cur.t);
+    if (i === 0) {
+      first = day;
+      continue;
+    }
+    const step = cur.v - samples[i - 1]!.v;
+    perDay.set(day, (perDay.get(day) ?? 0) + Math.max(step, 0));
+  }
+  return [...perDay.entries()]
+    .filter(([day]) => day !== first)
+    .map(([day, value]) => ({ day, value }));
+}
+
+/**
+ * Places where a cumulative meter reading goes down (meter swap, reset,
+ * overflow). These must not become negative daily energy; they are
+ * questions for the person.
+ */
+export function counterResets(
+  samples: readonly Sample[],
+): { t: number; from: number; to: number }[] {
+  const out: { t: number; from: number; to: number }[] = [];
+  for (let i = 1; i < samples.length; i++) {
+    const prev = samples[i - 1]!;
+    const cur = samples[i]!;
+    if (cur.v < prev.v) out.push({ t: cur.t, from: prev.v, to: cur.v });
   }
   return out;
 }
