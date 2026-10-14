@@ -143,9 +143,10 @@ Der Agent prüft Daten, **bevor** er sie darstellt oder Modelle darauf baut. Typ
 
 1. **Demo-Daten (synthetisch)** – für Entwicklung, Tests und Screenshots. Realistische Tagesgänge, Lücken, Fehler absichtlich eingebaut.
 2. **InfluxDB 1.x (InfluxQL)** – weit verbreitet in Homelabs.
-3. **Generische JSON-API** – für eigene Skripte.
-4. **Home Assistant** (REST/WebSocket) – größte Zielgruppe.
-5. Später: Prometheus, MQTT, CSV-Import.
+3. **Home Assistant** (REST/WebSocket) – größte Zielgruppe; direkt nach Influx (M3b).
+4. **evcc** – Energie/Wallbox mit vielen Gerätevorlagen (M6).
+5. **Generische JSON-API** – für eigene Skripte.
+6. Später: Prometheus, MQTT, CSV-Import.
 
 Einheitliches Datenmodell: `Entitaet` (id, Name, Art, Raum, Einheit) · `Messreihe` (Zeit, Wert, Quelle, Lückeninfo) · `Prognose` (Zeitpunkt, erstellt_am, Vorlauf, Wert, Spanne) · `Bewertung` (Modell, n, korrekt_pct, Verlauf).
 
@@ -168,11 +169,13 @@ Einheitliches Datenmodell: `Entitaet` (id, Name, Art, Raum, Einheit) · `Messrei
 | M1 Bausteine | 11 Bausteine + Demo-Daten + Galerie-Seite | Galerie sieht auf Mac und iPhone ruhig und stimmig aus |
 | M2 Übersicht | erste echte Seite aus Demo-Daten | Seite besteht die Prüfliste |
 | M3 InfluxDB-Anschluss | Adapter + Datenmodell-Abbildung | Übersicht läuft mit echter Influx (lokal, nicht im Repo) |
+| M3b Home Assistant | Adapter (REST/WebSocket), Entitäten → Datenmodell; **direkt nach Influx** (siehe INBETRIEBNAHME.md) | Übersicht läuft mit einer HA-Testinstanz |
 | M4 Jetzt + Vorhersagen | Echtzeit-Seite, Treffsicherheits-Karten | Prognosen mit Spanne und n, Bewertung fair |
-| M5 Agenten-Bauanleitung | `AGENT.md`/Skill: wie ein Agent ein Haus inventarisiert, prüft und Seiten baut | ein frischer Agent baut aus Demo-Daten eine Seite nur mit der Anleitung |
-| M6 Home Assistant | Adapter | Demo mit HA-Testinstanz |
+| M5 Agenten-Bauanleitung | `AGENT.md`/Skill: wie ein Agent ein Haus inventarisiert, prüft und Seiten baut – **inkl. Inbetriebnahme-Ablauf** (INBETRIEBNAHME.md Abschnitt 3+4) | ein frischer Agent führt einen Menschen von „neuer PC“ bis „erste echte Kachel“, nur mit der Anleitung |
+| M6 evcc | Adapter | Energie-Seite läuft mit evcc-Demo |
 | v0.1 | Doku, Beispiel-Screenshots, Docker-Image (`node:24-alpine`) | jemand Fremdes bekommt es in 15 min zum Laufen |
-| M7 Prognose-Dienst | Python-Dienst für Modelle, **hinter** dem Node-Server | Browser spricht weiterhin nur mit dem Node-Server |
+| M7–M9 Prognose-Modul | siehe Abschnitt 11; der Python-Dienst liegt **hinter** dem Node-Server | Browser spricht weiterhin nur mit dem Node-Server |
+| M10 Geräte-Vorlagen | siehe INBETRIEBNAHME.md Abschnitt 5 (nur lesend) | Vorlage + Gegenprobe-Test je Gerät |
 
 ---
 
