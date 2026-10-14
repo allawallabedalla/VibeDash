@@ -11,8 +11,8 @@ VibeDash is not one big app. It ships three things:
 
 Everything runs locally. No cloud, no CDN.
 
-> Status: early (milestones M0 and M1). The gallery shows all building blocks with
-> synthetic demo data. Project background and roadmap (German): [ANLEITUNG.md](ANLEITUNG.md).
+> Status: early (milestones M0–M2). Three pages (Overview, Now, Forecasts) and a gallery
+> of all building blocks, running on synthetic demo data. Project background and roadmap (German): [ANLEITUNG.md](ANLEITUNG.md).
 
 ## Quick start
 
@@ -20,7 +20,7 @@ Requires Node 22 and pnpm 10.
 
 ```sh
 pnpm install
-pnpm dev          # gallery at http://localhost:5173 (?lang=de|en, ?theme=light|dark)
+pnpm dev          # http://localhost:5173 (#/, #/now, #/forecasts, #/gallery; ?lang=de|en, ?theme=light|dark)
 ```
 
 ## Scripts
@@ -45,6 +45,8 @@ src/demo/        synthetic demo household with deliberate gaps and a sensor arti
 src/components/  building blocks (Tile, Sparkline, Progress, …)
 src/i18n/        German and English UI texts
 src/styles/      design tokens, light and dark
+src/app/         app shell, router, shared tile definitions, data questions
+src/pages/       Overview, Now, Forecasts
 src/gallery/     gallery page
 tests/unit/      Vitest
 tests/visual/    Playwright
