@@ -126,6 +126,14 @@ export const en: Record<MessageKey, string> = {
   'acc.sunNote':
     'Forecast made the evening before; correct = actual within ±20 %. Checked against the meter.',
   'acc.title': 'Accuracy per model',
+  'acc.collecting': 'collecting data',
+  'acc.days': '{have} of {need} days',
+  'acc.service': 'Forecasting service',
+  'acc.live': 'from real forecasts',
+  'acc.backtest': 'from backtest',
+  'acc.beats': 'beats the rule of thumb by {pct} %',
+  'acc.serviceNote':
+    'Forecast the evening before, from past days only. Correct = 100 % minus the mean size of the error. The simplest sufficient method wins.',
   'sample.good': 'Example good',
   'sample.fair': 'Example fair',
   'sample.open': 'Example open',

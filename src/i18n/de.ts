@@ -124,6 +124,14 @@ export const de = {
   'acc.sunNote':
     'Vorhersage am Vorabend, korrekt = Ist innerhalb ±20 %. Geprüft gegen den Zählerstand.',
   'acc.title': 'Treffsicherheit je Modell',
+  'acc.collecting': 'sammelt Daten',
+  'acc.days': '{have} von {need} Tagen',
+  'acc.service': 'Prognose-Dienst',
+  'acc.live': 'aus echten Vorhersagen',
+  'acc.backtest': 'aus Rückrechnung',
+  'acc.beats': 'schlägt Faustregel um {pct} %',
+  'acc.serviceNote':
+    'Vorhersage am Vorabend, nur aus vergangenen Tagen. Korrekt = 100 % minus mittlerer Betrag des Fehlers. Einfachstes ausreichendes Verfahren gewinnt.',
   'sample.good': 'Beispiel gut',
   'sample.fair': 'Beispiel mäßig',
   'sample.open': 'Beispiel offen',

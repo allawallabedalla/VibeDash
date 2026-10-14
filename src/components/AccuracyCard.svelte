@@ -13,8 +13,15 @@
     /** Accuracy over time (e.g. weekly), oldest first; null = not assessable then. */
     history: (number | null)[];
     openFrom?: string;
+    /**
+     * Still collecting data: the only place a progress bar is shown
+     * ("collecting data · 12 of 30 days · from approx. 3 Nov").
+     */
+    collecting?: { have: number; need: number; from: string };
+    /** Extra fact, e.g. "beats the rule of thumb by 12 %" or "from backtest". */
+    note?: string;
   }
-  let { label, pct, n, history, openFrom }: Props = $props();
+  let { label, pct, n, history, openFrom, collecting, note }: Props = $props();
 
   type Level = 'good' | 'fair' | 'poor' | 'open';
   const level = $derived<Level>(
@@ -32,12 +39,14 @@
 <article class="card">
   <header>
     <span class="label">{label}</span>
-    <span class="level {level}">{t(levelKey[level])}</span>
+    {#if !collecting}<span class="level {level}">{t(levelKey[level])}</span>{/if}
   </header>
 
   <div class="main">
     <div class="value">
-      {#if pct === null}
+      {#if collecting}
+        <span class="open">{t('acc.collecting')}</span>
+      {:else if pct === null}
         <span class="open">{t('progress.open')}</span>
       {:else}
         {num(pct)}<span class="unit">%</span><span class="word">{t('progress.correct')}</span>
@@ -66,7 +75,10 @@
     aria-valuenow={pct ?? undefined}
     aria-valuetext={pct === null ? t('progress.open') : `${num(pct)} % ${t('progress.correct')}`}
   >
-    {#if pct !== null}<div
+    {#if collecting}<div
+        class="fill collecting"
+        style:width="{Math.min(100, (collecting.have / collecting.need) * 100)}%"
+      ></div>{:else if pct !== null}<div
         class="fill"
         style:width="{Math.max(2, pct)}%"
         style:background={color}
@@ -74,7 +86,14 @@
   </div>
 
   <div class="meta">
-    n = {n}{#if pct === null && openFrom}&nbsp;· {t('progress.from', { when: openFrom })}{/if}
+    {#if collecting}
+      {t('acc.days', { have: collecting.have, need: collecting.need })} · {t('progress.from', {
+        when: collecting.from,
+      })}
+    {:else}
+      n = {n}{#if pct === null && openFrom}&nbsp;· {t('progress.from', { when: openFrom })}{/if}
+    {/if}
+    {#if note}<span class="note">{note}</span>{/if}
   </div>
 </article>
 
@@ -158,6 +177,13 @@
   .fill {
     height: 100%;
     border-radius: 4px;
+  }
+  .fill.collecting {
+    background: var(--open);
+    opacity: 0.6;
+  }
+  .note {
+    display: block;
   }
   .meta {
     font-size: var(--small);

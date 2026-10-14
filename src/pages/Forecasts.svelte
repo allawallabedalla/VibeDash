@@ -21,6 +21,7 @@
   import { i18n, num, t } from '../i18n/index.svelte';
   import PageHead from './PageHead.svelte';
   import WeatherCard from './WeatherCard.svelte';
+  import ServiceForecasts from './ServiceForecasts.svelte';
 
   const house = currentData();
 
@@ -71,6 +72,8 @@
   let period = $state<Period>('month');
   // The weather outlook is made up; it only exists for the demo household.
   const showOutlook = currentSource() === 'demo';
+  // With a forecasting service, its cards replace the built-in models.
+  let serviceActive = $state(false);
   const tsData = $derived(pvTimeSeries(house, period));
 
   const days = showOutlook ? outlook(house, mulberry32(7)) : [];
@@ -101,12 +104,15 @@
     {#each tiles as tile (tile.label)}<Tile {...tile} />{/each}
   </TileRow>
 
-  <h2>{t('page.models')}</h2>
-  <div class="cards">
-    <AccuracyCard label={t('model.sun')} pct={sun.pct} n={sun.n} history={sun.history} />
-    <AccuracyCard label={t('model.load')} pct={load.pct} n={load.n} history={load.history} />
-  </div>
-  <p class="muted-note">{t('page.method')}</p>
+  {#if !showOutlook}<ServiceForecasts bind:active={serviceActive} />{/if}
+  {#if !serviceActive}
+    <h2>{t('page.models')}</h2>
+    <div class="cards">
+      <AccuracyCard label={t('model.sun')} pct={sun.pct} n={sun.n} history={sun.history} />
+      <AccuracyCard label={t('model.load')} pct={load.pct} n={load.n} history={load.history} />
+    </div>
+    <p class="muted-note">{t('page.method')}</p>
+  {/if}
 
   <h2>{t('gallery.timeseries')}</h2>
   <Card title={t('ts.title')} icon="sun" color="var(--sun)">

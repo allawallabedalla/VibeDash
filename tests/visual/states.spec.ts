@@ -179,3 +179,60 @@ test('weather: asks for the location once, then shows the real forecast', async 
     fullPage: true,
   });
 });
+
+test('forecasting service: collecting, open and assessable states', async ({ page }, info) => {
+  await influxMode(page, synthetic);
+  await page.route('**/api/location', (r) => r.fulfill(json({ enabled: false, location: null })));
+  await page.route('**/api/forecasts', (r) =>
+    r.fulfill(json({ names: ['pv_tag', 'verbrauch_tag', 'neu_tag'] })),
+  );
+  await page.route('**/api/forecast/*/*', (r) => {
+    const [, , , name, what] = new URL(r.request().url()).pathname.split('/');
+    if (name === 'neu_tag') {
+      return r.fulfill(
+        json(
+          what === 'status'
+            ? { zustand: 'sammelt', tage: 12, benoetigt: 30, ab_ca: '2026-11-03' }
+            : { zustand: 'offen', n: 0, quelle: 'rueckrechnung' },
+        ),
+      );
+    }
+    if (name === 'verbrauch_tag') {
+      return r.fulfill(
+        json(
+          what === 'status'
+            ? { zustand: 'offen', n: 6 }
+            : { zustand: 'offen', n: 6, quelle: 'rueckrechnung' },
+        ),
+      );
+    }
+    return r.fulfill(
+      json(
+        what === 'status'
+          ? { zustand: 'bewertbar', n: 40 }
+          : {
+              zustand: 'bewertbar',
+              n: 40,
+              quelle: 'rueckrechnung',
+              korrekt_pct: 78.4,
+              verlauf: [70, 74, 72, 78, 80, 79],
+              schlaegt_faustregel_pct: 12.3,
+            },
+      ),
+    );
+  });
+  await page.goto('/?lang=de#/forecasts');
+  const cards = page.locator('article.card');
+  await expect(cards.filter({ hasText: 'sammelt Daten' })).toContainText('12 von 30 Tagen');
+  await expect(cards.filter({ hasText: 'Verbrauchsprognose' })).toContainText('offen');
+  await expect(cards.filter({ hasText: 'Verbrauchsprognose' })).toContainText('n = 6');
+  const sun = cards.filter({ hasText: 'Sonnenprognose' });
+  await expect(sun).toContainText(/78\s?%/);
+  await expect(sun).toContainText('schlägt Faustregel um 12 %');
+  await expect(sun).toContainText('aus Rückrechnung');
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+  await page.screenshot({ path: `screenshots/service-${info.project.name}.png`, fullPage: true });
+});
