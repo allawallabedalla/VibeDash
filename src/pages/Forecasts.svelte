@@ -1,6 +1,6 @@
 <script lang="ts">
   /** Forecasts: accuracy per model first, then the forecast itself and the next days. */
-  import { demo } from '../app/data';
+  import { currentData, currentSource } from '../app/data.svelte';
   import { tomorrowTile, yieldTodayTile } from '../app/tiles';
   import AccuracyCard from '../components/AccuracyCard.svelte';
   import Card from '../components/Card.svelte';
@@ -21,46 +21,58 @@
   import { i18n, num, t } from '../i18n/index.svelte';
   import PageHead from './PageHead.svelte';
 
-  const tz = demo.timeZone;
+  const house = currentData();
+
+  const tz = house.timeZone;
   const locale = $derived(i18n.locale === 'de' ? 'de-DE' : 'en-GB');
 
-  const sun = accuracy(checkForecasts(demo, dayAheadForecasts(demo), 'pv_energy'));
-  const load = accuracy(checkForecasts(demo, dayAheadLoad(demo), 'load_energy'));
-  const loadTomorrow = dayAheadLoad(demo).find((f) => f.day === 'tomorrow')!.energy;
+  const sun = accuracy(checkForecasts(house, dayAheadForecasts(house), 'pv_energy'));
+  const load = accuracy(checkForecasts(house, dayAheadLoad(house), 'load_energy'));
+  const loadTomorrow = dayAheadLoad(house).find((f) => f.day === 'tomorrow')?.energy;
 
   const tiles = $derived([
-    yieldTodayTile(demo),
-    tomorrowTile(demo),
-    {
-      label: t('tile.loadTomorrow'),
-      icon: 'home' as const,
-      color: 'var(--home)',
-      approx: true,
-      value: num(loadTomorrow.value),
-      unit: 'kWh',
-      sub: t('sub.range', {
-        low: num(loadTomorrow.low),
-        high: num(loadTomorrow.high),
-        n: loadTomorrow.n,
-      }),
-      graphic: {
-        kind: 'scale' as const,
-        value: loadTomorrow.value,
-        min: 0,
-        max: Math.ceil(loadTomorrow.high / 10) * 10 + 10,
-        band: { low: loadTomorrow.low, high: loadTomorrow.high },
-      },
-      info: {
-        what: t('info.loadTomorrow.what'),
-        source: t('info.loadTomorrow.source', { n: loadTomorrow.n }),
-      },
-    },
+    yieldTodayTile(house),
+    tomorrowTile(house),
+    loadTomorrow
+      ? {
+          label: t('tile.loadTomorrow'),
+          icon: 'home' as const,
+          color: 'var(--home)',
+          approx: true,
+          value: num(loadTomorrow.value),
+          unit: 'kWh',
+          sub: t('sub.range', {
+            low: num(loadTomorrow.low),
+            high: num(loadTomorrow.high),
+            n: loadTomorrow.n,
+          }),
+          graphic: {
+            kind: 'scale' as const,
+            value: loadTomorrow.value,
+            min: 0,
+            max: Math.ceil(loadTomorrow.high / 10) * 10 + 10,
+            band: { low: loadTomorrow.low, high: loadTomorrow.high },
+          },
+          info: {
+            what: t('info.loadTomorrow.what'),
+            source: t('info.loadTomorrow.source', { n: loadTomorrow.n }),
+          },
+        }
+      : {
+          label: t('tile.loadTomorrow'),
+          icon: 'home' as const,
+          color: 'var(--home)',
+          value: '–',
+          sub: t('state.noData'),
+        },
   ]);
 
   let period = $state<Period>('month');
-  const tsData = $derived(pvTimeSeries(demo, period));
+  // The weather outlook is made up; it only exists for the demo household.
+  const showOutlook = currentSource() === 'demo';
+  const tsData = $derived(pvTimeSeries(house, period));
 
-  const days = outlook(demo, mulberry32(7));
+  const days = showOutlook ? outlook(house, mulberry32(7)) : [];
   const dayRows = $derived<DayRow[]>(
     days.map((d) => ({
       label:
@@ -110,6 +122,7 @@
         forecast: t('ts.forecast'),
         band: t('ts.band'),
         periods: t('ts.periods'),
+        empty: t('state.noData'),
       }}
       unit={tsData.unit === 'kW' ? 'kW' : t('ts.perDay')}
       timeZone={tz}
@@ -117,13 +130,15 @@
     />
   </Card>
 
-  <h2>{t('days.title')}</h2>
-  <Card
-    title={t('days.title')}
-    icon="cloudSun"
-    color="var(--sun)"
-    note={t('days.note', { n: days[0]!.energy.n })}
-  >
-    <DayList days={dayRows} />
-  </Card>
+  {#if showOutlook}
+    <h2>{t('days.title')}</h2>
+    <Card
+      title={t('days.title')}
+      icon="cloudSun"
+      color="var(--sun)"
+      note={t('days.note', { n: days[0]?.energy.n ?? 0 })}
+    >
+      <DayList days={dayRows} />
+    </Card>
+  {/if}
 </div>

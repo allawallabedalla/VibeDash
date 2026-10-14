@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { demo as sharedDemo } from '../app/data';
   import {
     batteryTile,
     gridTile,
@@ -22,6 +21,7 @@
   import Tile from '../components/Tile.svelte';
   import {
     accuracy,
+    generateDemo,
     checkForecasts,
     mulberry32,
     outlook,
@@ -34,7 +34,8 @@
   import { i18n, num, t, time } from '../i18n/index.svelte';
   import { localMidnight } from '../model/time';
 
-  const demo = sharedDemo;
+  // The gallery always shows the synthetic demo household.
+  const demo = generateDemo();
   const tz = demo.timeZone;
 
   const kw = (w: number | null) => (w === null ? null : w / 1000);
@@ -203,6 +204,7 @@
         forecast: t('ts.forecast'),
         band: t('ts.band'),
         periods: t('ts.periods'),
+        empty: t('state.noData'),
       }}
       unit={tsData.unit === 'kW' ? 'kW' : t('ts.perDay')}
       timeZone={tz}

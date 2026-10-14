@@ -21,7 +21,7 @@
     data: SeriesData;
     periods: { id: string; label: string }[];
     period: string;
-    labels: { actual: string; forecast: string; band: string; periods: string };
+    labels: { actual: string; forecast: string; band: string; periods: string; empty?: string };
     color?: string;
     forecastColor?: string;
     unit: string;
@@ -55,8 +55,14 @@
     return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
   };
 
+  const isEmpty = $derived(
+    data.actual.every((v) => v === null) && (data.forecast ?? []).every((v) => v === null),
+  );
+
   function build() {
     plot?.destroy();
+    plot = undefined;
+    if (isEmpty) return;
     const c = css(color);
     const fc = css(forecastColor);
     const muted = css('--muted');
@@ -154,6 +160,7 @@
   $effect(() => {
     void themeTick;
     void data;
+    void isEmpty;
     void locale;
     build();
   });
@@ -177,7 +184,14 @@
       {/each}
     </div>
   </div>
-  <div class="plot" bind:this={box} role="img" aria-label={labels.actual}></div>
+  {#if isEmpty}<p class="empty">{labels.empty ?? '–'}</p>{/if}
+  <div
+    class="plot"
+    class:hidden={isEmpty}
+    bind:this={box}
+    role="img"
+    aria-label={labels.actual}
+  ></div>
 </div>
 
 <style>
@@ -249,6 +263,14 @@
   .plot {
     width: 100%;
     min-width: 0;
+  }
+  .plot.hidden {
+    display: none;
+  }
+  .empty {
+    margin: 24px 0;
+    color: var(--muted);
+    font-size: 14px;
   }
   @media (max-width: 600px) {
     .seg {

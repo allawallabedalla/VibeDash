@@ -1,12 +1,20 @@
 <script lang="ts">
   import Icon from '../components/Icon.svelte';
   import Tabs from '../components/Tabs.svelte';
-  import Gallery from '../gallery/Gallery.svelte';
   import { i18n, t } from '../i18n/index.svelte';
   import Forecasts from '../pages/Forecasts.svelte';
   import Now from '../pages/Now.svelte';
   import Overview from '../pages/Overview.svelte';
+  import { onMount } from 'svelte';
+  import { load, store } from './data.svelte';
   import { router, type Route } from './router.svelte';
+
+  onMount(() => {
+    void load();
+  });
+
+  const reasonText = (r: string) =>
+    t(`reason.${r as 'timeout' | 'upstream' | 'network' | 'not_mapped'}`);
 
   const tabs = $derived([
     { id: 'overview', label: t('page.overview'), icon: 'overview' as const },
@@ -48,14 +56,51 @@
 </div>
 
 <main>
-  {#if router.route === 'now'}
-    <Now />
-  {:else if router.route === 'forecasts'}
-    <Forecasts />
-  {:else if router.route === 'gallery'}
-    <Gallery />
+  {#if router.route === 'gallery'}
+    <!-- Loaded on demand: not part of the first page budget. -->
+    {#await import('../gallery/Gallery.svelte') then { default: Gallery }}
+      <Gallery />
+    {/await}
+  {:else if store.state.status === 'loading'}
+    <div class="page state" role="status" aria-live="polite">
+      <p class="loading">{t('state.loading')}</p>
+    </div>
+  {:else if store.state.status === 'error'}
+    <div class="page state">
+      <section class="notice" role="alert">
+        <h1>{t('state.errorTitle')}</h1>
+        <p>{t('state.errorText', { reason: reasonText(store.state.reason) })}</p>
+        <button type="button" class="retry" onclick={() => load()}>{t('state.retry')}</button>
+      </section>
+    </div>
   {:else}
-    <Overview />
+    {#if store.state.missing.length > 0}
+      <div class="page">
+        <section class="notice small" role="status">
+          <p class="title">{t('state.missingTitle')}</p>
+          <ul>
+            {#each store.state.missing as m (m.id)}
+              <li>
+                {t('state.missingItem', {
+                  name: store.state.data.entities.find((e) => e.id === m.id)?.name ?? m.id,
+                  reason: reasonText(m.reason),
+                })}
+              </li>
+            {/each}
+          </ul>
+          <button type="button" class="retry" onclick={() => load()}>{t('state.retry')}</button>
+        </section>
+      </div>
+    {/if}
+    {#key store.version}
+      {#if router.route === 'now'}
+        <Now />
+      {:else if router.route === 'forecasts'}
+        <Forecasts />
+      {:else}
+        <Overview />
+      {/if}
+    {/key}
   {/if}
 </main>
 
@@ -129,6 +174,52 @@
   }
   .nav {
     margin: 16px auto 8px;
+  }
+  .state {
+    padding-top: 24px;
+  }
+  .loading {
+    color: var(--muted);
+    font-size: 15px;
+    margin: 24px 0;
+  }
+  .notice {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .notice h1 {
+    margin: 0;
+  }
+  .notice p,
+  .notice ul {
+    margin: 0;
+    color: var(--muted);
+  }
+  .notice ul {
+    padding-left: 18px;
+  }
+  .notice.small {
+    margin-top: 12px;
+  }
+  .notice .title {
+    color: var(--text);
+    font-weight: 500;
+  }
+  .retry {
+    min-height: 44px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 22px;
+    background: var(--surface-2);
+    box-shadow: inset 0 0 0 1px var(--line);
+    color: var(--text);
+    cursor: pointer;
   }
   footer {
     padding-bottom: 32px;

@@ -1,6 +1,6 @@
 <script lang="ts">
   /** "Now": current values first, where the power comes from, last 24 hours. */
-  import { demo } from '../app/data';
+  import { currentData } from '../app/data.svelte';
   import { batteryTile, gridTile, humidityTile, loadTile, sunTile, tempTile } from '../app/tiles';
   import Card from '../components/Card.svelte';
   import SourceArc from '../components/SourceArc.svelte';
@@ -11,16 +11,18 @@
   import { num, t, time } from '../i18n/index.svelte';
   import PageHead from './PageHead.svelte';
 
-  const kw = (w: number | null) => (w === null ? null : w / 1000);
-  const energy = $derived([sunTile(demo), loadTile(demo), batteryTile(demo), gridTile(demo)]);
-  const climate = $derived([tempTile(demo), humidityTile(demo)]);
+  const house = currentData();
 
-  const src = sourcesAt(demo, demo.now - 60_000);
-  const band = typicalProfile(demo, 'load_power');
+  const kw = (w: number | null) => (w === null ? null : w / 1000);
+  const energy = $derived([sunTile(house), loadTile(house), batteryTile(house), gridTile(house)]);
+  const climate = $derived([tempTile(house), humidityTile(house)]);
+
+  const src = sourcesAt(house, house.now - 60_000);
+  const band = typicalProfile(house, 'load_power');
   const bandKw = { low: band.low.map(kw), high: band.high.map(kw) };
-  const sensorGap = demo.issues.find(
+  const sensorGap = house.issues.find(
     (i) => i.kind === 'gap' && i.entityIds.includes('living_temp'),
-  )!;
+  );
 </script>
 
 <div class="page">
@@ -40,7 +42,7 @@
       note={t('spark.homeBand', { n: band.n })}
     >
       <Sparkline
-        values={last24h(demo, 'load_power').map(kw)}
+        values={last24h(house, 'load_power').map(kw)}
         band={bandKw}
         color="var(--home)"
         min={0}
@@ -69,7 +71,7 @@
   <div class="cards">
     <Card title={t('spark.sun')} icon="sun" color="var(--sun)">
       <Sparkline
-        values={last24h(demo, 'pv_power').map(kw)}
+        values={last24h(house, 'pv_power').map(kw)}
         color="var(--sun)"
         min={0}
         height={72}
@@ -78,7 +80,7 @@
     </Card>
     <Card title={t('spark.grid')} icon="grid" color="var(--feed)" note={t('spark.gridNote')}>
       <Sparkline
-        values={last24h(demo, 'grid_power').map(kw)}
+        values={last24h(house, 'grid_power').map(kw)}
         signed
         color="var(--feed)"
         height={72}
@@ -96,13 +98,15 @@
       title={t('spark.temp')}
       icon="thermometer"
       color="var(--climate)"
-      note={t('spark.gap', {
-        from: time(sensorGap.from, demo.timeZone),
-        to: time(sensorGap.to, demo.timeZone),
-      })}
+      note={sensorGap
+        ? t('spark.gap', {
+            from: time(sensorGap.from, house.timeZone),
+            to: time(sensorGap.to, house.timeZone),
+          })
+        : undefined}
     >
       <Sparkline
-        values={last24h(demo, 'living_temp')}
+        values={last24h(house, 'living_temp')}
         color="var(--climate)"
         height={72}
         label={t('spark.temp')}

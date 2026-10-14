@@ -1,6 +1,6 @@
 <script lang="ts">
   /** M2: first real page. First level tiles, then today, then look-back table, then questions. */
-  import { demo } from '../app/data';
+  import { currentData, currentSource } from '../app/data.svelte';
   import { questions } from '../app/questions';
   import { reviewRows } from '../app/review';
   import {
@@ -26,10 +26,12 @@
   import { i18n, num, t } from '../i18n/index.svelte';
   import PageHead from './PageHead.svelte';
 
-  const tz = demo.timeZone;
+  const house = currentData();
+
+  const tz = house.timeZone;
   const locale = $derived(i18n.locale === 'de' ? 'de-DE' : 'en-GB');
 
-  const qs = $derived(questions(demo));
+  const qs = $derived(questions(house, currentSource()));
   const status = $derived.by<StatusItem[]>(() => {
     const item = (area: 'energy' | 'battery' | 'climate'): StatusItem => {
       const n = qs.filter((q) => q.area === area).length;
@@ -47,21 +49,21 @@
     return [item('energy'), item('battery'), item('climate')];
   });
 
-  const row1 = $derived([sunTile(demo), loadTile(demo), batteryTile(demo), gridTile(demo)]);
+  const row1 = $derived([sunTile(house), loadTile(house), batteryTile(house), gridTile(house)]);
   const row2 = $derived([
-    yieldTodayTile(demo),
-    tomorrowTile(demo),
-    autarkyTile(demo),
-    tempTile(demo),
+    yieldTodayTile(house),
+    tomorrowTile(house),
+    autarkyTile(house),
+    tempTile(house),
   ]);
 
   let period = $state<Period>('day');
-  const tsData = $derived(pvTimeSeries(demo, period));
+  const tsData = $derived(pvTimeSeries(house, period));
 
-  const src = sourcesAt(demo, demo.now - 60_000);
+  const src = sourcesAt(house, house.now - 60_000);
 
   let reviewCount = $state<'7' | '30'>('7');
-  const rows = $derived(reviewRows(demo, Number(reviewCount)));
+  const rows = $derived(reviewRows(house, Number(reviewCount)));
   const columns = $derived([
     { key: 'day', label: t('review.day') },
     { key: 'sun', label: t('review.sun'), align: 'right' as const },
@@ -101,6 +103,7 @@
           forecast: t('ts.forecast'),
           band: t('ts.band'),
           periods: t('ts.periods'),
+          empty: t('state.noData'),
         }}
         unit={tsData.unit === 'kW' ? 'kW' : t('ts.perDay')}
         timeZone={tz}

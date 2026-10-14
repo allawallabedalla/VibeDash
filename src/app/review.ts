@@ -22,18 +22,19 @@ export function reviewRows(data: DemoData, count: number): Row[] {
     timeZone: 'UTC',
   });
   const days = [...pv.keys()].slice(-count).reverse();
+  const kwh = (v: number | undefined) => (v === undefined ? '–' : num(v, 1));
   return days.map((day) => {
-    const l = load.get(day)!;
-    const i = imp.get(day)!;
+    const l = load.get(day);
+    const i = imp.get(day);
     return {
       id: day,
       cells: {
         day: fmt.format(new Date(`${day}T12:00:00Z`)),
-        sun: num(pv.get(day)!, 1),
-        load: num(l, 1),
-        feed: num(feed.get(day)!, 1),
-        import: num(i, 1),
-        autarky: `${num(Math.max(0, 1 - i / l) * 100)} %`,
+        sun: kwh(pv.get(day)),
+        load: kwh(l),
+        feed: kwh(feed.get(day)),
+        import: kwh(i),
+        autarky: l && i !== undefined ? `${num(Math.max(0, 1 - i / l) * 100)} %` : '–',
       },
       note: gapDays.has(day) ? t('review.loggerGap') : undefined,
     };
