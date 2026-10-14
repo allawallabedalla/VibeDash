@@ -25,9 +25,11 @@
   import StatusBar, { type StatusItem } from '../components/StatusBar.svelte';
   import Tile from '../components/Tile.svelte';
   import TileRow from '../components/TileRow.svelte';
-  import { pvTimeSeries, sourcesAt, type Period } from '../demo';
+  import { hourlyPvForecast, pvTimeSeries, sourcesAt, type Period } from '../demo';
+  import { localMidnight } from '../model/time';
   import { i18n, num, t } from '../i18n/index.svelte';
   import PageHead from './PageHead.svelte';
+  import WeatherDaysCard from './WeatherDaysCard.svelte';
 
   const house = currentData();
 
@@ -63,8 +65,24 @@
   let sunFc = $state<SunForecast | null>(
     currentSource() === 'demo' ? demoSunForecast(house) : null,
   );
+  // the house's own hourly forecast, if mapped (pv_forecast, _low, _high in kW or W)
+  {
+    const start = localMidnight(house.now, house.timeZone);
+    const x = Array.from({ length: 24 }, (_, h) => start + h * 3_600_000 + 1_800_000);
+    const own = hourlyPvForecast(house, x);
+    if (own && currentSource() !== 'demo') {
+      const w = (v: (number | null)[]) => v.map((k) => (k === null ? 0 : k * 1000));
+      sunFc = {
+        at: x.map((t) => t - 1_800_000),
+        stepMs: 3_600_000,
+        p10: w(own.low.some((v) => v !== null) ? own.low : own.value),
+        p50: w(own.value),
+        p90: w(own.high.some((v) => v !== null) ? own.high : own.value),
+      };
+    }
+  }
   onMount(async () => {
-    if (currentSource() === 'demo' || !store.pv) return;
+    if (currentSource() === 'demo' || !store.pv || sunFc) return;
     try {
       const res = await fetch('/api/pv/prognose', { signal: AbortSignal.timeout(15_000) });
       if (!res.ok) return;
@@ -124,6 +142,9 @@
   <PageHead title={t('page.overview')} />
 
   <div class="status"><StatusBar label={t('status.label')} items={status} /></div>
+
+  <WeatherDaysCard {house} />
+  <div class="row-gap"></div>
 
   <TileRow count={4}>
     {#each row1 as tile (tile.label)}<Tile {...tile} />{/each}

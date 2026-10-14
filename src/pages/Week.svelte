@@ -8,16 +8,17 @@
   import { weekNumbers } from '../app/week';
   import Card from '../components/Card.svelte';
   import DayBars from '../components/DayBars.svelte';
-  import DayList, { type DayRow } from '../components/DayList.svelte';
   import DayRanges from '../components/DayRanges.svelte';
   import FlowBars from '../components/FlowBars.svelte';
   import SoftTimeSeries from '../components/SoftTimeSeries.svelte';
   import Tile, { type TileProps } from '../components/Tile.svelte';
   import TileRow from '../components/TileRow.svelte';
-  import { mulberry32, outlook, pvTimeSeries } from '../demo';
+  import { pvTimeSeries } from '../demo';
   import { i18n, num, t, time } from '../i18n/index.svelte';
   import PageHead from './PageHead.svelte';
   import WeatherCard from './WeatherCard.svelte';
+  import WeatherDaysCard from './WeatherDaysCard.svelte';
+  import { hasWeatherDays } from '../app/weather-days';
 
   const house = currentData();
   const tz = house.timeZone;
@@ -145,30 +146,16 @@
   const tsData = pvTimeSeries(house, 'week');
   // The made-up weather only exists for the demo household.
   const demo = currentSource() === 'demo';
-  const dayRows = $derived<DayRow[]>(
-    demo
-      ? outlook(house, mulberry32(7)).map((d) => ({
-          label:
-            d.offset === 0
-              ? t('days.today')
-              : new Intl.DateTimeFormat(locale, { timeZone: tz, weekday: 'short' }).format(
-                  d.start + 12 * 3_600_000,
-                ),
-          sky: d.sky,
-          skyLabel: t(`sky.${d.sky}`),
-          tempLow: d.tempLow,
-          tempHigh: d.tempHigh,
-          rainMm: d.rainMm,
-          sunHours: d.sunHours,
-          energy: d.energy,
-          when: d.offset === 0 ? 'today' : d.offset < 0 ? 'past' : 'forecast',
-        }))
-      : [],
-  );
 </script>
 
 <div class="page">
   <PageHead title={t('page.week')} />
+
+  {#if demo || hasWeatherDays(house)}
+    <WeatherDaysCard {house} />
+  {:else}
+    <WeatherCard timeZone={tz} />
+  {/if}
 
   <h2>{t('week.now')}</h2>
   <TileRow count={4}>
@@ -187,15 +174,6 @@
       imp: kwh(w.today.imp),
     })}
   </p>
-
-  {#if demo}
-    <h2>{t('week.weather')}</h2>
-    <Card title={t('days.title')} icon="cloudSun" color="var(--sun)">
-      <DayList days={dayRows} />
-    </Card>
-  {:else}
-    <WeatherCard timeZone={tz} />
-  {/if}
 
   <h2>{t('week.sunVsForecast')}</h2>
   <Card title={t('ts.title')} icon="sun" color="var(--sun)">

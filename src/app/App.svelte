@@ -76,12 +76,15 @@
       </section>
     </div>
   {:else}
-    {#if store.state.missing.length > 0}
+    <!-- Only real trouble (timeouts, errors) earns a notice; a sensor the house
+         simply does not have is not a need for action. -->
+    {@const failed = store.state.missing.filter((m) => m.reason !== 'not_mapped')}
+    {#if failed.length > 0}
       <div class="page">
         <section class="notice small" role="status">
           <p class="title">{t('state.missingTitle')}</p>
           <ul>
-            {#each store.state.missing as m (m.id)}
+            {#each failed as m (m.id)}
               <li>
                 {t('state.missingItem', {
                   name: store.state.data.entities.find((e) => e.id === m.id)?.name ?? m.id,

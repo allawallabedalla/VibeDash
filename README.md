@@ -84,7 +84,11 @@ Without `local/mapping.json` the server runs in demo mode.
 
 Optional keys per series: `device` groups the questions (e.g. "inverter"), `maxPerDay`
 leaves out implausible days of a meter, `helper: true` makes a series only an input for
-others. A meter reading that drops (often to 0) or jumps and comes back within 10 minutes
+others, `aheadMs` also reads values stored ahead of time (forecasts, at most 7 days).
+A house that keeps its own hourly PV forecast maps it as `pv_forecast` (kind `power`,
+mean power of the hour starting at the timestamp), optionally `pv_forecast_low` /
+`pv_forecast_high` for the 10–90 % span; the "today" curve then uses it instead of the
+daily forecast spread over the day. A meter reading that drops (often to 0) or jumps and comes back within 10 minutes
 is treated as a read error, not a reset. No meter for something (e.g. the house load)?
 A **derived** counter sums up power and/or other meters – always named as such behind ⓘ:
 

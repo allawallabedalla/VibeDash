@@ -222,11 +222,13 @@ export async function handleApi(
     if (!Object.hasOwn(RANGES, range)) {
       return json(400, { error: 'bad_range', allowed: Object.keys(RANGES) });
     }
-    const to = deps.now();
-    const from = to - RANGES[range as RangeName];
+    const now = deps.now();
+    const from = now - RANGES[range as RangeName];
+    // forecasts are stored ahead of time: read them up to aheadMs into the future
+    const to = now + (m.aheadMs ?? 0);
     try {
       const s = await deps.series(m, from, to);
-      const before = Math.floor((to - FULL_MS) / THIN_MS) * THIN_MS;
+      const before = Math.floor((now - FULL_MS) / THIN_MS) * THIN_MS;
       const samples =
         m.stepMs < THIN_MS && before > from
           ? thinBefore(s.samples, before, THIN_MS, ADDS_UP.has(m.entity.kind) ? 'last' : 'mean')

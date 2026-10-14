@@ -31,6 +31,8 @@ export type SeriesMapping = (
 ) & {
   /** Only an input for other series: not listed in /api/entities. */
   helper?: boolean;
+  /** Also read this far into the future (forecasts stored ahead of time). */
+  aheadMs?: number;
 };
 
 /** Factor from a unit to kW (power) or kWh (energy); undefined if not convertible. */
@@ -82,10 +84,13 @@ export interface Mapping {
 const KINDS: EntityKind[] = [
   'power',
   'energy_counter',
+  'energy',
   'state_of_charge',
   'capacity',
   'temperature',
   'humidity',
+  'precipitation',
+  'sunshine',
 ];
 const NAME = /^[a-z][a-z0-9_]{0,63}$/;
 const COMMON_KEYS = [
@@ -100,6 +105,7 @@ const COMMON_KEYS = [
   'confirmed',
   'maxPerDay',
   'helper',
+  'aheadMs',
 ];
 const INFLUX_KEYS = [...COMMON_KEYS, 'measurement', 'field', 'tags'];
 const HA_KEYS = [...COMMON_KEYS, 'entityId', 'maxHoldMs', 'longTerm'];
@@ -194,6 +200,16 @@ export function validateMapping(
       errors.push(`${at}.stepMs: integer between 1000 and 86400000`);
     }
 
+    if (
+      entry.aheadMs !== undefined &&
+      (typeof entry.aheadMs !== 'number' ||
+        !Number.isInteger(entry.aheadMs) ||
+        entry.aheadMs < 0 ||
+        entry.aheadMs > 7 * 86_400_000)
+    ) {
+      errors.push(`${at}.aheadMs: integer between 0 and 604800000 (7 days)`);
+    }
+
     const entity = {
       id,
       name: entry.name as string,
@@ -213,6 +229,7 @@ export function validateMapping(
     const common = {
       entity,
       ...(entry.helper === true ? { helper: true } : {}),
+      ...(typeof entry.aheadMs === 'number' && entry.aheadMs > 0 ? { aheadMs: entry.aheadMs } : {}),
       ...(entry.scale !== undefined ? { scale: entry.scale as number } : {}),
       stepMs: entry.stepMs as number,
     };

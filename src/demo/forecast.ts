@@ -246,6 +246,48 @@ export interface PvSeries {
 }
 
 /**
+ * An hourly PV forecast stored by the house itself (series `pv_forecast`,
+ * optional `pv_forecast_low` / `pv_forecast_high` for the 10–90 % span), each
+ * value the mean power of the hour that starts at its time. Drawn through the
+ * hour middles onto the slots `x`; null when the house has no such forecast
+ * for these slots.
+ */
+export function hourlyPvForecast(
+  data: DemoData,
+  x: number[],
+): { value: (number | null)[]; low: (number | null)[]; high: (number | null)[] } | null {
+  const toKw = (id: string) => {
+    const unit = data.entities.find((e) => e.id === id)?.unit;
+    return unit === 'kW' ? 1 : unit === 'W' ? 0.001 : null;
+  };
+  const curve = (id: string): (number | null)[] | null => {
+    const s = data.series[id];
+    const f = toKw(id);
+    if (!s?.samples.length || f === null) return null;
+    const mid = s.samples
+      .map((p) => ({ t: p.t + HOUR / 2, v: p.v * f }))
+      .filter((p) => p.t >= x[0]! - HOUR && p.t <= x.at(-1)! + HOUR)
+      .sort((a, b) => a.t - b.t);
+    if (mid.length < 2) return null;
+    return x.map((t) => {
+      if (t < mid[0]!.t - HOUR / 2 || t > mid.at(-1)!.t + HOUR / 2) return null;
+      const j = mid.findIndex((p) => p.t >= t);
+      if (j <= 0) return j === 0 ? mid[0]!.v : mid.at(-1)!.v;
+      const a = mid[j - 1]!;
+      const b = mid[j]!;
+      // a missing hour stays a gap instead of a straight bridge
+      if (b.t - a.t > 1.5 * HOUR) return null;
+      return a.v + ((b.v - a.v) * (t - a.t)) / (b.t - a.t);
+    });
+  };
+  const value = curve('pv_forecast');
+  if (!value || value.every((v) => v === null)) return null;
+  const low = curve('pv_forecast_low') ?? x.map(() => null);
+  const high = curve('pv_forecast_high') ?? x.map(() => null);
+  return { value, low, high };
+}
+
+/**
  * PV actual and day-ahead forecast for a period.
  * - day: power in kW, 15-min steps (actual until now, forecast for the whole day)
  * - week/month: daily energy in kWh from the meter; today is still running, so
@@ -264,6 +306,18 @@ export function pvTimeSeries(data: DemoData, period: Period): PvSeries {
     const today = forecasts.find((f) => f.start === todayStart);
     const fc = new Map((today ? powerCurve(today, data.timeZone, step) : []).map((f) => [f.at, f]));
     const kw = (v: number | null | undefined) => (v === null || v === undefined ? null : v / 1000);
+    // the house's own hourly forecast wins over the spread-out daily one
+    const hourly = hourlyPvForecast(data, x);
+    if (hourly) {
+      return {
+        x,
+        actual: actualW.map((v, i) => (x[i]! < data.now ? kw(v) : null)),
+        forecast: hourly.value,
+        low: hourly.low,
+        high: hourly.high,
+        unit: 'kW',
+      };
+    }
     return {
       x,
       actual: actualW.map((v, i) => (x[i]! < data.now ? kw(v) : null)),

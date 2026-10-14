@@ -237,3 +237,37 @@ describe('example mappings', () => {
     expect(validateMapping(ha).ok).toBe(true);
   });
 });
+
+describe('series stored ahead of time', () => {
+  it('reads a forecast up to aheadMs into the future, and checks the key', async () => {
+    const raw = JSON.parse(JSON.stringify(example));
+    raw.series.pv_forecast = {
+      source: 'influx',
+      name: 'PV forecast',
+      kind: 'power',
+      unit: 'kW',
+      measurement: 'forecast',
+      field: 'kw',
+      stepMs: 3_600_000,
+      aheadMs: 86_400_000,
+    };
+    const r = validateMapping(raw);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    let asked = 0;
+    const d: ApiDeps = {
+      mode: 'live',
+      mapping: r.mapping,
+      series: async (m, from, to) => {
+        asked = to;
+        return { entityId: m.entity.id, source: 'test', stepMs: m.stepMs, samples: [] };
+      },
+      now: () => 1_000_000_000,
+      log: () => {},
+    };
+    await handleApi('GET', new URL('http://x/api/series/pv_forecast?range=24h'), d);
+    expect(asked).toBe(1_000_000_000 + 86_400_000);
+    raw.series.pv_forecast.aheadMs = 30 * 86_400_000;
+    expect(validateMapping(raw).ok).toBe(false);
+  });
+});

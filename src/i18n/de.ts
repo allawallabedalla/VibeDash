@@ -394,6 +394,16 @@ export const de = {
   'week.todayUntil': 'heute bis {time}',
   'week.todayApart':
     'Abgeschlossene Tage; {until} getrennt, nicht in den Summen: Sonne {pv} · Verbrauch {load} · Netz {imp} kWh.',
+  'wd.title': 'Wetter und Ertrag',
+  'wd.measured': 'gemessen',
+  'wd.forecast': 'Prognose',
+  'wd.sun': 'Sonne',
+  'wd.pv': 'PV',
+  'wd.soFar': 'bisher {v} kWh',
+  'wd.note': 'PV gemessen = Zähler; ≈ = Prognose mit Spanne 10–90 %.',
+  'sub.span': '{low}–{high} (10–90 %)',
+  'info.yield.house': 'Prognose des Hauses selbst (eigene Tagesprognose), Spanne 10–90 %.',
+  'sub.houseForecast': 'Prognose des Hauses',
 } as const;
 
 export type MessageKey = keyof typeof de;

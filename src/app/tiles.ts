@@ -9,7 +9,7 @@ import { sunToday, type SunForecast } from './sun-forecast';
 export { demoSunForecast, type SunForecast } from './sun-forecast';
 import { i18n, num, t, time } from '../i18n/index.svelte';
 import { steadyValue } from '../model/series';
-import { localDateKey } from '../model/time';
+import { addDays, localDateKey, localMidnight } from '../model/time';
 
 const kw = (w: number | null) => (w === null ? null : w / 1000);
 const signed = (v: number, digits: number) =>
@@ -251,9 +251,33 @@ export function humidityTile(data: DemoData): TileProps {
   });
 }
 
+/** The house's own daily PV forecast (series pv_forecast_day, optional _low/_high). */
+export function houseDayForecast(
+  data: DemoData,
+  offset: number,
+): { value: number; low: number; high: number } | null {
+  const s = data.series.pv_forecast_day?.samples;
+  if (!s?.length) return null;
+  const start = addDays(localMidnight(data.now, data.timeZone), offset, data.timeZone);
+  const at = (id: string) =>
+    data.series[id]?.samples.find(
+      (p) => p.t >= start - 3 * 3_600_000 && p.t < start + 21 * 3_600_000,
+    )?.v;
+  const value = at('pv_forecast_day');
+  if (value === undefined) return null;
+  return {
+    value,
+    low: at('pv_forecast_day_low') ?? value,
+    high: at('pv_forecast_day_high') ?? value,
+  };
+}
+
 /** Today's expected yield (day-ahead forecast) with the total so far as a dot. */
 export function yieldTodayTile(data: DemoData): TileProps {
-  const fc = dayAheadForecasts(data).find((f) => f.day === 'today')?.energy;
+  const own = houseDayForecast(data, 0);
+  const fc = own
+    ? { ...own, n: 0 }
+    : dayAheadForecasts(data).find((f) => f.day === 'today')?.energy;
   const soFar = daily(data, 'pv_energy').at(-1)?.value;
   const base: TileProps = {
     label: t('tile.yield'),
@@ -273,7 +297,11 @@ export function yieldTodayTile(data: DemoData): TileProps {
     approx: true,
     value: num(fc.value),
     unit: 'kWh',
-    sub: t('sub.range', { low: num(fc.low), high: num(fc.high), n: fc.n }),
+    sub: own
+      ? fc.high > fc.low
+        ? t('sub.span', { low: num(fc.low), high: num(fc.high) })
+        : t('sub.houseForecast')
+      : t('sub.range', { low: num(fc.low), high: num(fc.high), n: fc.n }),
     graphic: {
       kind: 'scale',
       value: soFar ?? 0,
@@ -284,13 +312,16 @@ export function yieldTodayTile(data: DemoData): TileProps {
     },
     info: {
       what: t('info.yield.what', { soFar: soFar === undefined ? '–' : num(soFar) }),
-      source: t('info.yield.source', { n: fc.n }),
+      source: own ? t('info.yield.house') : t('info.yield.source', { n: fc.n }),
     },
   });
 }
 
 export function tomorrowTile(data: DemoData): TileProps {
-  const fc = dayAheadForecasts(data).find((f) => f.day === 'tomorrow')?.energy;
+  const own = houseDayForecast(data, 1);
+  const fc = own
+    ? { ...own, n: 0 }
+    : dayAheadForecasts(data).find((f) => f.day === 'tomorrow')?.energy;
   const base: TileProps = {
     label: t('tile.tomorrow'),
     icon: 'cloudSun',
@@ -309,7 +340,11 @@ export function tomorrowTile(data: DemoData): TileProps {
     approx: true,
     value: num(fc.value),
     unit: 'kWh',
-    sub: t('sub.range', { low: num(fc.low), high: num(fc.high), n: fc.n }),
+    sub: own
+      ? fc.high > fc.low
+        ? t('sub.span', { low: num(fc.low), high: num(fc.high) })
+        : t('sub.houseForecast')
+      : t('sub.range', { low: num(fc.low), high: num(fc.high), n: fc.n }),
     graphic: {
       kind: 'scale',
       value: fc.value,
@@ -317,7 +352,10 @@ export function tomorrowTile(data: DemoData): TileProps {
       max: Math.ceil(fc.high / 10) * 10 + 10,
       band: { low: fc.low, high: fc.high },
     },
-    info: { what: t('info.tomorrow.what'), source: t('info.tomorrow.source', { n: fc.n }) },
+    info: {
+      what: t('info.tomorrow.what'),
+      source: own ? t('info.yield.house') : t('info.tomorrow.source', { n: fc.n }),
+    },
   };
 }
 

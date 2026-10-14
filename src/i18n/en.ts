@@ -390,4 +390,14 @@ export const en: Record<MessageKey, string> = {
   'week.todayUntil': 'today until {time}',
   'week.todayApart':
     'Completed days; {until} apart, not in the sums: sun {pv} · consumption {load} · grid {imp} kWh.',
+  'wd.title': 'Weather and yield',
+  'wd.measured': 'measured',
+  'wd.forecast': 'forecast',
+  'wd.sun': 'sun',
+  'wd.pv': 'PV',
+  'wd.soFar': 'so far {v} kWh',
+  'wd.note': 'PV measured = meter; ≈ = forecast with 10–90 % span.',
+  'sub.span': '{low}–{high} (10–90 %)',
+  'info.yield.house': 'The house’s own daily forecast, span 10–90 %.',
+  'sub.houseForecast': 'the house’s forecast',
 };
