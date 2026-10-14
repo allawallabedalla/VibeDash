@@ -15,5 +15,5 @@
     "allowJs": true,
     "checkJs": true
   },
-  "include": ["src", "tests", "*.ts", "*.js"]
+  "include": ["src", "server", "tests", "*.ts", "*.js"]
 }

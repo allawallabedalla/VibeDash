@@ -1,4 +1,5 @@
 dist/
+dist-server/
 pnpm-lock.yaml
 tests/visual/**/*-snapshots/
 test-results/

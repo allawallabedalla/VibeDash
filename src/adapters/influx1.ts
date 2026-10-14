@@ -129,13 +129,16 @@ export function parseList(res: InfluxResponse, column?: string): string[] {
   return out;
 }
 
-type FetchLike = (
+export type FetchLike = (
   url: string,
-  init?: { headers?: Record<string, string> },
+  init?: { headers?: Record<string, string>; signal?: AbortSignal },
 ) => Promise<{ ok: boolean; status: number; json(): Promise<unknown>; text(): Promise<string> }>;
 
-/** Minimal client: GET /query with basic auth; credentials never go into the URL. */
-export function influxClient(config: InfluxConfig, fetchFn: FetchLike) {
+/**
+ * Minimal client: GET /query with basic auth; credentials never go into the
+ * URL. Every request is aborted after `timeoutMs` (default 10 s).
+ */
+export function influxClient(config: InfluxConfig, fetchFn: FetchLike, timeoutMs = 10_000) {
   async function query(q: string): Promise<InfluxResponse> {
     const params = new URLSearchParams({ db: config.database, q, epoch: 'ms' });
     const headers: Record<string, string> = { Accept: 'application/json' };
@@ -143,7 +146,10 @@ export function influxClient(config: InfluxConfig, fetchFn: FetchLike) {
       const token = btoa(`${config.username}:${config.password ?? ''}`);
       headers.Authorization = `Basic ${token}`;
     }
-    const res = await fetchFn(`${config.url.replace(/\/$/, '')}/query?${params}`, { headers });
+    const res = await fetchFn(`${config.url.replace(/\/$/, '')}/query?${params}`, {
+      headers,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
     if (!res.ok) throw new InfluxError(`HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
     return (await res.json()) as InfluxResponse;
   }

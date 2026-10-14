@@ -9,4 +9,6 @@ blob-report/
 *.log
 .DS_Store
 screenshots/
-local/
+local/*
+!local/mapping.example.json
+dist-server/

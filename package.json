@@ -11,14 +11,15 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && vite build --ssr server/main.ts --outDir dist-server --emptyOutDir",
     "preview": "vite preview --port 4173 --strictPort",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "test": "vitest run",
     "test:visual": "playwright test",
-    "test:visual:update": "playwright test --update-snapshots"
+    "test:visual:update": "playwright test --update-snapshots",
+    "start": "node dist-server/main.js"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
