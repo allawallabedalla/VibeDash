@@ -26,13 +26,13 @@ devices need a manual step by the person. Say so honestly.
 
 ### 1.1 Pick the path (offer in this order)
 
-1. **Home Assistant present?** → use the Home Assistant adapter (planned as M3b, right
-   after Influx). HA already solved discovery for thousands of devices.
+1. **Home Assistant present?** → use the Home Assistant adapter (available, section 2).
+   HA already solved discovery for thousands of devices.
 2. **evcc present (energy/wallbox)?** → evcc as source (planned as M6).
-3. **InfluxDB already collecting?** → Influx adapter (available now, section 2).
+3. **InfluxDB already collecting?** → Influx adapter (available, section 2).
 4. **None of these?** → agent-led onboarding (1.2), together with the person.
 
-Until the HA and evcc adapters exist, tell the person which path is available today.
+Until the evcc adapter exists, tell the person which paths are available today.
 
 ### 1.2 Agent-led onboarding, step by step with the person
 
@@ -68,7 +68,19 @@ Until the HA and evcc adapters exist, tell the person which path is available to
 - Device data found (IPs, serial numbers, names) stays **local** – never in the repo,
   issues, logs or screenshots.
 
-## 2. Inventory of a data source (InfluxDB 1.x)
+## 2. Inventory of a data source
+
+### Home Assistant
+
+1. `.env`: `HA_URL` and `HA_TOKEN` (long-lived token of a dedicated **non-admin** user).
+2. `pnpm build && pnpm inventory` → a read-only **draft** from `/api/states`, based on
+   `device_class`/`state_class`. Go through it with the person, entry by entry.
+3. Rename to the standard series names, set `stepMs` (and `maxHoldMs` for sensors that
+   report rarely), save as `local/mapping.json` (git-ignored).
+4. HA stores state **changes**: unchanged values are held, `unavailable` is a gap. The
+   recorder keeps 10 days by default – tell the person if longer history is needed.
+
+### InfluxDB 1.x
 
 With the InfluxDB 1.x adapter (`src/adapters/influx1.ts`):
 

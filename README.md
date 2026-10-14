@@ -6,13 +6,14 @@ from a fixed set of design building blocks, on top of checked data.
 VibeDash is not one big app. It ships three things:
 
 1. a **design language** (building blocks: tiles, sparklines, progress bars, …),
-2. **data adapters** (demo data and InfluxDB 1.x now; Home Assistant next, then evcc),
+2. **data adapters** (demo data, InfluxDB 1.x and Home Assistant now; evcc next),
 3. a **build guide for the agent** that assembles one dashboard per home.
 
 Everything runs locally. No cloud, no CDN.
 
 > Status: early (milestones M0–M2, M3 in progress). Three pages (Overview, Now, Forecasts)
-> and a gallery of all building blocks; synthetic demo data or InfluxDB 1.x via the server. Agent build guide incl. onboarding: [AGENT.md](AGENT.md) (German source: [INBETRIEBNAHME.md](INBETRIEBNAHME.md)). Project background and roadmap (German): [ANLEITUNG.md](ANLEITUNG.md).
+> and a gallery of all building blocks; synthetic demo data, or InfluxDB 1.x and/or Home
+> Assistant via the server. Agent build guide incl. onboarding: [AGENT.md](AGENT.md) (German source: [INBETRIEBNAHME.md](INBETRIEBNAHME.md)). Project background and roadmap (German): [ANLEITUNG.md](ANLEITUNG.md).
 
 ## Quick start
 
@@ -23,7 +24,7 @@ pnpm install
 pnpm dev          # http://localhost:5173 (#/, #/now, #/forecasts, #/gallery; ?lang=de|en, ?theme=light|dark)
 ```
 
-## Connect InfluxDB 1.x
+## Connect your data (InfluxDB 1.x and/or Home Assistant)
 
 The browser only talks to the VibeDash server. The server runs **only the named series**
 listed in `local/mapping.json` – there is no way to send a query from the browser.
@@ -35,10 +36,16 @@ listed in `local/mapping.json` – there is no way to send a query from the brow
    GRANT READ ON "your_db" TO vibedash_read
    ```
 
-2. Copy `.env.example` to `.env` and fill in URL, database, user and password.
+   For **Home Assistant**, create a dedicated **non-admin** user and a long-lived access
+   token for it (profile → Security). Note: the HA recorder keeps 10 days by default
+   (`purge_keep_days`); older days then show as gaps, and forecasts need ≥ 7 days.
+
+2. Copy `.env.example` to `.env` and fill in what you use (`INFLUX_*`, `HA_URL`/`HA_TOKEN`).
    `.env` is git-ignored. Credentials never go into the URL.
-3. Copy `local/mapping.example.json` to `local/mapping.json` (git-ignored) and map your
-   measurements/fields/tags to the series names. The file is checked at start; any typo or
+3. Create `local/mapping.json` (git-ignored) from `local/mapping.example.json` (Influx) or
+   `local/mapping.example.homeassistant.json` (HA); sources can be mixed per series.
+   `pnpm build && pnpm inventory` prints a read-only **draft** from Home Assistant and lists
+   Influx measurements – check every entry before saving it. The file is checked at start; any typo or
    unknown key stops the server with a clear message.
 4. Build and start:
 
@@ -48,6 +55,10 @@ listed in `local/mapping.json` – there is no way to send a query from the brow
    ```
 
 Without `local/mapping.json` the server runs in demo mode.
+
+Home Assistant stores state **changes**: an unchanged value is held (it is still valid),
+`unavailable`/`unknown` become visible gaps, and a value is held at most 24 h
+(`maxHoldMs`) so a device that goes silent does not look alive.
 
 API (read-only, `GET` only): `/api/health`, `/api/entities`,
 `/api/series/<name>?range=1h|24h|7d|31d`. Every Influx request times out after 10 s; the
@@ -62,6 +73,7 @@ page then shows "keine Daten" with the reason and a retry button, never endless 
 | `pnpm test`        | Unit tests (Vitest)                                         |
 | `pnpm build`       | Static build into `dist/`, server into `dist-server/`       |
 | `pnpm start`       | Run the server (serves `dist/` and the API)                 |
+| `pnpm inventory`   | Read-only draft mapping from Home Assistant / Influx        |
 | `pnpm budget`      | Fail if the first page loads more than 200 KB JavaScript    |
 | `pnpm test:visual` | Screenshots Mac 1440×900 and iPhone 390×844, light and dark |
 
@@ -80,7 +92,7 @@ src/styles/      design tokens, light and dark
 src/app/         app shell, router, shared tile definitions, data questions
 src/pages/       Overview, Now, Forecasts
 src/gallery/     gallery page
-src/adapters/    InfluxDB 1.x adapter (query builder, parser, client)
+src/adapters/    InfluxDB 1.x and Home Assistant adapters (pure, tested with fixtures)
 server/          read-only Node server: config, mapping schema, API, static files
 local/           your mapping.json (git-ignored); mapping.example.json is made up
 tests/unit/      Vitest
