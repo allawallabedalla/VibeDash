@@ -51,6 +51,24 @@ describe('config', () => {
     expect(errors.join()).not.toMatch(/secret/);
   });
 
+  it('marks entries unconfirmed unless the person set confirmed: true', () => {
+    const r = validateMapping(example);
+    if (!r.ok) throw new Error('invalid');
+    expect(r.mapping.series.pv_power!.entity.confirmed).toBe(false);
+    const ok = validateMapping({
+      ...example,
+      series: { pv_power: { ...example.series.pv_power, confirmed: true } },
+    });
+    if (!ok.ok) throw new Error('invalid');
+    expect(ok.mapping.series.pv_power!.entity.confirmed).toBe(true);
+    expect(
+      validateMapping({
+        ...example,
+        series: { pv_power: { ...example.series.pv_power, confirmed: 'yes' } },
+      }).ok,
+    ).toBe(false);
+  });
+
   it('defaults to port 8080 and local/mapping.json', () => {
     const { config, errors } = readConfig({});
     expect(errors).toEqual([]);

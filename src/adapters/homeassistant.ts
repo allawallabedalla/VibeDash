@@ -9,7 +9,7 @@
  * - The entity state is what the device reports (feedback), not a command.
  * - Times are parsed from ISO strings into UTC milliseconds.
  */
-import type { EntityKind, Sample, Series } from '../model/types';
+import type { Entity, EntityKind, Sample, Series } from '../model/types';
 import type { FetchLike } from './influx1';
 
 export interface HaConfig {
@@ -20,7 +20,7 @@ export interface HaConfig {
 }
 
 export interface HaMapping {
-  entity: { id: string; name: string; kind: EntityKind; unit: string; room?: string };
+  entity: Entity;
   /** Home Assistant entity id, e.g. sensor.example_power */
   haEntityId: string;
   scale?: number;

@@ -56,6 +56,10 @@ listed in `local/mapping.json` – there is no way to send a query from the brow
 
 Without `local/mapping.json` the server runs in demo mode.
 
+New values are shown as **"being checked"** until you compared them with something you trust
+(vendor app, meter) and set `"confirmed": true` for that series in `local/mapping.json`.
+A sensor that stopped reporting shows **"data missing since …"** instead of an old number.
+
 Home Assistant stores state **changes**: an unchanged value is held (it is still valid),
 `unavailable`/`unknown` become visible gaps, and a value is held at most 24 h
 (`maxHoldMs`) so a device that goes silent does not look alive.

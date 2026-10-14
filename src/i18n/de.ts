@@ -146,6 +146,12 @@ export const de = {
   'state.loading': 'Lade Daten …',
   'state.noData': 'keine Daten',
   'state.stale': 'keine aktuellen Daten',
+  'state.missingSince': 'Daten fehlen seit {when}',
+  'state.checking': 'wird geprüft',
+  'q.unconfirmedOne':
+    'Ein Wert ist noch nicht bestätigt. Stimmt er mit der Hersteller-App überein? (In local/mapping.json „confirmed: true“ setzen.)',
+  'q.unconfirmed':
+    '{n} Werte sind noch nicht bestätigt. Stimmen sie mit der Hersteller-App überein? (In local/mapping.json „confirmed: true“ setzen.)',
   'state.open': 'noch offen',
   'state.retry': 'Erneut versuchen',
   'state.errorTitle': 'Keine Daten',

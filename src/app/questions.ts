@@ -63,5 +63,13 @@ export function questions(data: DemoData, source: 'demo' | 'live' = 'demo'): Que
       });
     }
   }
+  const unconfirmed = data.entities.filter((e) => e.confirmed === false).length;
+  if (source === 'live' && unconfirmed > 0) {
+    out.push({
+      id: 'unconfirmed',
+      area: 'energy',
+      text: unconfirmed === 1 ? t('q.unconfirmedOne') : t('q.unconfirmed', { n: unconfirmed }),
+    });
+  }
   return out;
 }

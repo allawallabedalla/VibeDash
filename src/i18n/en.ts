@@ -146,6 +146,12 @@ export const en: Record<MessageKey, string> = {
   'state.loading': 'Loading data …',
   'state.noData': 'no data',
   'state.stale': 'no current data',
+  'state.missingSince': 'data missing since {when}',
+  'state.checking': 'being checked',
+  'q.unconfirmedOne':
+    'One value is not confirmed yet. Does it match the vendor app? (Set “confirmed: true” in local/mapping.json.)',
+  'q.unconfirmed':
+    '{n} values are not confirmed yet. Do they match the vendor app? (Set “confirmed: true” in local/mapping.json.)',
   'state.open': 'still open',
   'state.retry': 'Try again',
   'state.errorTitle': 'No data',

@@ -36,18 +36,33 @@ export interface DemoData {
   issues: DemoIssue[];
 }
 
+/** Demo entities are synthetic and count as confirmed. */
 export const ENTITIES: Entity[] = [
-  { id: 'pv_power', name: 'PV', kind: 'power', unit: 'W' },
-  { id: 'load_power', name: 'House', kind: 'power', unit: 'W' },
-  { id: 'battery_power', name: 'Battery', kind: 'power', unit: 'W' },
-  { id: 'battery_soc', name: 'Battery', kind: 'state_of_charge', unit: '%' },
-  { id: 'grid_power', name: 'Grid', kind: 'power', unit: 'W' },
-  { id: 'pv_energy', name: 'PV', kind: 'energy_counter', unit: 'kWh' },
-  { id: 'load_energy', name: 'House', kind: 'energy_counter', unit: 'kWh' },
-  { id: 'feed_in_energy', name: 'Feed-in', kind: 'energy_counter', unit: 'kWh' },
-  { id: 'import_energy', name: 'Import', kind: 'energy_counter', unit: 'kWh' },
-  { id: 'living_temp', name: 'Living room', kind: 'temperature', room: 'living', unit: '°C' },
-  { id: 'living_humidity', name: 'Living room', kind: 'humidity', room: 'living', unit: '%' },
+  { id: 'pv_power', name: 'PV', kind: 'power', unit: 'W', confirmed: true },
+  { id: 'load_power', name: 'House', kind: 'power', unit: 'W', confirmed: true },
+  { id: 'battery_power', name: 'Battery', kind: 'power', unit: 'W', confirmed: true },
+  { id: 'battery_soc', name: 'Battery', kind: 'state_of_charge', unit: '%', confirmed: true },
+  { id: 'grid_power', name: 'Grid', kind: 'power', unit: 'W', confirmed: true },
+  { id: 'pv_energy', name: 'PV', kind: 'energy_counter', unit: 'kWh', confirmed: true },
+  { id: 'load_energy', name: 'House', kind: 'energy_counter', unit: 'kWh', confirmed: true },
+  { id: 'feed_in_energy', name: 'Feed-in', kind: 'energy_counter', unit: 'kWh', confirmed: true },
+  { id: 'import_energy', name: 'Import', kind: 'energy_counter', unit: 'kWh', confirmed: true },
+  {
+    id: 'living_temp',
+    name: 'Living room',
+    kind: 'temperature',
+    room: 'living',
+    unit: '°C',
+    confirmed: true,
+  },
+  {
+    id: 'living_humidity',
+    name: 'Living room',
+    kind: 'humidity',
+    room: 'living',
+    unit: '%',
+    confirmed: true,
+  },
 ];
 
 export const PV_PEAK_W = 6_000;

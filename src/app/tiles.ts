@@ -11,7 +11,8 @@ import {
   latest,
   type DemoData,
 } from '../demo';
-import { num, t } from '../i18n/index.svelte';
+import { i18n, num, t, time } from '../i18n/index.svelte';
+import { localDateKey } from '../model/time';
 
 const kw = (w: number | null) => (w === null ? null : w / 1000);
 const signed = (v: number, digits: number) =>
@@ -47,9 +48,34 @@ function withoutValue(
   };
 }
 
+/** "Data missing since 13:20" (or with the date if it was another day). */
+function missingSince(data: DemoData, id: string): string | null {
+  const last = data.series[id]?.samples.at(-1);
+  if (!last) return null;
+  const sameDay = localDateKey(last.t, data.timeZone) === localDateKey(data.now, data.timeZone);
+  const when = sameDay
+    ? time(last.t, data.timeZone)
+    : new Intl.DateTimeFormat(i18n.locale === 'de' ? 'de-DE' : 'en-GB', {
+        timeZone: data.timeZone,
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(last.t);
+  return t('state.missingSince', { when });
+}
+
+/** Marks values the person has not confirmed yet (RISIKEN.md: "being checked"). */
+function checking(data: DemoData, id: string, tile: TileProps): TileProps {
+  const entity = data.entities.find((e) => e.id === id);
+  return entity && entity.confirmed === false ? { ...tile, pending: t('state.checking') } : tile;
+}
+
 function staleOr(data: DemoData, id: string, tile: TileProps): TileProps {
-  if (freshValue(data, id) !== null) return tile;
-  return withoutValue(tile, data.series[id]?.samples.length ? 'state.stale' : 'state.noData');
+  if (freshValue(data, id) !== null) return checking(data, id, tile);
+  const since = missingSince(data, id);
+  if (since) return { ...withoutValue(tile, 'state.stale'), sub: since };
+  return withoutValue(tile, 'state.noData');
 }
 
 export function sunTile(data: DemoData): TileProps {
@@ -164,7 +190,7 @@ export function yieldTodayTile(data: DemoData): TileProps {
       base,
       data.series.pv_energy?.samples.length ? 'state.open' : 'state.noData',
     );
-  return {
+  return checking(data, 'pv_energy', {
     label: t('tile.yield'),
     icon: 'forecast',
     color: 'var(--sun)',
@@ -184,7 +210,7 @@ export function yieldTodayTile(data: DemoData): TileProps {
       what: t('info.yield.what', { soFar: soFar === undefined ? '–' : num(soFar) }),
       source: t('info.yield.source', { n: fc.n }),
     },
-  };
+  });
 }
 
 export function tomorrowTile(data: DemoData): TileProps {

@@ -16,7 +16,15 @@ const ENTITIES = [
   ['import_energy', 'Import', 'energy_counter', 'kWh'],
   ['living_temp', 'Living room', 'temperature', '°C'],
   ['living_humidity', 'Living room', 'humidity', '%'],
-].map(([id, name, kind, unit]) => ({ id, name, kind, unit, stepMs: 300_000 }));
+].map(([id, name, kind, unit]) => ({
+  id,
+  name,
+  kind,
+  unit,
+  stepMs: 300_000,
+  // One value the person has not confirmed yet (RISIKEN.md).
+  confirmed: id !== 'load_power',
+}));
 
 const json = (body: unknown, status = 200) => ({
   status,
@@ -48,7 +56,9 @@ function synthetic(id: string) {
   const now = Date.now();
   const samples: [number, number][] = [];
   let counter = 1000;
-  for (let t = now - 2 * 86_400_000; t <= now; t += 300_000) {
+  // The room sensor went silent three hours ago.
+  const end = id === 'living_temp' ? now - 3 * 3_600_000 : now;
+  for (let t = now - 2 * 86_400_000; t <= end; t += 300_000) {
     counter += 0.1;
     const v = id.endsWith('_energy')
       ? counter
@@ -100,6 +110,11 @@ test('one series times out: page renders, tile says "keine Daten", notice names 
   // Not enough history for forecasts: "noch offen", never a made-up number.
   await expect(page.locator('.tile', { hasText: 'Morgen' })).toContainText('noch offen');
   await expect(page.locator('.ts')).toContainText('keine Daten');
+  await expect(page.locator('.tile', { hasText: 'Verbrauch' }).first()).toContainText(
+    'wird geprüft',
+  );
+  await expect(page.locator('.tile', { hasText: 'Wohnzimmer' })).toContainText('Daten fehlen seit');
+  await expect(page.getByText('Ein Wert ist noch nicht bestätigt')).toBeVisible();
   await page.screenshot({
     path: `screenshots/state-partial-${info.project.name}.png`,
     fullPage: true,

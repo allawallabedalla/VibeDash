@@ -33,6 +33,8 @@
     status?: 'look' | 'act';
     statusLabel?: string;
     info?: { what: string; source: string };
+    /** Short marker, e.g. "being checked" until the person confirmed the value. */
+    pending?: string;
   }
 </script>
 
@@ -57,6 +59,7 @@
     status,
     statusLabel,
     info,
+    pending,
   }: TileProps = $props();
 
   const uid = $props.id();
@@ -88,6 +91,7 @@
             >{/if}
         </div>
         {#if sub}<div class="sub">{sub}</div>{/if}
+        {#if pending}<div class="pending">{pending}</div>{/if}
       </div>
       {#if graphic?.kind === 'ring'}
         <Ring value={graphic.value} color={graphic.color ?? color} />
@@ -204,6 +208,15 @@
   }
   .graphic {
     margin-top: auto;
+  }
+  .pending {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 1px 8px;
+    border-radius: 9px;
+    font-size: var(--small);
+    color: var(--muted);
+    box-shadow: inset 0 0 0 1px var(--line);
   }
   .details {
     color: var(--text);

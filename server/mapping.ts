@@ -24,7 +24,7 @@ const KINDS: EntityKind[] = [
   'humidity',
 ];
 const NAME = /^[a-z][a-z0-9_]{0,63}$/;
-const COMMON_KEYS = ['source', 'name', 'kind', 'unit', 'room', 'scale', 'stepMs'];
+const COMMON_KEYS = ['source', 'name', 'kind', 'unit', 'room', 'scale', 'stepMs', 'confirmed'];
 const INFLUX_KEYS = [...COMMON_KEYS, 'measurement', 'field', 'tags'];
 const HA_KEYS = [...COMMON_KEYS, 'entityId', 'maxHoldMs'];
 
@@ -84,6 +84,9 @@ export function validateMapping(
     }
     if (!isText(entry.unit, 20)) errors.push(`${at}.unit: required text`);
     if (entry.room !== undefined && !isText(entry.room)) errors.push(`${at}.room: text`);
+    if (entry.confirmed !== undefined && typeof entry.confirmed !== 'boolean') {
+      errors.push(`${at}.confirmed: true or false`);
+    }
     if (
       entry.scale !== undefined &&
       (typeof entry.scale !== 'number' || !Number.isFinite(entry.scale) || entry.scale === 0)
@@ -105,6 +108,8 @@ export function validateMapping(
       kind: entry.kind as EntityKind,
       unit: entry.unit as string,
       ...(entry.room ? { room: entry.room as string } : {}),
+      // Unconfirmed until the person checked it against a source they trust.
+      confirmed: entry.confirmed === true,
     };
     const common = {
       entity,

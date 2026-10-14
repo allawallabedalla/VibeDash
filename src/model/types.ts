@@ -12,6 +12,11 @@ export interface Entity {
   kind: EntityKind;
   room?: string;
   unit: string;
+  /**
+   * false until the person has checked the value against something they know
+   * (vendor app, meter). Shown as "being checked" (see RISIKEN.md).
+   */
+  confirmed?: boolean;
 }
 
 /** One measurement. Order within a series is arrival order, never re-sorted by value. */
