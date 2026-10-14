@@ -7,6 +7,7 @@ import {
   findGaps,
   meanAbsPctError,
   quantile,
+  thinBefore,
   toGrid,
 } from '../../src/model/series';
 
@@ -147,5 +148,40 @@ describe('dailyFromCounter with read errors and limits', () => {
       { t: 25, v: 310 },
     ];
     expect(dailyFromCounter(samples, key, 200)).toEqual([{ day: 'd3', value: 10 }]);
+  });
+});
+
+describe('thinBefore', () => {
+  const at = (sec: number[], v: (i: number) => number) =>
+    sec.map((t, i) => ({ t: t * 1000, v: v(i) }));
+
+  it('averages power-like readings per slot before the cut, keeps the rest', () => {
+    const s = at([0, 10, 20, 60, 70, 120, 130], (i) => i * 10);
+    expect(thinBefore(s, 120_000, 60_000, 'mean')).toEqual([
+      { t: 0, v: 10 },
+      { t: 60_000, v: 35 },
+      { t: 120_000, v: 50 },
+      { t: 130_000, v: 60 },
+    ]);
+  });
+
+  it('keeps the last meter reading per slot, so resets and daily sums stay', () => {
+    const s = at([0, 10, 60, 70, 80], (i) => [5, 6, 7, 1, 2][i]!);
+    const out = thinBefore(s, 1_000_000, 60_000, 'last');
+    expect(out).toEqual([
+      { t: 0, v: 6 },
+      { t: 60_000, v: 2 },
+    ]);
+    expect(counterResets(out)).toHaveLength(1);
+  });
+
+  it('leaves empty slots empty, so gaps stay visible', () => {
+    const s = at([0, 600], () => 1);
+    expect(thinBefore(s, 1_000_000, 60_000, 'mean').map((x) => x.t)).toEqual([0, 600_000]);
+  });
+
+  it('changes nothing when every sample is after the cut', () => {
+    const s = at([100, 110], () => 3);
+    expect(thinBefore(s, 50_000, 60_000, 'mean')).toEqual(s);
   });
 });

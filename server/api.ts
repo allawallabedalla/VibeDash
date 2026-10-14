@@ -12,6 +12,7 @@ import {
   type WeatherDay,
 } from '../src/adapters/openmeteo';
 import type { ResolvedLocation } from './location';
+import { thinBefore } from '../src/model/series';
 import type { Series } from '../src/model/types';
 import { sourcesOf, type Mapping, type SeriesMapping } from './mapping';
 
@@ -22,6 +23,15 @@ export const RANGES = {
   '31d': 31 * 86_400_000,
 } as const;
 export type RangeName = keyof typeof RANGES;
+
+/**
+ * Long ranges are thinned out before they go over the wire: everything older
+ * than FULL_MS keeps one value per THIN_MS slot. FULL_MS is a bit more than the
+ * two days the UI checks for gaps and resets, so those checks see every sample.
+ */
+export const FULL_MS = 50 * 3_600_000;
+export const THIN_MS = 5 * 60_000;
+const ADDS_UP = new Set(['energy_counter', 'capacity']);
 
 export interface ApiDeps {
   mode: 'live' | 'demo';
@@ -216,13 +226,18 @@ export async function handleApi(
     const from = to - RANGES[range as RangeName];
     try {
       const s = await deps.series(m, from, to);
+      const before = Math.floor((to - FULL_MS) / THIN_MS) * THIN_MS;
+      const samples =
+        m.stepMs < THIN_MS && before > from
+          ? thinBefore(s.samples, before, THIN_MS, ADDS_UP.has(m.entity.kind) ? 'last' : 'mean')
+          : s.samples;
       return json(200, {
         name,
         entity: m.entity,
         stepMs: m.stepMs,
         from,
         to,
-        samples: s.samples.map((x) => [x.t, x.v]),
+        samples: samples.map((x) => [x.t, x.v]),
       });
     } catch (err) {
       const e = err as Error;

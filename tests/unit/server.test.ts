@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { FetchLike } from '../../src/adapters/influx1';
 import { createBackends } from '../../server/backends';
-import { handleApi, type ApiDeps } from '../../server/api';
+import { FULL_MS, handleApi, THIN_MS, type ApiDeps } from '../../server/api';
+import { acceptsGzip, encodeBody } from '../../server/compress';
 import { readConfig } from '../../server/config';
 import { validateMapping } from '../../server/mapping';
 import { staticFile } from '../../server/static';
@@ -117,6 +118,44 @@ describe('API', () => {
     const body = r.body as { samples: number[][]; entity: { id: string } };
     expect(body.entity.id).toBe('pv_power');
     expect(body.samples).toHaveLength(2);
+  });
+
+  it('thins out long ranges before the last two days, keeps recent samples', async () => {
+    const now = 40 * 86_400_000;
+    const every =
+      (step: number) =>
+      async (m: { entity: { id: string }; stepMs: number }, from: number, to: number) => {
+        const samples = [];
+        for (let t = from; t < to; t += step) samples.push({ t, v: 1 });
+        return { entityId: m.entity.id, source: 'test', stepMs: m.stepMs, samples };
+      };
+    const d = deps({ now: () => now, series: every(60_000) });
+    const long = (await get('/api/series/pv_power?range=31d', d)).body as { samples: number[][] };
+    const cut = now - FULL_MS;
+    const old = long.samples.filter(([t]) => t! < cut - THIN_MS);
+    const recent = long.samples.filter(([t]) => t! >= cut);
+    expect(old.length).toBeLessThan(31 * 288);
+    expect(old.every(([t]) => t! % THIN_MS === 0)).toBe(true);
+    expect(recent.length).toBeGreaterThanOrEqual(FULL_MS / 60_000 - 1);
+    const day = (await get('/api/series/pv_power?range=24h', d)).body as { samples: number[][] };
+    expect(day.samples).toHaveLength(24 * 60);
+    // already coarse series (5-min meters) are passed through untouched
+    const meter = (
+      await get('/api/series/pv_energy?range=31d', deps({ now: () => now, series: every(300_000) }))
+    ).body as { samples: number[][] };
+    expect(meter.samples).toHaveLength(31 * 288);
+  });
+
+  it('gzips larger answers only when the client accepts it', async () => {
+    expect(acceptsGzip('gzip, deflate, br')).toBe(true);
+    expect(acceptsGzip('br;q=1, gzip;q=0')).toBe(false);
+    expect(acceptsGzip(undefined)).toBe(false);
+    const big = JSON.stringify({ samples: Array.from({ length: 2000 }, (_, i) => [i, 1]) });
+    const z = await encodeBody(big, 'gzip');
+    expect(z.headers['Content-Encoding']).toBe('gzip');
+    expect((z.body as Buffer).length).toBeLessThan(big.length / 3);
+    expect((await encodeBody(big, undefined)).body).toBe(big);
+    expect((await encodeBody('{}', 'gzip')).headers['Content-Encoding']).toBeUndefined();
   });
 
   it('never runs anything that is not a mapped name', async () => {

@@ -8,6 +8,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { handleApi, type ApiDeps } from './api';
 import { createBackends } from './backends';
+import { encodeBody } from './compress';
 import { evccClient } from '../src/adapters/evcc';
 import { forecastBridge } from './forecast-bridge';
 import { planBridge } from './plan-bridge';
@@ -159,12 +160,14 @@ const server = createServer(async (req, res) => {
         origin: req.headers.origin,
         host: req.headers.host,
       });
+      const out = await encodeBody(JSON.stringify(r.body), req.headers['accept-encoding']);
       res.writeHead(r.status, {
         ...SECURITY_HEADERS,
+        ...out.headers,
         'Content-Type': 'application/json; charset=utf-8',
         'Cache-Control': 'no-store',
       });
-      res.end(JSON.stringify(r.body));
+      res.end(out.body);
       return;
     }
     if (req.method !== 'GET' && req.method !== 'HEAD') {
