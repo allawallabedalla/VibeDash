@@ -32,6 +32,7 @@
     typicalProfile,
   } from '../demo';
   import { i18n, num, t, time } from '../i18n/index.svelte';
+  import { localMidnight } from '../model/time';
 
   const demo = sharedDemo;
   const tz = demo.timeZone;
@@ -135,9 +136,12 @@
   <h2>{t('gallery.sources')}</h2>
   <div class="cards">
     {#each arcMoments as a (a.at)}
-      {@const title = t(a.at < demo.now - 14 * 3_600_000 ? 'sources.yesterday' : 'sources.today', {
-        time: time(a.at, tz),
-      })}
+      {@const title = t(
+        a.at < localMidnight(demo.now, tz) ? 'sources.yesterday' : 'sources.today',
+        {
+          time: time(a.at, tz),
+        },
+      )}
       <Card {title} icon="home" color="var(--home)">
         {#if a.src}
           <SourceArc

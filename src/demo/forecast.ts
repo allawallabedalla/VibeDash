@@ -9,12 +9,11 @@
  */
 import { estimate, quantile, toGrid, valueAt } from '../model/series';
 import type { Estimate, Forecast } from '../model/types';
-import { localHour } from '../model/time';
+import { addDays, dayStart, localDateKey, localHour, localMidnight } from '../model/time';
 import { CLEAR_SKY_DAY_KWH, clearSkyPower, type DemoData } from './generate';
 import { completeDays } from './views';
 
 const HOUR = 3_600_000;
-const DAY = 24 * HOUR;
 /** Days of history the model looks at. */
 const WINDOW = 7;
 /** A day counts as "correct" if the actual yield is within ±20 % of the forecast. */
@@ -42,21 +41,21 @@ export interface DayCheck {
 
 /** Local midnight (UTC ms) of each complete day, from the first sample onward. */
 function dayStarts(data: DemoData): { day: string; start: number }[] {
-  // Demo period has no DST switch: local midnight = 22:00 UTC the day before.
-  const days = completeDays(data, 'pv_energy');
-  const lastStart = data.now - 14 * HOUR; // today 00:00 local
-  return days.map((d, i) => ({ day: d.day, start: lastStart - (days.length - i) * DAY }));
+  return completeDays(data, 'pv_energy').map((d) => ({
+    day: d.day,
+    start: dayStart(d.day, data.timeZone),
+  }));
 }
 
 /** Day-ahead forecasts for every complete day with enough history, plus today and tomorrow. */
 export function dayAheadForecasts(data: DemoData): DayForecast[] {
   const days = completeDays(data, 'pv_energy');
   const starts = dayStarts(data);
-  const todayStart = data.now - 14 * HOUR;
+  const todayStart = localMidnight(data.now, data.timeZone);
   const targets = [
     ...starts,
     { day: 'today', start: todayStart },
-    { day: 'tomorrow', start: todayStart + DAY },
+    { day: 'tomorrow', start: addDays(todayStart, 1, data.timeZone) },
   ];
 
   const out: DayForecast[] = [];
@@ -66,7 +65,9 @@ export function dayAheadForecasts(data: DemoData): DayForecast[] {
     // only the timestamp is honest).
     const createdAt = Math.min(target.start - 4 * HOUR, data.now);
     // Only days that ended before createdAt.
-    const known = days.filter((_, i) => starts[i]!.start + DAY <= createdAt).slice(-WINDOW);
+    const known = days
+      .filter((_, i) => addDays(starts[i]!.start, 1, data.timeZone) <= createdAt)
+      .slice(-WINDOW);
     if (known.length < WINDOW) continue;
     const factors = known.map((d) => d.value / CLEAR_SKY_DAY_KWH);
     const f = {
@@ -93,7 +94,8 @@ export function dayAheadForecasts(data: DemoData): DayForecast[] {
 /** Power forecast curve (W) for one day on a fixed step. */
 export function powerCurve(fc: DayForecast, timeZone: string, stepMs = 15 * 60_000): Forecast[] {
   const out: Forecast[] = [];
-  for (let at = fc.start; at < fc.start + DAY; at += stepMs) {
+  const end = addDays(fc.start, 1, timeZone);
+  for (let at = fc.start; at < end; at += stepMs) {
     const clear = clearSkyPower(localHour(at, timeZone));
     out.push({
       at,
@@ -134,16 +136,18 @@ export function checkForecasts(
 export function dayAheadLoad(data: DemoData): DailyForecast[] {
   const days = completeDays(data, 'load_energy');
   const starts = dayStarts(data);
-  const todayStart = data.now - 14 * HOUR;
+  const todayStart = localMidnight(data.now, data.timeZone);
   const targets = [
     ...starts,
     { day: 'today', start: todayStart },
-    { day: 'tomorrow', start: todayStart + DAY },
+    { day: 'tomorrow', start: addDays(todayStart, 1, data.timeZone) },
   ];
   const out: DailyForecast[] = [];
   for (const target of targets) {
     const createdAt = Math.min(target.start - 4 * HOUR, data.now);
-    const known = days.filter((_, i) => starts[i]!.start + DAY <= createdAt).slice(-WINDOW);
+    const known = days
+      .filter((_, i) => addDays(starts[i]!.start, 1, data.timeZone) <= createdAt)
+      .slice(-WINDOW);
     if (known.length < WINDOW) continue;
     out.push({
       day: target.day,
@@ -190,13 +194,13 @@ export interface OutlookDay {
  */
 export function outlook(data: DemoData, rand: () => number): OutlookDay[] {
   const range = errorRange(checkForecasts(data));
-  const todayStart = data.now - 14 * HOUR;
+  const todayStart = localMidnight(data.now, data.timeZone);
   return Array.from({ length: 7 }, (_, offset) => {
     const c = 0.2 + 0.8 * rand();
     const value = CLEAR_SKY_DAY_KWH * c;
     return {
       offset,
-      start: todayStart + offset * DAY,
+      start: addDays(todayStart, offset, data.timeZone),
       sky: c > 0.8 ? 'sun' : c > 0.55 ? 'cloudSun' : c > 0.35 ? 'cloud' : 'rain',
       tempLow: Math.round(11 + 4 * c + rand() * 2),
       tempHigh: Math.round(18 + 10 * c + rand() * 2),
@@ -248,12 +252,12 @@ export interface PvSeries {
  *   it has a forecast but no actual yet.
  */
 export function pvTimeSeries(data: DemoData, period: Period): PvSeries {
-  const todayStart = data.now - 14 * HOUR;
+  const todayStart = localMidnight(data.now, data.timeZone);
   const forecasts = dayAheadForecasts(data);
 
   if (period === 'day') {
     const step = 15 * 60_000;
-    const to = todayStart + DAY;
+    const to = addDays(todayStart, 1, data.timeZone);
     const x: number[] = [];
     for (let t = todayStart; t < to; t += step) x.push(t);
     const actualW = toGrid(data.series.pv_power!.samples, todayStart, to, step);
@@ -271,17 +275,17 @@ export function pvTimeSeries(data: DemoData, period: Period): PvSeries {
   }
 
   const count = period === 'week' ? 7 : 30;
-  const days = completeDays(data, 'pv_energy');
+  const byDay = new Map(completeDays(data, 'pv_energy').map((d) => [d.day, d.value]));
   const x: number[] = [];
   const actual: (number | null)[] = [];
   const forecast: (number | null)[] = [];
   const low: (number | null)[] = [];
   const high: (number | null)[] = [];
   for (let k = count - 1; k >= 0; k--) {
-    const start = todayStart - k * DAY;
+    const start = addDays(todayStart, -k, data.timeZone);
     x.push(start + 12 * HOUR);
-    // completeDays ends yesterday; index from the end.
-    actual.push(k === 0 ? null : (days[days.length - k]?.value ?? null));
+    // Today is still running: forecast yes, actual not yet.
+    actual.push(k === 0 ? null : (byDay.get(localDateKey(start, data.timeZone)) ?? null));
     const f = forecasts.find((d) => d.start === start);
     forecast.push(f ? f.energy.value : null);
     low.push(f ? f.energy.low : null);
