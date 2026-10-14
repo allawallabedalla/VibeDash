@@ -2,7 +2,8 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { influxClient } from '../../src/adapters/influx1';
+import type { FetchLike } from '../../src/adapters/influx1';
+import { createBackends } from '../../server/backends';
 import { handleApi, type ApiDeps } from '../../server/api';
 import { readConfig } from '../../server/config';
 import { validateMapping } from '../../server/mapping';
@@ -63,7 +64,7 @@ function deps(over: Partial<ApiDeps> = {}): ApiDeps {
   const r = validateMapping(example);
   if (!r.ok) throw new Error('example invalid');
   return {
-    mode: 'influx',
+    mode: 'live',
     mapping: r.mapping,
     series: async (m, from, to) => ({
       entityId: m.entity.id,
@@ -78,6 +79,15 @@ function deps(over: Partial<ApiDeps> = {}): ApiDeps {
     log: () => {},
     ...over,
   };
+}
+
+function liveSeries(fetchFn: FetchLike, timeoutMs = 10_000) {
+  const r = validateMapping(example);
+  if (!r.ok) throw new Error('example invalid');
+  const { config } = readConfig({ INFLUX_URL: 'http://influx.example', INFLUX_DB: 'x' });
+  const b = createBackends(r.mapping, { ...config, timeoutMs }, fetchFn);
+  if (!b.ok) throw new Error(b.errors.join());
+  return b.series;
 }
 
 const get = (path: string, d = deps()) => handleApi('GET', new URL(path, 'http://x'), d);
@@ -111,33 +121,26 @@ describe('API', () => {
   });
 
   it('answers 504 "timeout" when Influx does not respond within the timeout', async () => {
-    const client = influxClient(
-      { url: 'http://influx.example', database: 'x' },
-      (_url, init) =>
-        new Promise((_resolve, reject) => {
-          init?.signal?.addEventListener('abort', () => reject(init.signal!.reason));
-        }),
-      50,
-    );
-    const r = await get(
-      '/api/series/pv_power',
-      deps({ series: (m, f, t) => client.series(m, f, t) }),
-    );
+    const hang: FetchLike = (_url, init) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(init.signal!.reason));
+      });
+    const r = await get('/api/series/pv_power', deps({ series: liveSeries(hang, 50) }));
     expect(r.status).toBe(504);
     expect(r.body).toEqual({ error: 'timeout' });
   });
 
   it('answers 502 "upstream" on Influx errors without leaking details', async () => {
-    const client = influxClient({ url: 'http://influx.example', database: 'x' }, async () => ({
+    const fail: FetchLike = async () => ({
       ok: false,
       status: 401,
       json: async () => ({}),
       text: async () => 'authorization failed for user secretuser',
-    }));
+    });
     const logs: string[] = [];
     const r = await get(
       '/api/series/pv_power',
-      deps({ series: (m, f, t) => client.series(m, f, t), log: (l) => logs.push(l) }),
+      deps({ series: liveSeries(fail), log: (l) => logs.push(l) }),
     );
     expect(r.status).toBe(502);
     expect(JSON.stringify(r.body)).not.toContain('secretuser');
@@ -168,5 +171,12 @@ describe('static files', () => {
     expect(await staticFile(dir, '/%2e%2e/vd-secret.txt')).toBeNull();
     expect(await staticFile(dir, '/..%2fvd-secret.txt')).toBeNull();
     expect(await staticFile(dir, '/assets')).toBeNull();
+  });
+});
+
+describe('example mappings', () => {
+  it('the Home Assistant example is valid, too', () => {
+    const ha = JSON.parse(readFileSync('local/mapping.example.homeassistant.json', 'utf8'));
+    expect(validateMapping(ha).ok).toBe(true);
   });
 });

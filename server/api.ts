@@ -2,9 +2,10 @@
  * JSON API. Only GET, only named series, only whitelisted ranges. Errors are
  * short codes for the UI ("timeout", "upstream"), details stay in the server log.
  */
-import { InfluxError, type InfluxMapping } from '../src/adapters/influx1';
+import { HaError } from '../src/adapters/homeassistant';
+import { InfluxError } from '../src/adapters/influx1';
 import type { Series } from '../src/model/types';
-import type { Mapping } from './mapping';
+import { sourcesOf, type Mapping, type SeriesMapping } from './mapping';
 
 export const RANGES = {
   '1h': 3_600_000,
@@ -15,9 +16,9 @@ export const RANGES = {
 export type RangeName = keyof typeof RANGES;
 
 export interface ApiDeps {
-  mode: 'influx' | 'demo';
+  mode: 'live' | 'demo';
   mapping?: Mapping;
-  series?: (m: InfluxMapping, fromMs: number, toMs: number) => Promise<Series>;
+  series?: (m: SeriesMapping, fromMs: number, toMs: number) => Promise<Series>;
   now: () => number;
   log: (msg: string) => void;
 }
@@ -34,7 +35,12 @@ export async function handleApi(method: string, url: URL, deps: ApiDeps): Promis
   const path = url.pathname;
 
   if (path === '/api/health') {
-    return json(200, { ok: true, source: deps.mode, timeZone: deps.mapping?.timeZone ?? null });
+    return json(200, {
+      ok: true,
+      source: deps.mode,
+      backends: deps.mapping ? sourcesOf(deps.mapping) : [],
+      timeZone: deps.mapping?.timeZone ?? null,
+    });
   }
 
   if (deps.mode === 'demo' || !deps.mapping || !deps.series) {
@@ -75,7 +81,8 @@ export async function handleApi(method: string, url: URL, deps: ApiDeps): Promis
         deps.log(`series ${name}: timeout`);
         return json(504, { error: 'timeout' });
       }
-      deps.log(`series ${name}: ${e instanceof InfluxError ? e.message : e.name}`);
+      const known = e instanceof InfluxError || e instanceof HaError;
+      deps.log(`series ${name}: ${known ? e.message : e.name}`);
       return json(502, { error: 'upstream' });
     }
   }

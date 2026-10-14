@@ -2,6 +2,7 @@
  * Configuration from environment (.env). Influx access must be a read-only
  * user; the server never writes. Errors name the variable, never its value.
  */
+import type { HaConfig } from '../src/adapters/homeassistant';
 import type { InfluxConfig } from '../src/adapters/influx1';
 
 export interface ServerConfig {
@@ -11,6 +12,19 @@ export interface ServerConfig {
   distDir: string;
   timeoutMs: number;
   influx?: InfluxConfig;
+  homeassistant?: HaConfig;
+}
+
+function checkUrl(name: string, value: string, errors: string[]) {
+  try {
+    const u = new URL(value);
+    if (!['http:', 'https:'].includes(u.protocol)) errors.push(`${name}: must be http(s)`);
+    if (u.username || u.password) {
+      errors.push(`${name}: no credentials in the URL; use the separate variables`);
+    }
+  } catch {
+    errors.push(`${name}: not a valid URL`);
+  }
 }
 
 export function readConfig(env: Record<string, string | undefined>): {
@@ -23,14 +37,7 @@ export function readConfig(env: Record<string, string | undefined>): {
 
   let influx: InfluxConfig | undefined;
   if (env.INFLUX_URL) {
-    try {
-      const u = new URL(env.INFLUX_URL);
-      if (!['http:', 'https:'].includes(u.protocol)) errors.push('INFLUX_URL: must be http(s)');
-      if (u.username || u.password)
-        errors.push('INFLUX_URL: put credentials in INFLUX_USER/INFLUX_PASSWORD, not in the URL');
-    } catch {
-      errors.push('INFLUX_URL: not a valid URL');
-    }
+    checkUrl('INFLUX_URL', env.INFLUX_URL, errors);
     if (!env.INFLUX_DB) errors.push('INFLUX_DB: required when INFLUX_URL is set');
     influx = {
       url: env.INFLUX_URL,
@@ -42,6 +49,13 @@ export function readConfig(env: Record<string, string | undefined>): {
     };
   }
 
+  let homeassistant: HaConfig | undefined;
+  if (env.HA_URL) {
+    checkUrl('HA_URL', env.HA_URL, errors);
+    if (!env.HA_TOKEN) errors.push('HA_TOKEN: required when HA_URL is set');
+    homeassistant = { url: env.HA_URL, token: env.HA_TOKEN ?? '' };
+  }
+
   return {
     config: {
       host: env.HOST ?? '0.0.0.0',
@@ -50,6 +64,7 @@ export function readConfig(env: Record<string, string | undefined>): {
       distDir: env.DIST_DIR ?? 'dist',
       timeoutMs: 10_000,
       ...(influx ? { influx } : {}),
+      ...(homeassistant ? { homeassistant } : {}),
     },
     errors,
   };

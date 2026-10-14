@@ -11,4 +11,5 @@ blob-report/
 screenshots/
 local/*
 !local/mapping.example.json
+!local/mapping.example.homeassistant.json
 dist-server/

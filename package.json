@@ -11,7 +11,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --ssr server/main.ts --outDir dist-server --emptyOutDir",
+    "build": "vite build && vite build --ssr server/main.ts --outDir dist-server --emptyOutDir && vite build --ssr server/inventory.ts --outDir dist-server --emptyOutDir false",
     "preview": "vite preview --port 4173 --strictPort",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
@@ -20,7 +20,8 @@
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
     "start": "node dist-server/main.js",
-    "budget": "node scripts/check-budget.mjs"
+    "budget": "node scripts/check-budget.mjs",
+    "inventory": "node dist-server/inventory.js"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

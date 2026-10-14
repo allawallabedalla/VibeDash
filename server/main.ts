@@ -1,14 +1,15 @@
 /**
  * VibeDash server: serves the built app and a small read-only JSON API.
- * The browser only ever talks to this server; it never sees Influx or
- * credentials and cannot send queries (only names from local/mapping.json).
+ * The browser only ever talks to this server; it never sees InfluxDB, Home
+ * Assistant or credentials and cannot send queries (only names from
+ * local/mapping.json).
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { influxClient } from '../src/adapters/influx1';
 import { handleApi, type ApiDeps } from './api';
+import { createBackends } from './backends';
 import { readConfig } from './config';
-import { validateMapping } from './mapping';
+import { sourcesOf, validateMapping } from './mapping';
 import { staticFile } from './static';
 
 const log = (msg: string) => console.log(`[vibedash] ${msg}`);
@@ -28,17 +29,11 @@ if (existsSync(config.mappingPath)) {
   }
   const result = validateMapping(raw);
   if (!result.ok) fail(result.errors);
-  if (!config.influx) fail(['INFLUX_URL: required when a mapping file exists']);
-  const client = influxClient(config.influx, fetch, config.timeoutMs);
-  deps = {
-    mode: 'influx',
-    mapping: result.mapping,
-    series: (m, from, to) => client.series(m, from, to),
-    now: Date.now,
-    log,
-  };
+  const backends = createBackends(result.mapping, config, fetch);
+  if (!backends.ok) fail(backends.errors);
+  deps = { mode: 'live', mapping: result.mapping, series: backends.series, now: Date.now, log };
   log(
-    `influx mode: ${Object.keys(result.mapping.series).length} named series from ${config.mappingPath}`,
+    `live mode (${sourcesOf(result.mapping).join(' + ')}): ${Object.keys(result.mapping.series).length} named series from ${config.mappingPath}`,
   );
 } else {
   log(`no ${config.mappingPath}: demo mode (synthetic data in the browser)`);
