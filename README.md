@@ -6,7 +6,7 @@ from a fixed set of design building blocks, on top of checked data.
 VibeDash is not one big app. It ships three things:
 
 1. a **design language** (building blocks: tiles, sparklines, progress bars, …),
-2. **data adapters** (demo data, InfluxDB 1.x and Home Assistant now; evcc next),
+2. **data adapters** (demo data, InfluxDB 1.x, Home Assistant and evcc),
 3. a **build guide for the agent** that assembles one dashboard per home.
 
 Everything runs locally. No cloud, no CDN.
@@ -67,6 +67,18 @@ Home Assistant stores state **changes**: an unchanged value is held (it is still
 API (read-only, `GET` only): `/api/health`, `/api/entities`,
 `/api/series/<name>?range=1h|24h|7d|31d`. Every Influx request times out after 10 s; the
 page then shows "keine Daten" with the reason and a retry button, never endless loading.
+
+## evcc (charging)
+
+Set `EVCC_URL` in `.env`. A **Charging** tab appears with the wallbox right now and the
+charging history that **evcc stores itself** (`/api/sessions`: kWh and solar share per
+session) – no InfluxDB or Home Assistant needed for that. evcc's live values have no
+history; for power/meter history use InfluxDB or Home Assistant.
+
+**PV forecast and charge planning (M11/M12) need several weeks of hourly history**, so
+InfluxDB or Home Assistant is a prerequisite there. No Influx and no HA? Run an InfluxDB
+1.x container and switch on evcc's `influx:` output; VibeDash reads it with a read-only
+user. Home Assistant keeps only 10 days by default – raise `purge_keep_days`.
 
 ## Weather
 

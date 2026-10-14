@@ -38,7 +38,19 @@ devices need a manual step by the person. Say so honestly.
 3. **InfluxDB already collecting?** → Influx adapter (available, section 2).
 4. **None of these?** → agent-led onboarding (1.2), together with the person.
 
-Until the evcc adapter exists, tell the person which paths are available today.
+All three adapters exist (Home Assistant, evcc, InfluxDB 1.x).
+
+**Where history comes from** (details: `INBETRIEBNAHME.md` 2a/2b):
+
+- Charging history comes **straight from evcc** (`/api/sessions`, evcc stores every
+  session itself: kWh, solar share). evcc's `/api/state` is "now" only.
+- Power and meter history come from InfluxDB or Home Assistant.
+- Neither present? **Suggest an InfluxDB container** (1.x) that evcc writes into via its
+  `influx:` setting, with a separate read-only user for VibeDash. An own store inside
+  VibeDash is the very last resort.
+- **PV forecast and charge planning (M11/M12) need weeks of hourly history** → InfluxDB or
+  Home Assistant is a prerequisite. HA keeps 10 days by default: raise `purge_keep_days`
+  (e.g. 60) and tell the person.
 
 ### 1.2 Agent-led onboarding, step by step with the person
 
