@@ -1,0 +1,11 @@
+# Example: copy to compose.yaml, create .env and local/mapping.json, then `docker compose up -d`.
+services:
+  vibedash:
+    build: .
+    image: vibedash:local
+    restart: unless-stopped
+    ports:
+      - '8080:8080'
+    env_file: .env
+    volumes:
+      - ./local:/app/local:ro

@@ -44,3 +44,17 @@ jobs:
             screenshots/
             playwright-report/
           retention-days: 14
+
+  docker:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t vibedash:ci .
+      - name: Smoke test (demo mode)
+        run: |
+          docker run -d --name vd -p 8080:8080 vibedash:ci
+          for i in $(seq 1 20); do curl -fsS localhost:8080/api/health && break; sleep 1; done
+          curl -fsS localhost:8080/api/health | grep -q '"source":"demo"'
+          curl -fsS -o /dev/null localhost:8080/
+          test "$(docker exec vd id -un)" = node
+          docker rm -f vd

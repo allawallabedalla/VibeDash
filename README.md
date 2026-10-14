@@ -64,6 +64,17 @@ API (read-only, `GET` only): `/api/health`, `/api/entities`,
 `/api/series/<name>?range=1h|24h|7d|31d`. Every Influx request times out after 10 s; the
 page then shows "keine Daten" with the reason and a retry button, never endless loading.
 
+## Docker
+
+```sh
+docker build -t vibedash .
+docker run -d -p 8080:8080 --env-file .env -v "$PWD/local:/app/local:ro" vibedash
+```
+
+Or copy `compose.example.yaml` to `compose.yaml` and run `docker compose up -d`. The image
+is based on `node:24-alpine`, runs as a non-root user and contains no `node_modules` at
+runtime. Without `local/mapping.json` it starts in demo mode.
+
 ## Scripts
 
 | Command            | What it does                                                |

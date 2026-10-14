@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-server
+screenshots
+test-results
+playwright-report
+.git
+.env
+.env.*
+local/*
+!local/mapping.example.json
+!local/mapping.example.homeassistant.json
