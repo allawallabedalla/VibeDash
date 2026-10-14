@@ -4,6 +4,13 @@
  */
 import { HaError } from '../src/adapters/homeassistant';
 import { InfluxError } from '../src/adapters/influx1';
+import {
+  validLocation,
+  WeatherError,
+  type Location,
+  type WeatherDay,
+} from '../src/adapters/openmeteo';
+import type { ResolvedLocation } from './location';
 import type { Series } from '../src/model/types';
 import { sourcesOf, type Mapping, type SeriesMapping } from './mapping';
 
@@ -21,6 +28,69 @@ export interface ApiDeps {
   series?: (m: SeriesMapping, fromMs: number, toMs: number) => Promise<Series>;
   now: () => number;
   log: (msg: string) => void;
+  weather?: {
+    /** false when WEATHER=off: no external request at all */
+    enabled: boolean;
+    location: () => Promise<ResolvedLocation | null>;
+    setLocation: (l: Location & { name?: string }) => Promise<ResolvedLocation>;
+    geocode: (place: string, language: string) => Promise<(Location & { name: string }) | null>;
+    forecast: (l: Location) => Promise<WeatherDay[]>;
+  };
+}
+
+/** Extra request details for the one write endpoint (location). */
+export interface RequestInfo {
+  body?: string;
+  contentType?: string;
+  origin?: string;
+  host?: string;
+}
+
+function timeoutOr(e: Error, log: (m: string) => void, what: string): ApiResult {
+  if (e.name === 'TimeoutError' || e.name === 'AbortError') {
+    log(`${what}: timeout`);
+    return json(504, { error: 'timeout' });
+  }
+  log(`${what}: ${e instanceof WeatherError ? e.message : e.name}`);
+  return json(502, { error: 'upstream' });
+}
+
+async function handleLocation(method: string, deps: ApiDeps, req: RequestInfo): Promise<ApiResult> {
+  const w = deps.weather;
+  if (!w) return json(404, { error: 'not_found' });
+  if (method === 'GET') {
+    return json(200, { enabled: w.enabled, location: w.enabled ? await w.location() : null });
+  }
+  // The only write: same origin, JSON, tiny body.
+  if (!w.enabled) return json(409, { error: 'weather_off' });
+  if (req.origin && req.host && new URL(req.origin).host !== req.host) {
+    return json(403, { error: 'cross_origin' });
+  }
+  if (!(req.contentType ?? '').includes('application/json')) {
+    return json(415, { error: 'json_required' });
+  }
+  if (!req.body || req.body.length > 1024) return json(400, { error: 'bad_body' });
+  let body: { lat?: unknown; lon?: unknown; place?: unknown; language?: unknown };
+  try {
+    body = JSON.parse(req.body);
+  } catch {
+    return json(400, { error: 'bad_body' });
+  }
+  try {
+    if (typeof body.place === 'string') {
+      const place = body.place.trim().slice(0, 80);
+      if (!place) return json(400, { error: 'bad_body' });
+      const lang = body.language === 'en' ? 'en' : 'de';
+      const found = await w.geocode(place, lang);
+      if (!found) return json(404, { error: 'place_not_found' });
+      return json(200, { location: await w.setLocation(found) });
+    }
+    const l = { lat: Number(body.lat), lon: Number(body.lon) };
+    if (!validLocation(l)) return json(400, { error: 'bad_location' });
+    return json(200, { location: await w.setLocation(l) });
+  } catch (e) {
+    return timeoutOr(e as Error, deps.log, 'location');
+  }
 }
 
 export interface ApiResult {
@@ -30,9 +100,29 @@ export interface ApiResult {
 
 const json = (status: number, body: unknown): ApiResult => ({ status, body });
 
-export async function handleApi(method: string, url: URL, deps: ApiDeps): Promise<ApiResult> {
-  if (method !== 'GET') return json(405, { error: 'method_not_allowed' });
+export async function handleApi(
+  method: string,
+  url: URL,
+  deps: ApiDeps,
+  req: RequestInfo = {},
+): Promise<ApiResult> {
   const path = url.pathname;
+  if (path === '/api/location' && (method === 'GET' || method === 'POST')) {
+    return handleLocation(method, deps, req);
+  }
+  if (method !== 'GET') return json(405, { error: 'method_not_allowed' });
+
+  if (path === '/api/weather') {
+    const w = deps.weather;
+    if (!w || !w.enabled) return json(404, { error: 'weather_off' });
+    const l = await w.location();
+    if (!l) return json(404, { error: 'no_location' });
+    try {
+      return json(200, { location: l, days: await w.forecast(l) });
+    } catch (e) {
+      return timeoutOr(e as Error, deps.log, 'weather');
+    }
+  }
 
   if (path === '/api/health') {
     return json(200, {

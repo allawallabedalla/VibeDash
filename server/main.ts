@@ -8,6 +8,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { handleApi, type ApiDeps } from './api';
 import { createBackends } from './backends';
+import { weatherClient } from '../src/adapters/openmeteo';
+import { fromEnv, fromHomeAssistant, readSettings, writeSettings } from './location';
+import type { ResolvedLocation } from './location';
 import { readConfig } from './config';
 import { sourcesOf, validateMapping } from './mapping';
 import { staticFile } from './static';
@@ -39,6 +42,27 @@ if (existsSync(config.mappingPath)) {
   log(`no ${config.mappingPath}: demo mode (synthetic data in the browser)`);
 }
 
+// Weather: on by default (WEATHER=off disables every external request).
+const weather = weatherClient(fetch, config.timeoutMs);
+const settingsPath = process.env.SETTINGS_PATH ?? 'local/settings.json';
+let haLocation: ResolvedLocation | null | undefined;
+deps.weather = {
+  enabled: process.env.WEATHER !== 'off',
+  location: async () => {
+    const own = fromEnv(process.env) ?? readSettings(settingsPath);
+    if (own) return own;
+    if (config.homeassistant && haLocation === undefined) {
+      haLocation = await fromHomeAssistant(config.homeassistant, fetch, config.timeoutMs).catch(
+        () => null,
+      );
+    }
+    return haLocation ?? null;
+  },
+  setLocation: async (l) => writeSettings(settingsPath, l),
+  geocode: (place, language) => weather.geocode(place, language),
+  forecast: (l) => weather.forecast(l, deps.mapping?.timeZone ?? 'Europe/Berlin'),
+};
+
 const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer',
@@ -51,7 +75,20 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost');
   try {
     if (url.pathname.startsWith('/api/')) {
-      const r = await handleApi(req.method ?? 'GET', url, deps);
+      let body: string | undefined;
+      if (req.method === 'POST') {
+        body = '';
+        for await (const chunk of req) {
+          body += chunk;
+          if (body.length > 1024) break;
+        }
+      }
+      const r = await handleApi(req.method ?? 'GET', url, deps, {
+        body,
+        contentType: req.headers['content-type'],
+        origin: req.headers.origin,
+        host: req.headers.host,
+      });
       res.writeHead(r.status, {
         ...SECURITY_HEADERS,
         'Content-Type': 'application/json; charset=utf-8',
