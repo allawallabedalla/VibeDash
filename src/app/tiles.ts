@@ -114,9 +114,10 @@ export function loadTile(data: DemoData): TileProps {
 }
 
 /**
- * Where the house load comes from. A derived consumption (integral of the
- * load, see `home_energy` / `load_balance_energy` in the mapping) is named as
- * such, with the car share and the inverter's own balance to compare.
+ * Where the daily consumption comes from. `load_energy` may be the inverter's
+ * balance of meters; `device_energy` (power summed up) then shows what reached
+ * the devices, the difference is named as loss. `home_energy` gives the share
+ * without the car.
  */
 function loadSource(data: DemoData): string {
   const today = localDateKey(data.now, data.timeZone);
@@ -125,23 +126,25 @@ function loadSource(data: DemoData): string {
     const d = daily(data, id).at(-1);
     return d && d.day === today ? d.value : undefined;
   };
-  const balance = todayOf('load_balance_energy');
-  const home = todayOf('home_energy');
-  if (balance === undefined && home === undefined) return t('info.home.source');
   const load = todayOf('load_energy');
-  const parts: string[] = [];
-  if (load !== undefined) parts.push(t('info.home.derived', { load: num(load, 1) }));
-  if (load !== undefined && home !== undefined) {
-    parts.push(t('info.home.car', { car: num(load - home, 1), home: num(home, 1) }));
+  const devices = todayOf('device_energy');
+  const home = todayOf('home_energy');
+  if (load === undefined || (devices === undefined && home === undefined)) {
+    return t('info.home.source');
   }
-  if (load !== undefined && balance !== undefined && balance > 0) {
+  const fromPower = data.entities.some((e) => e.id === 'load_energy' && e.derived === true);
+  const parts = [t(fromPower ? 'info.home.derived' : 'info.home.meters', { load: num(load, 1) })];
+  if (devices !== undefined && load > 0) {
     parts.push(
-      t('info.home.balance', {
-        balance: num(balance, 1),
-        diff: num(balance - load, 1),
-        pct: num(((balance - load) / balance) * 100),
+      t('info.home.loss', {
+        devices: num(devices, 1),
+        loss: num(load - devices, 1),
+        pct: num(((load - devices) / load) * 100),
       }),
     );
+  }
+  if (home !== undefined) {
+    parts.push(t('info.home.car', { car: num(load - home, 1), home: num(home, 1) }));
   }
   return parts.join(' ');
 }

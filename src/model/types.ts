@@ -22,7 +22,11 @@ export interface Entity {
   confirmed?: boolean;
   /** Energy counters: a day above this (in `unit`) is implausible and left out. */
   maxPerDay?: number;
-  /** Computed from other series (no meter of its own); named as such in ⓘ. */
+  /**
+   * Summed up from power (a derived series with an `integrate` term): no meter
+   * reading, misses what happens in a gap; named as such in ⓘ. A balance of
+   * meters only is not flagged – it is still from meter readings.
+   */
   derived?: boolean;
 }
 

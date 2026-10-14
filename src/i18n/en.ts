@@ -41,8 +41,10 @@ export const en: Record<MessageKey, string> = {
   'info.home.derived':
     'Today so far {load} kWh – summed up from the power, no meter of its own; gaps do not count.',
   'info.home.car': 'Of that, car {car} kWh (wallbox meter), house without car {home} kWh.',
-  'info.home.balance':
-    'Balance from the inverter (direct + import + battery discharge − battery charged from the grid): {balance} kWh. The difference of {diff} kWh ({pct} %) is conversion and battery loss.',
+  'info.home.meters':
+    'Today so far {load} kWh, balanced from meter readings (like the vendor app).',
+  'info.home.loss':
+    'Of that, ≈ {devices} kWh reached the devices (summed up from the power), losses ≈ {loss} kWh ({pct} %) in converter and battery.',
   'info.battery.what': 'State of charge of the home battery.',
   'info.battery.source': 'Battery storage, state of charge in percent.',
   'info.battery.capacity':
