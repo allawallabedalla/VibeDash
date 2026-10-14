@@ -391,6 +391,9 @@ export const de = {
   'week.fromBattery': 'aus dem Akku',
   'week.fromGrid': 'aus dem Netz',
   'week.flowNote': 'Zähler, Akku ≈ aus der Leistung summiert (kein Akku-Zähler).',
+  'week.todayUntil': 'heute bis {time}',
+  'week.todayApart':
+    'Abgeschlossene Tage; {until} getrennt, nicht in den Summen: Sonne {pv} · Verbrauch {load} · Netz {imp} kWh.',
 } as const;
 
 export type MessageKey = keyof typeof de;

@@ -39,5 +39,9 @@ describe('week numbers', () => {
     expect(w.autarky).toBeGreaterThanOrEqual(0);
     expect(w.autarky).toBeLessThanOrEqual(1);
     expect(w.battery!.charged).toBeGreaterThan(0);
+    // sums over seven completed days; today is apart and not among them
+    expect(w.days).toHaveLength(7);
+    expect(w.days.map((x) => x.day)).not.toContain(w.today.day);
+    expect(w.days.at(-1)!.start).toBeLessThan(w.today.start);
   });
 });

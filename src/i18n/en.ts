@@ -387,4 +387,7 @@ export const en: Record<MessageKey, string> = {
   'week.fromBattery': 'from the battery',
   'week.fromGrid': 'from the grid',
   'week.flowNote': 'Meters; battery ≈ summed up from power (no battery meter).',
+  'week.todayUntil': 'today until {time}',
+  'week.todayApart':
+    'Completed days; {until} apart, not in the sums: sun {pv} · consumption {load} · grid {imp} kWh.',
 };
