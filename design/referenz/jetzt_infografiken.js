@@ -298,7 +298,7 @@ T.heute = function (w, D) {
 /* „Jetzt“ (11.10.2026, zuerst sichtbar): IST-Werte als 6 große Kacheln – Symbol + Wort + Zahl + was gerade passiert */
 /* ── Infografiken der Messwerte (Nutzer 13.10.2026: „geeignete infografiken zu jedem wert … kreativ … weich“) ──
    Alles SVG/CSS in der Kachel, weiche Verläufe, runde Enden, sanfte Bewegung (prefers-reduced-motion: aus).
-   Sonne: Halbbogen 0–20 kW (Wechselrichter SH20T) · Haus: woher der Strom kommt (Sonne/Akku/Netz) · Akku: Batterie mit
+   Sonne: Halbbogen 0 bis Wechselrichter-Nennleistung · Haus: woher der Strom kommt (Sonne/Akku/Netz) · Akku: Batterie mit
    Füllstand und Welle (steigt beim Laden, sinkt beim Entladen) · Netz: Pendel ab der Mitte (links Bezug, rechts Einspeisung,
    ±10 kW) · Innen: Skala 16–28 °C mit Wohlfühlzone 20–23 °C und Spanne kühlster–wärmster Raum · Außen: Skala −10…35 °C mit
    heutigem Tief–Hoch-Band und dem Wert jetzt. */
