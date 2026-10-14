@@ -189,3 +189,44 @@ export function counterResets(
   }
   return out;
 }
+
+/**
+ * Thin out samples older than `before` onto `bucketMs` slots, so that long
+ * ranges stay small over the wire. Readings that add up (meters, capacity)
+ * keep the last value of each slot, so daily energy and resets stay exact;
+ * everything else becomes the mean of the slot. Empty slots stay empty, so
+ * gaps stay visible. Samples from `before` on are returned unchanged.
+ */
+export function thinBefore(
+  samples: readonly Sample[],
+  before: number,
+  bucketMs: number,
+  how: 'mean' | 'last',
+): Sample[] {
+  const out: Sample[] = [];
+  let slot = NaN;
+  let sum = 0;
+  let n = 0;
+  let last = 0;
+  const flush = () => {
+    if (n > 0) out.push({ t: slot, v: how === 'mean' ? sum / n : last });
+  };
+  let i = 0;
+  for (; i < samples.length; i++) {
+    const { t, v } = samples[i]!;
+    if (t >= before) break;
+    const s = Math.floor(t / bucketMs) * bucketMs;
+    if (s !== slot) {
+      flush();
+      slot = s;
+      sum = 0;
+      n = 0;
+    }
+    sum += v;
+    last = v;
+    n++;
+  }
+  flush();
+  for (; i < samples.length; i++) out.push(samples[i]!);
+  return out;
+}
