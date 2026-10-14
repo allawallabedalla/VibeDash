@@ -176,6 +176,10 @@ Einheitliches Datenmodell: `Entitaet` (id, Name, Art, Raum, Einheit) · `Messrei
 | v0.1 | Doku, Beispiel-Screenshots, Docker-Image (`node:24-alpine`) | jemand Fremdes bekommt es in 15 min zum Laufen |
 | M7–M9 Prognose-Modul | siehe Abschnitt 11; der Python-Dienst liegt **hinter** dem Node-Server | Browser spricht weiterhin nur mit dem Node-Server |
 | M10 Geräte-Vorlagen | siehe INBETRIEBNAHME.md Abschnitt 5 (nur lesend) | Vorlage + Gegenprobe-Test je Gerät |
+| M11 PV-Prognose | Stundenmodell, Dachflächen, Analogtag-Szenarien, p10/p50/p90 (LADESTEUERUNG.md) | Demo-Anlage: Tagesprognose mit Spanne, faire Treffsicherheit |
+| M12 Ladeplan (Stufe A) | Lastmodell, Akkusimulation, 300 Szenarien, Plan + Infografik + Rückrechnung | Rückrechnung auf Demo-Daten: 0 kWh Netzbezug durchs Auto, Plan stabil |
+| M12b Was-wäre-wenn | Schieber im Browser | Antwort < 1 s am iPhone |
+| M13 Steuerung (Stufe B) | evcc-Anbindung **oder** eigener Wächter, alle Regeln aus LADESTEUERUNG.md Abschnitt 7; im fremden Haus zusätzlich RISIKEN.md | 4 Wochen Stufe A live ohne Fehlplanung; Wächter-Tests (Totmann, Stopp-Vorrang, Ausfall der Messung) grün |
 
 ---
 
