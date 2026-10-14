@@ -9,6 +9,7 @@ const pages = [
   { name: 'overview', hash: '#/' },
   { name: 'now', hash: '#/now' },
   { name: 'forecasts', hash: '#/forecasts' },
+  { name: 'charging', hash: '#/charging' },
   { name: 'gallery', hash: '#/gallery' },
 ];
 

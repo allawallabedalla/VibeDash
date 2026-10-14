@@ -197,6 +197,62 @@ export const en: Record<MessageKey, string> = {
   'charge.info.sessions.source': 'Charging sessions evcc stores in its own database.',
   'charge.info.solar.what':
     'Share of solar power in everything that went into the car in the last 30 days – weighted by energy. Charges without a share are not counted.',
+  'plan.title': 'Charge plan',
+  'plan.lead':
+    'How much the car can charge without grid power – today, tonight and tomorrow. Planned and shown only; nothing is switched.',
+  'plan.leadDemo':
+    'Demo home without a car: how much could a car (60 kWh, 6–16 A) have charged without grid power? Planned only; nothing is switched.',
+  'plan.car': 'Charge car',
+  'plan.window': 'Window',
+  'plan.morning': 'Battery 6 am',
+  'plan.tomorrow': 'tomorrow',
+  'plan.oClock': 'h',
+  'plan.now': 'now',
+  'plan.rangeN': '{lo}–{hi} · n = {n}',
+  'plan.reason.none': 'not possible without grid power',
+  'plan.reason.sun': 'sun is enough',
+  'plan.reason.sunBattery': 'sun + battery are enough',
+  'plan.reason.full': 'car full',
+  'plan.chart': 'Hour plan',
+  'plan.chartNote': 'Forecast · PV from {pv} similar days, load from {load} days · {n} pairings',
+  'plan.untested': 'untested: no data at this temperature yet',
+  'plan.legend.pv': 'Sun (forecast)',
+  'plan.legend.band': 'Range 10–90 %',
+  'plan.legend.load': 'House (forecast)',
+  'plan.legend.car': 'Car planned',
+  'plan.legend.battery': 'Home battery',
+  'plan.whatIf': 'What if …?',
+  'plan.amps': 'Current',
+  'plan.hours': 'Duration',
+  'plan.whatIfQ': 'Charge now for {h} h at {a} A (≈ {kwh} kWh):',
+  'plan.noGrid': 'No grid power needed',
+  'plan.noGridSub': 'in {pct} % of cases · n = {n}',
+  'plan.grid': '≈ {kwh} kWh grid power ({lo}–{hi})',
+  'plan.gridFrom': 'from about {at}:00',
+  'plan.gridShare': 'in {pct} % of cases · n = {n}',
+  'plan.info.car.what':
+    'How much the car can charge without grid power – also not later because the home battery would be empty in the evening or early morning. Cautious: it has to work out in 30 of 31 cases.',
+  'plan.info.car.source':
+    'PV forecast (weather per roof plane) and load forecast, 300 paired scenarios until tomorrow night, battery simulated hourly, the reserve stays in the battery. Range from 10 small single plans.',
+  'plan.info.window.what': 'When to charge and at which current. Replanned every hour.',
+  'plan.info.window.source':
+    'Hours with the largest expected surplus first; each hour only if it causes no extra grid power.',
+  'plan.info.morning.what':
+    'Home battery state of charge tomorrow at 6 am if the car charges as planned.',
+  'plan.info.chart.what':
+    'Sun with range, house load and planned charging blocks per hour; below, the home battery. All forecast (dashed).',
+  'plan.info.whatIf.what':
+    'Works out right away whether charging from now would need grid power – now, in the evening, at night or tomorrow.',
+  'plan.info.whatIf.source':
+    'The same 300 scenarios as the plan, computed in the browser. Without the reserve: the real battery limit counts.',
+  'plan.accuracy': 'Charge plan',
+  'plan.accNote':
+    'Grid power via the car {grid} kWh · {bad} days above 0.1 kWh · charged {charged} of {possible} kWh possible in hindsight',
+  'plan.accFrom': 'backtest, replanned hourly',
+  'plan.accCalc': 'Backtest running …',
+  'plan.collecting':
+    'VibeDash is still collecting data for the charge plan: {have} of {need} days of hourly history.',
+  'plan.needs': 'Missing for the charge plan: {what}.',
   'page.asOf': 'As of {date}, {time} · {source}',
   'source.demo': 'demo data',
   'source.influx': 'InfluxDB',

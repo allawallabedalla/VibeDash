@@ -197,6 +197,64 @@ export const de = {
   'charge.info.sessions.source': 'Ladevorgänge, die evcc in seiner eigenen Datenbank speichert.',
   'charge.info.solar.what':
     'Anteil Sonnenstrom an allem, was in den letzten 30 Tagen ins Auto ging – nach Energie gewichtet. Ladungen ohne Angabe zählen nicht mit.',
+  'plan.title': 'Ladeplan',
+  'plan.lead':
+    'Wie viel das Auto ohne Netzstrom laden kann – heute, heute Nacht und morgen. Nur geplant und gezeigt, nichts wird geschaltet.',
+  'plan.leadDemo':
+    'Demo-Haus ohne Auto: Wie viel hätte ein Auto (60 kWh, 6–16 A) ohne Netzstrom laden können? Nur geplant, nichts wird geschaltet.',
+  'plan.car': 'Auto laden',
+  'plan.window': 'Ladefenster',
+  'plan.morning': 'Akku morgen 6 Uhr',
+  'plan.tomorrow': 'morgen',
+  'plan.oClock': 'Uhr',
+  'plan.now': 'jetzt',
+  'plan.rangeN': '{lo}–{hi} · n = {n}',
+  'plan.reason.none': 'ohne Netzstrom nicht möglich',
+  'plan.reason.sun': 'Sonne reicht',
+  'plan.reason.sunBattery': 'Sonne + Akku reichen',
+  'plan.reason.full': 'Auto voll',
+  'plan.chart': 'Stundenplan',
+  'plan.chartNote':
+    'Prognose · PV aus {pv} ähnlichen Tagen, Verbrauch aus {load} Tagen · {n} Paarungen',
+  'plan.untested': 'ungeprüft: noch keine Daten bei dieser Temperatur',
+  'plan.legend.pv': 'Sonne (Prognose)',
+  'plan.legend.band': 'Spanne 10–90 %',
+  'plan.legend.load': 'Haus (Prognose)',
+  'plan.legend.car': 'Auto geplant',
+  'plan.legend.battery': 'Hausakku',
+  'plan.whatIf': 'Was wäre, wenn …?',
+  'plan.amps': 'Stromstärke',
+  'plan.hours': 'Dauer',
+  'plan.whatIfQ': 'Jetzt {h} h mit {a} A laden (≈ {kwh} kWh):',
+  'plan.noGrid': 'Kein Netzstrom nötig',
+  'plan.noGridSub': 'in {pct} % der Fälle · n = {n}',
+  'plan.grid': '≈ {kwh} kWh Netzstrom ({lo}–{hi})',
+  'plan.gridFrom': 'ab etwa {at} Uhr',
+  'plan.gridShare': 'in {pct} % der Fälle · n = {n}',
+  'plan.info.car.what':
+    'So viel kann das Auto laden, ohne dass dafür Netzstrom fließt – auch nicht später, weil der Hausakku abends oder morgen früh leer wäre. Vorsichtig gerechnet: Es muss in 30 von 31 Fällen aufgehen.',
+  'plan.info.car.source':
+    'PV-Prognose (Wetter je Dachfläche) und Verbrauchsprognose, 300 gepaarte Szenarien bis morgen Abend, Akku stündlich simuliert, Reserve bleibt im Akku. Spanne aus 10 kleinen Einzelplänen.',
+  'plan.info.window.what':
+    'Wann geladen werden soll und mit welcher Stromstärke. Wird jede Stunde neu geplant.',
+  'plan.info.window.source':
+    'Stunden mit dem größten erwarteten Überschuss zuerst; jede Stunde nur, wenn sie keinen zusätzlichen Netzstrom verursacht.',
+  'plan.info.morning.what':
+    'Ladestand des Hausakkus morgen um 6 Uhr, wenn wie geplant geladen wird.',
+  'plan.info.chart.what':
+    'Sonne mit Spanne, Hausverbrauch und geplante Ladeblöcke je Stunde; darunter der Hausakku. Alles Prognose (gestrichelt).',
+  'plan.info.whatIf.what':
+    'Rechnet sofort durch, ob eine Ladung ab jetzt Netzstrom bräuchte – jetzt, abends, nachts oder morgen.',
+  'plan.info.whatIf.source':
+    'Dieselben 300 Szenarien wie der Plan, im Browser gerechnet. Ohne Reserve: die echte Akkugrenze zählt.',
+  'plan.accuracy': 'Ladeplan',
+  'plan.accNote':
+    'Netzstrom durchs Auto {grid} kWh · {bad} Tage über 0,1 kWh · geladen {charged} von {possible} kWh im Rückblick möglich',
+  'plan.accFrom': 'Rückrechnung, stündlich neu geplant',
+  'plan.accCalc': 'Rückrechnung läuft …',
+  'plan.collecting':
+    'Für den Ladeplan sammelt VibeDash noch Daten: {have} von {need} Tagen Stundenverlauf.',
+  'plan.needs': 'Für den Ladeplan fehlen: {what}.',
   'page.asOf': 'Stand {date}, {time} · {source}',
   'source.demo': 'Demo-Daten',
   'source.influx': 'InfluxDB',

@@ -32,6 +32,7 @@ let state = $state<State>({ status: 'loading' });
 let version = $state(0);
 let evcc = $state(false);
 let pv = $state(false);
+let plan = $state(false);
 
 async function getJson(url: string): Promise<{ status: number; body: unknown } | null> {
   try {
@@ -110,10 +111,18 @@ export async function load(): Promise<void> {
   state = { status: 'loading' };
   const health = await getJson('/api/health');
   const body = health?.body as
-    | { source?: string; timeZone?: string; backends?: Backend[]; evcc?: boolean; pv?: boolean }
+    | {
+        source?: string;
+        timeZone?: string;
+        backends?: Backend[];
+        evcc?: boolean;
+        pv?: boolean;
+        plan?: boolean;
+      }
     | undefined;
   evcc = body?.evcc === true;
   pv = body?.pv === true;
+  plan = body?.plan === true;
   if (health?.status === 200 && body?.source === 'live' && body.timeZone) {
     state = await loadLive(body.timeZone, body.backends ?? []);
   } else {
@@ -129,6 +138,10 @@ export const store = {
   /** The hourly PV forecast (M11) is configured. */
   get pv(): boolean {
     return pv;
+  },
+  /** The charge plan (M12) is configured (live). The demo always has one. */
+  get plan(): boolean {
+    return plan;
   },
   /** evcc is connected: charging page with sessions. */
   get evcc(): boolean {

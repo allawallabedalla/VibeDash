@@ -1,8 +1,8 @@
 <script lang="ts">
   /**
-   * Charging (evcc): now first, then the charging history evcc stores itself.
-   * Solar share is weighted by energy; sessions without a recorded share are
-   * left out and counted. Never loads forever.
+   * Charging: the charge plan (stage A, M12) first, then evcc – now and the charging
+   * history evcc stores itself. Solar share is weighted by energy; sessions without a
+   * recorded share are left out and counted. Never loads forever.
    */
   import { onMount } from 'svelte';
   import Card from '../components/Card.svelte';
@@ -13,12 +13,58 @@
   import type { TileProps } from '../components/Tile.svelte';
   import { solarShare, type EvccNow, type EvccSession } from '../adapters/evcc';
   import { i18n, num, t } from '../i18n/index.svelte';
+  import { currentData, currentSource, store } from '../app/data.svelte';
+  import { planFromApi, planFromDemo, type PlanApi, type PlanView } from '../app/plan';
+  import ChargePlan from './ChargePlan.svelte';
+
+  const demo = currentSource() === 'demo';
+  const timeZone = currentData().timeZone;
+
+  type PlanState =
+    | { s: 'off' }
+    | { s: 'loading' }
+    | { s: 'error'; reason: 'timeout' | 'upstream' | 'network' }
+    | { s: 'collecting'; have: number; need: number }
+    | { s: 'needs'; what: string }
+    | { s: 'ready'; plan: PlanView };
+  let planState = $state<PlanState>(demo || store.plan ? { s: 'loading' } : { s: 'off' });
+
+  async function loadPlan() {
+    if (demo) {
+      // Computed in the browser; let the page paint first.
+      await new Promise((r) => setTimeout(r, 0));
+      const p = planFromDemo(currentData());
+      planState = p ? { s: 'ready', plan: p } : { s: 'needs', what: t('state.noData') };
+      return;
+    }
+    if (!store.plan) return;
+    planState = { s: 'loading' };
+    const r = await get('/api/plan');
+    if (r.status === 200 && Array.isArray(r.body.stunden)) {
+      planState = { s: 'ready', plan: planFromApi(r.body as unknown as PlanApi) };
+    } else if (r.body.zustand === 'sammelt') {
+      planState = {
+        s: 'collecting',
+        have: Number(r.body.tage ?? 0),
+        need: Number(r.body.benoetigt ?? 14),
+      };
+    } else if (r.body.zustand === 'fehlt') {
+      planState = { s: 'needs', what: String(r.body.was ?? '') };
+    } else {
+      const code = r.body.error;
+      planState = {
+        s: 'error',
+        reason:
+          code === 'timeout' || r.status === 504 ? 'timeout' : r.status ? 'upstream' : 'network',
+      };
+    }
+  }
 
   type View =
     | { s: 'loading' }
     | { s: 'error'; reason: 'timeout' | 'upstream' | 'network' }
     | { s: 'ready'; now: EvccNow | null; sessions: EvccSession[] };
-  let view = $state<View>({ s: 'loading' });
+  let view = $state<View>(store.evcc ? { s: 'loading' } : { s: 'ready', now: null, sessions: [] });
   let span = $state<'30' | '365'>('30');
 
   async function get(url: string) {
@@ -60,7 +106,10 @@
     };
   }
 
-  onMount(() => void load());
+  onMount(() => {
+    void loadPlan();
+    if (store.evcc) void load();
+  });
 
   const DAY = 86_400_000;
   const locale = $derived(i18n.locale === 'de' ? 'de-DE' : 'en-GB');
@@ -169,44 +218,73 @@
 
 <div class="page">
   <h1>{t('page.charging')}</h1>
-  <p class="lead">{t('charge.lead')}</p>
-  <div class="row-gap"></div>
 
-  {#if view.s === 'loading'}
-    <p class="muted-note" role="status">{t('state.loading')}</p>
-  {:else if view.s === 'error'}
-    <Card title={t('state.errorTitle')} icon="info" color="var(--fair)">
-      <p class="muted-note">{t(`reason.${view.reason}`)}</p>
-      <button type="button" class="retry" onclick={load}>{t('state.retry')}</button>
-    </Card>
-  {:else}
-    <TileRow count={4}>
-      {#each tiles as tile (tile.label)}<Tile {...tile} />{/each}
-    </TileRow>
+  {#if planState.s !== 'off'}
+    <p class="lead">{demo ? t('plan.leadDemo') : t('plan.lead')}</p>
+    <div class="row-gap"></div>
+    {#if planState.s === 'loading'}
+      <p class="muted-note" role="status">{t('state.loading')}</p>
+    {:else if planState.s === 'ready'}
+      <ChargePlan plan={planState.plan} {timeZone} />
+    {:else if planState.s === 'collecting'}
+      <Card title={t('plan.title')} icon="clock" color="var(--muted)">
+        <p class="muted-note">
+          {t('plan.collecting', { have: planState.have, need: planState.need })}
+        </p>
+      </Card>
+    {:else if planState.s === 'needs'}
+      <Card title={t('plan.title')} icon="info" color="var(--muted)">
+        <p class="muted-note">{t('plan.needs', { what: planState.what })}</p>
+      </Card>
+    {:else if planState.s === 'error'}
+      <Card title={t('plan.title')} icon="info" color="var(--fair)">
+        <p class="muted-note">{t(`reason.${planState.reason}`)}</p>
+        <button type="button" class="retry" onclick={loadPlan}>{t('state.retry')}</button>
+      </Card>
+    {/if}
+  {/if}
 
-    <h2>{t('charge.history')}</h2>
-    <Card
-      title={t('charge.history')}
-      icon="clock"
-      color="var(--muted)"
-      note={t('charge.tableNote')}
-    >
-      {#snippet actions()}
-        <Segmented
-          options={[
-            { id: '30', label: t('ts.month') },
-            { id: '365', label: t('charge.year') },
-          ]}
-          bind:value={span}
-          label={t('ts.periods')}
-        />
-      {/snippet}
-      {#if rows.length}
-        <DataTable {columns} {rows} caption={t('charge.history')} />
-      {:else}
-        <p class="muted-note">{t('charge.none')}</p>
-      {/if}
-    </Card>
+  {#if store.evcc}
+    {#if planState.s !== 'off'}<h2>{t('charge.wallbox')}</h2>{/if}
+    <p class="lead">{t('charge.lead')}</p>
+    <div class="row-gap"></div>
+
+    {#if view.s === 'loading'}
+      <p class="muted-note" role="status">{t('state.loading')}</p>
+    {:else if view.s === 'error'}
+      <Card title={t('state.errorTitle')} icon="info" color="var(--fair)">
+        <p class="muted-note">{t(`reason.${view.reason}`)}</p>
+        <button type="button" class="retry" onclick={load}>{t('state.retry')}</button>
+      </Card>
+    {:else}
+      <TileRow count={4}>
+        {#each tiles as tile (tile.label)}<Tile {...tile} />{/each}
+      </TileRow>
+
+      <h2>{t('charge.history')}</h2>
+      <Card
+        title={t('charge.history')}
+        icon="clock"
+        color="var(--muted)"
+        note={t('charge.tableNote')}
+      >
+        {#snippet actions()}
+          <Segmented
+            options={[
+              { id: '30', label: t('ts.month') },
+              { id: '365', label: t('charge.year') },
+            ]}
+            bind:value={span}
+            label={t('ts.periods')}
+          />
+        {/snippet}
+        {#if rows.length}
+          <DataTable {columns} {rows} caption={t('charge.history')} />
+        {:else}
+          <p class="muted-note">{t('charge.none')}</p>
+        {/if}
+      </Card>
+    {/if}
   {/if}
 </div>
 

@@ -4,7 +4,7 @@
   import { i18n, t } from '../i18n/index.svelte';
   import Overview from '../pages/Overview.svelte';
   import { onMount } from 'svelte';
-  import { load, store } from './data.svelte';
+  import { currentSource, load, store } from './data.svelte';
   import { router, type Route } from './router.svelte';
 
   onMount(() => {
@@ -18,7 +18,7 @@
     { id: 'overview', label: t('page.overview'), icon: 'overview' as const },
     { id: 'now', label: t('page.now'), icon: 'bolt' as const },
     { id: 'forecasts', label: t('page.forecasts'), icon: 'forecast' as const },
-    ...(store.evcc
+    ...(store.evcc || store.plan || (store.state.status === 'ready' && currentSource() === 'demo')
       ? [{ id: 'charging', label: t('page.charging'), icon: 'plugCar' as const }]
       : []),
   ]);
