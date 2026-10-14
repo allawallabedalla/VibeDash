@@ -20,6 +20,7 @@
   } from '../demo';
   import { i18n, num, t } from '../i18n/index.svelte';
   import PageHead from './PageHead.svelte';
+  import WeatherCard from './WeatherCard.svelte';
 
   const house = currentData();
 
@@ -140,5 +141,7 @@
     >
       <DayList days={dayRows} />
     </Card>
+  {:else}
+    <WeatherCard timeZone={tz} />
   {/if}
 </div>

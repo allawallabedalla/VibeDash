@@ -68,6 +68,14 @@ API (read-only, `GET` only): `/api/health`, `/api/entities`,
 `/api/series/<name>?range=1h|24h|7d|31d`. Every Influx request times out after 10 s; the
 page then shows "keine Daten" with the reason and a retry button, never endless loading.
 
+## Weather
+
+The forecasts page shows a 7-day weather forecast from **Open-Meteo** (no key). Only the
+house location, **rounded to about 1 km**, leaves the house. The location is found
+automatically: `LATITUDE`/`LONGITUDE` in `.env` → `local/settings.json` → Home Assistant's
+own location. If none is known, the page asks once: use the browser location (needs
+`https` or `localhost`) or type a place. `WEATHER=off` disables all external requests.
+
 ## Docker
 
 ```sh

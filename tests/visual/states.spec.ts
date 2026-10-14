@@ -125,5 +125,57 @@ test('no made-up weather outlook with real data', async ({ page }) => {
   await influxMode(page, synthetic);
   await page.goto('/?lang=de#/forecasts');
   await expect(page.getByRole('heading', { level: 1, name: 'Vorhersagen' })).toBeVisible();
-  await expect(page.getByText('Nächste 7 Tage')).toHaveCount(0);
+  await expect(page.getByText('Wetter erfunden')).toHaveCount(0);
+});
+
+test('weather: asks for the location once, then shows the real forecast', async ({
+  page,
+  isMobile,
+}, info) => {
+  await influxMode(page, synthetic);
+  let location: unknown = null;
+  await page.route('**/api/location', async (r) => {
+    if (r.request().method() === 'POST') {
+      const body = r.request().postDataJSON() as { place?: string };
+      expect(body.place).toBe('Beispielstadt');
+      location = { lat: 50.1, lon: 8.2, name: 'Beispielstadt', source: 'settings' };
+      return r.fulfill(json({ location }));
+    }
+    return r.fulfill(json({ enabled: true, location }));
+  });
+  await page.route('**/api/weather', (r) =>
+    r.fulfill(
+      json({
+        location,
+        days: [0, 1, 2, 3, 4, 5, 6].map((i) => ({
+          tag: new Date(Date.now() + i * 86_400_000).toISOString().slice(0, 10),
+          sonneH: [9, 6, 2, 0, 7, 10, 3][i],
+          strahlungMj: 10,
+          tMin: 5 + i,
+          tMax: 12 + i,
+          regenMm: [0, 0, 3.2, 8, 0, 0, 0.4][i],
+        })),
+      }),
+    ),
+  );
+  await page.goto('/?lang=de#/forecasts');
+  await expect(page.getByText('fehlt der Standort')).toBeVisible();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+  await page.screenshot({
+    path: `screenshots/weather-ask-${info.project.name}.png`,
+    fullPage: true,
+  });
+  await page.getByRole('textbox', { name: 'Ort, z. B. Stadt' }).fill('Beispielstadt');
+  const save = page.getByRole('button', { name: 'Übernehmen' });
+  if (isMobile) await save.tap();
+  else await save.click();
+  await expect(page.locator('.days li')).toHaveCount(7);
+  await expect(page.getByText('Standort Beispielstadt')).toBeVisible();
+  await page.screenshot({
+    path: `screenshots/weather-ready-${info.project.name}.png`,
+    fullPage: true,
+  });
 });

@@ -14,9 +14,10 @@
     skyLabel: string;
     tempLow: number;
     tempHigh: number;
-    rainMm: number;
-    sunHours: number;
-    energy: Estimate;
+    rainMm: number | null;
+    sunHours: number | null;
+    /** Expected yield with range; omitted when there is no forecast for it. */
+    energy?: Estimate;
   }
   let { days }: { days: DayRow[] } = $props();
 
@@ -36,13 +37,17 @@
         ></span>
       </span>
       <span class="temp high">{num(d.tempHigh)}°</span>
-      <span class="rain" class:none={d.rainMm === 0}>
-        {#if d.rainMm > 0}{num(d.rainMm, 1)} mm{:else}–{/if}
+      <span class="rain" class:none={!d.rainMm}>
+        {#if d.rainMm}{num(d.rainMm, 1)} mm{:else}–{/if}
       </span>
-      <span class="sunh">{num(d.sunHours, 1)} h</span>
+      <span class="sunh">{d.sunHours === null ? '–' : `${num(d.sunHours, 1)} h`}</span>
       <span class="kwh">
-        <span class="v"><span class="approx">≈</span>{num(d.energy.value)} kWh</span>
-        <span class="r">{num(d.energy.low)}–{num(d.energy.high)}</span>
+        {#if d.energy}
+          <span class="v"><span class="approx">≈</span>{num(d.energy.value)} kWh</span>
+          <span class="r">{num(d.energy.low)}–{num(d.energy.high)}</span>
+        {:else}
+          <span class="r">–</span>
+        {/if}
       </span>
     </li>
   {/each}
