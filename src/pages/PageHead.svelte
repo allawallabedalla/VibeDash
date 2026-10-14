@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { currentData, currentSource } from '../app/data.svelte';
+  import { currentBackends, currentData, currentSource } from '../app/data.svelte';
   import { i18n, t, time } from '../i18n/index.svelte';
 
   const house = currentData();
@@ -20,6 +20,11 @@
   {t('page.asOf', {
     date,
     time: time(house.now, house.timeZone),
-    source: t(currentSource() === 'influx' ? 'source.influx' : 'source.demo'),
+    source:
+      currentSource() === 'demo'
+        ? t('source.demo')
+        : currentBackends()
+            .map((b) => t(b === 'influx' ? 'source.influx' : 'source.homeassistant'))
+            .join(' + '),
   })}
 </p>

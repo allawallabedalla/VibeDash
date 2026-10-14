@@ -12,7 +12,7 @@ export interface Question {
   text: string;
 }
 
-export function questions(data: DemoData, source: 'demo' | 'influx' = 'demo'): Question[] {
+export function questions(data: DemoData, source: 'demo' | 'live' = 'demo'): Question[] {
   const tz = data.timeZone;
   const date = (ms: number) =>
     new Intl.DateTimeFormat(i18n.locale === 'de' ? 'de-DE' : 'en-GB', {

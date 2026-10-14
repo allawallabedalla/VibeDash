@@ -1,6 +1,7 @@
 /**
  * Where the pages get their data from.
- * - With the VibeDash server in influx mode: named series via /api (never queries).
+ * - With the VibeDash server in live mode: named series via /api (never queries),
+ *   from InfluxDB and/or Home Assistant.
  * - Without a server (static build, dev, tests): the synthetic demo household.
  * Every request has a timeout; the UI never waits forever.
  */
@@ -9,12 +10,19 @@ import { counterResets, findGaps } from '../model/series';
 import type { Entity, Series } from '../model/types';
 
 export type HouseData = DemoData;
-export type Source = 'demo' | 'influx';
+export type Source = 'demo' | 'live';
+export type Backend = 'influx' | 'homeassistant';
 export type Reason = 'timeout' | 'upstream' | 'network' | 'not_mapped';
 
 type State =
   | { status: 'loading' }
-  | { status: 'ready'; source: Source; data: HouseData; missing: { id: string; reason: Reason }[] }
+  | {
+      status: 'ready';
+      source: Source;
+      backends: Backend[];
+      data: HouseData;
+      missing: { id: string; reason: Reason }[];
+    }
   | { status: 'error'; reason: Reason };
 
 const CLIENT_TIMEOUT_MS = 15_000; // server gives up after 10 s
@@ -56,7 +64,7 @@ function detectIssues(series: Record<string, Series>, now: number): DemoIssue[] 
   return out;
 }
 
-async function loadInflux(timeZone: string): Promise<State> {
+async function loadLive(timeZone: string, backends: Backend[]): Promise<State> {
   const ents = await getJson('/api/entities');
   if (!ents || ents.status !== 200) return { status: 'error', reason: reasonOf(ents) };
   const mapped = (ents.body as { entities: (Entity & { stepMs: number })[] }).entities;
@@ -71,7 +79,7 @@ async function loadInflux(timeZone: string): Promise<State> {
   await Promise.all(
     wanted.map(async (id) => {
       const ent = byId.get(id);
-      series[id] = { entityId: id, source: 'influx', stepMs: ent?.stepMs ?? 60_000, samples: [] };
+      series[id] = { entityId: id, source: 'live', stepMs: ent?.stepMs ?? 60_000, samples: [] };
       if (!ent) {
         missing.push({ id, reason: 'not_mapped' });
         return;
@@ -89,7 +97,8 @@ async function loadInflux(timeZone: string): Promise<State> {
   const entities = wanted.map((id) => byId.get(id) ?? ENTITIES.find((e) => e.id === id)!);
   return {
     status: 'ready',
-    source: 'influx',
+    source: 'live',
+    backends,
     data: { now, timeZone, entities, series, issues: detectIssues(series, now) },
     missing: missing.sort((a, b) => a.id.localeCompare(b.id)),
   };
@@ -98,11 +107,12 @@ async function loadInflux(timeZone: string): Promise<State> {
 export async function load(): Promise<void> {
   state = { status: 'loading' };
   const health = await getJson('/api/health');
-  const body = health?.body as { source?: string; timeZone?: string } | undefined;
-  if (health?.status === 200 && body?.source === 'influx' && body.timeZone) {
-    state = await loadInflux(body.timeZone);
+  const body = health?.body as
+    { source?: string; timeZone?: string; backends?: Backend[] } | undefined;
+  if (health?.status === 200 && body?.source === 'live' && body.timeZone) {
+    state = await loadLive(body.timeZone, body.backends ?? []);
   } else {
-    state = { status: 'ready', source: 'demo', data: generateDemo(), missing: [] };
+    state = { status: 'ready', source: 'demo', backends: [], data: generateDemo(), missing: [] };
   }
   version++;
 }
@@ -125,4 +135,8 @@ export function currentData(): HouseData {
 
 export function currentSource(): Source {
   return state.status === 'ready' ? state.source : 'demo';
+}
+
+export function currentBackends(): Backend[] {
+  return state.status === 'ready' ? state.backends : [];
 }

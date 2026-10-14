@@ -142,6 +142,7 @@ export const en: Record<MessageKey, string> = {
   'page.asOf': 'As of {date}, {time} · {source}',
   'source.demo': 'demo data',
   'source.influx': 'InfluxDB',
+  'source.homeassistant': 'Home Assistant',
   'state.loading': 'Loading data …',
   'state.noData': 'no data',
   'state.stale': 'no current data',

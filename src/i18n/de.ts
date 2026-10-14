@@ -142,6 +142,7 @@ export const de = {
   'page.asOf': 'Stand {date}, {time} · {source}',
   'source.demo': 'Demo-Daten',
   'source.influx': 'InfluxDB',
+  'source.homeassistant': 'Home Assistant',
   'state.loading': 'Lade Daten …',
   'state.noData': 'keine Daten',
   'state.stale': 'keine aktuellen Daten',

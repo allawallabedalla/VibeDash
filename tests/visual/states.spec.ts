@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 /**
- * Influx mode with a mocked VibeDash API (synthetic values only): the UI must
+ * Live mode with a mocked VibeDash API (synthetic values only): the UI must
  * end in a clear state – never endless loading.
  */
 const ENTITIES = [
@@ -26,7 +26,14 @@ const json = (body: unknown, status = 200) => ({
 
 async function influxMode(page: Page, series: (id: string) => ReturnType<typeof json>) {
   await page.route('**/api/health', (r) =>
-    r.fulfill(json({ ok: true, source: 'influx', timeZone: 'Europe/Berlin' })),
+    r.fulfill(
+      json({
+        ok: true,
+        source: 'live',
+        backends: ['homeassistant', 'influx'],
+        timeZone: 'Europe/Berlin',
+      }),
+    ),
   );
   await page.route('**/api/entities', (r) =>
     r.fulfill(json({ timeZone: 'Europe/Berlin', entities: ENTITIES })),
@@ -59,7 +66,14 @@ function synthetic(id: string) {
 
 test('database unreachable: clear "no data" state with retry', async ({ page }, info) => {
   await page.route('**/api/health', (r) =>
-    r.fulfill(json({ ok: true, source: 'influx', timeZone: 'Europe/Berlin' })),
+    r.fulfill(
+      json({
+        ok: true,
+        source: 'live',
+        backends: ['homeassistant', 'influx'],
+        timeZone: 'Europe/Berlin',
+      }),
+    ),
   );
   await page.route('**/api/entities', (r) => r.fulfill(json({ error: 'timeout' }, 504)));
   await page.goto('/?lang=de');
@@ -82,7 +96,7 @@ test('one series times out: page renders, tile says "keine Daten", notice names 
   const sun = page.locator('.tile', { hasText: 'Sonne' });
   await expect(sun).toContainText('–');
   await expect(sun).toContainText('keine Daten');
-  await expect(page.locator('.lead')).toContainText('InfluxDB');
+  await expect(page.locator('.lead')).toContainText('Home Assistant + InfluxDB');
   // Not enough history for forecasts: "noch offen", never a made-up number.
   await expect(page.locator('.tile', { hasText: 'Morgen' })).toContainText('noch offen');
   await expect(page.locator('.ts')).toContainText('keine Daten');
