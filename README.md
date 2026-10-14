@@ -11,7 +11,7 @@ VibeDash is not one big app. It ships three things:
 
 Everything runs locally. No cloud, no CDN.
 
-> Status: early (milestone M0/M1). The gallery shows the first building blocks with
+> Status: early (milestones M0 and M1). The gallery shows all building blocks with
 > synthetic demo data. Project background and roadmap (German): [ANLEITUNG.md](ANLEITUNG.md).
 
 ## Quick start
@@ -49,6 +49,22 @@ src/gallery/     gallery page
 tests/unit/      Vitest
 tests/visual/    Playwright
 ```
+
+## Building blocks
+
+| Component        | Purpose                                                           |
+| ---------------- | ----------------------------------------------------------------- |
+| `Tile`           | value + 1–2 words + one small graphic (ring, scale, spark), ⓘ     |
+| `TileRow`        | 2–6 tiles; two per row on the phone                               |
+| `Sparkline`      | soft line, optional range band, gaps stay open                    |
+| `Progress`       | bar 0–100 % with a word; "open" instead of a fake 100 %           |
+| `AccuracyCard`   | model accuracy: bar, trend, n, level (good / fair / poor / open)  |
+| `DayList`        | days as rows like a weather app, yield with range                 |
+| `SoftTimeSeries` | uPlot: actual line, separate forecast line with band, period pick |
+| `SourceArc`      | where the power comes from right now (sun / battery / grid)       |
+| `StatusBar`      | areas as calm dots; colour only when action is needed             |
+| `Tabs`           | main areas; compact icon bar on the phone                         |
+| `Explanation`    | content behind ⓘ: what it means, where the number comes from      |
 
 ## Principles
 

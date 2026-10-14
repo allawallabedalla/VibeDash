@@ -133,6 +133,8 @@ Der Agent prüft Daten, **bevor** er sie darstellt oder Modelle darauf baut. Typ
 | `Reiter` | 6 Hauptbereiche als Leiste oben, auf dem Handy kompakt |
 | `Erklaerung` | ⓘ-Inhalt: „Was heißt das?“ + „Woher kommt die Zahl?“ |
 
+**Namen im Code (englisch):** Kachel = `Tile` · KachelReihe = `TileRow` · Sparkline = `Sparkline` · Fortschritt = `Progress` · TrefferKarte = `AccuracyCard` · Tagesleiste = `DayList` · ZeitreiheWeich = `SoftTimeSeries` · Herkunftsbogen = `SourceArc` · Ampelleiste = `StatusBar` · Reiter = `Tabs` · Erklaerung = `Explanation` (+ `InfoButton`).
+
 **Seitenvorlage (anpassbar je Haus):** Übersicht · Jetzt · Wartung · Garten · Geräte-Historie · Vorhersagen (Treffsicherheit).
 
 ---
