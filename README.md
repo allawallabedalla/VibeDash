@@ -12,7 +12,7 @@ VibeDash is not one big app. It ships three things:
 Everything runs locally. No cloud, no CDN.
 
 > Status: early (milestones M0–M2). Three pages (Overview, Now, Forecasts) and a gallery
-> of all building blocks, running on synthetic demo data. Project background and roadmap (German): [ANLEITUNG.md](ANLEITUNG.md).
+> of all building blocks, running on synthetic demo data. Agent build guide: [AGENT.md](AGENT.md). Project background and roadmap (German): [ANLEITUNG.md](ANLEITUNG.md).
 
 ## Quick start
 
