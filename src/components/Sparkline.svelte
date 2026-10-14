@@ -6,6 +6,11 @@
     /** Optional range band, e.g. the usual 10–90 % of past days. */
     band?: { low: (number | null)[]; high: (number | null)[] };
     color?: string;
+    /**
+     * Own forecast line on the same slots (null where there is none), drawn dashed and
+     * never glued onto the actual line; a thin mark shows where "now" is.
+     */
+    forecast?: (number | null)[];
     /** Signed series: zero line, positive part above in `color`, negative below in `negativeColor`. */
     signed?: boolean;
     negativeColor?: string;
@@ -18,6 +23,7 @@
   let {
     values,
     band,
+    forecast,
     color = 'var(--text)',
     signed = false,
     negativeColor = 'var(--import)',
@@ -32,9 +38,12 @@
   const pad = 3;
 
   const domain = $derived.by(() => {
-    const all = [...values, ...(band?.low ?? []), ...(band?.high ?? [])].filter(
-      (v): v is number => v !== null,
-    );
+    const all = [
+      ...values,
+      ...(forecast ?? []),
+      ...(band?.low ?? []),
+      ...(band?.high ?? []),
+    ].filter((v): v is number => v !== null);
     if (signed) all.push(0);
     let lo = min ?? Math.min(...all);
     let hi = max ?? Math.max(...all);
@@ -43,7 +52,8 @@
     return { lo, hi };
   });
 
-  const xAt = (i: number) => pad + (i / Math.max(values.length - 1, 1)) * (width - 2 * pad);
+  const slots = $derived(Math.max(values.length, forecast?.length ?? 0));
+  const xAt = (i: number) => pad + (i / Math.max(slots - 1, 1)) * (width - 2 * pad);
   const yAt = (v: number) =>
     pad + (1 - (v - domain.lo) / (domain.hi - domain.lo)) * (height - 2 * pad);
 
@@ -79,6 +89,23 @@
         return `${smoothPath(top)}${b}Z`;
       })
       .join('');
+  });
+
+  const forecastLines = $derived(
+    forecast
+      ? runs(forecast).map(({ start, end }) => {
+          const pts: Point[] = [];
+          for (let i = start; i <= end; i++) pts.push({ x: xAt(i), y: yAt(forecast[i]!) });
+          return smoothPath(pts);
+        })
+      : [],
+  );
+  /** "Now": after the last actual value, where the forecast takes over. */
+  const nowX = $derived.by(() => {
+    if (!forecast) return null;
+    let last = values.length - 1;
+    while (last >= 0 && values[last] === null) last--;
+    return last < 0 ? null : xAt(last);
   });
 
   /** Gaps between runs: shown as a soft hatched area, never bridged. */
@@ -152,6 +179,10 @@
       {#each areas as d, i (i)}<path {d} fill="url(#{uid}-fill)" />{/each}
       {#each lines as d, i (i)}<path {d} class="line" stroke={color} />{/each}
     {/if}
+    {#if nowX !== null}
+      <line class="now" x1={nowX} x2={nowX} y1="0" y2={height} />
+    {/if}
+    {#each forecastLines as d, i (i)}<path {d} class="line forecast" stroke={color} />{/each}
   </svg>
 </div>
 
@@ -163,6 +194,16 @@
   svg {
     display: block;
     overflow: visible;
+  }
+  .now {
+    stroke: var(--muted);
+    stroke-width: 1;
+    stroke-dasharray: 2 3;
+  }
+  .forecast {
+    stroke-dasharray: 5 4;
+    stroke-width: 2;
+    opacity: 0.85;
   }
   .line {
     fill: none;

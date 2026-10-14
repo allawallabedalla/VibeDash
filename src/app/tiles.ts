@@ -11,6 +11,9 @@ import {
   latest,
   type DemoData,
 } from '../demo';
+import { sunToday, type SunForecast } from './sun-forecast';
+
+export { demoSunForecast, type SunForecast } from './sun-forecast';
 import { i18n, num, t, time } from '../i18n/index.svelte';
 import { localDateKey } from '../model/time';
 
@@ -78,7 +81,8 @@ function staleOr(data: DemoData, id: string, tile: TileProps): TileProps {
   return withoutValue(tile, 'state.noData');
 }
 
-export function sunTile(data: DemoData): TileProps {
+export function sunTile(data: DemoData, fc?: SunForecast | null): TileProps {
+  const today = fc ? sunToday(data, fc) : null;
   return staleOr(data, 'pv_power', {
     label: t('tile.sun'),
     icon: 'sun',
@@ -86,8 +90,19 @@ export function sunTile(data: DemoData): TileProps {
     value: num(nowValue(data, 'pv_power') / 1000, 1),
     unit: 'kW',
     sub: t('sub.now'),
-    graphic: { kind: 'spark', values: last24h(data, 'pv_power').map(kw), min: 0 },
-    info: { what: t('info.sun.what'), source: t('info.sun.source') },
+    graphic: today
+      ? {
+          kind: 'spark',
+          values: today.values,
+          forecast: today.forecast,
+          band: { low: today.low, high: today.high },
+          min: 0,
+        }
+      : { kind: 'spark', values: last24h(data, 'pv_power').map(kw), min: 0 },
+    info: {
+      what: t('info.sun.what'),
+      source: t('info.sun.source') + (today ? ` ${t('info.sun.forecast')}` : ''),
+    },
   });
 }
 

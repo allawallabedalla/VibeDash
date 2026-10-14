@@ -13,6 +13,8 @@
     | {
         kind: 'spark';
         values: (number | null)[];
+        /** Own forecast line (dashed) on the same slots. */
+        forecast?: (number | null)[];
         color?: string;
         signed?: boolean;
         band?: { low: (number | null)[]; high: (number | null)[] };
@@ -113,6 +115,7 @@
       <div class="graphic">
         <Sparkline
           values={graphic.values}
+          forecast={graphic.forecast}
           color={graphic.color ?? color}
           signed={graphic.signed}
           band={graphic.band}

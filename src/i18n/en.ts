@@ -258,6 +258,8 @@ export const en: Record<MessageKey, string> = {
   'plan.missing.temperatur': 'temperature for today and tomorrow',
   'plan.missing.zeit': 'matching hour (check the server clock)',
   'plan.missing.akku_jetzt': 'current home battery state (older than 30 min)',
+  'info.sun.forecast':
+    'Curve: today measured until now (solid), from now on the forecast as its own dashed line with the 10–90 % range.',
   'page.asOf': 'As of {date}, {time} · {source}',
   'source.demo': 'demo data',
   'source.influx': 'InfluxDB',

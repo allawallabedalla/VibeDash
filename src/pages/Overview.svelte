@@ -1,6 +1,7 @@
 <script lang="ts">
   /** M2: first real page. First level tiles, then today, then look-back table, then questions. */
-  import { currentData, currentSource } from '../app/data.svelte';
+  import { onMount } from 'svelte';
+  import { currentData, currentSource, store } from '../app/data.svelte';
   import { questions } from '../app/questions';
   import { reviewRows } from '../app/review';
   import {
@@ -12,6 +13,8 @@
     tempTile,
     tomorrowTile,
     yieldTodayTile,
+    demoSunForecast,
+    type SunForecast,
   } from '../app/tiles';
   import Card from '../components/Card.svelte';
   import DataTable from '../components/DataTable.svelte';
@@ -49,7 +52,44 @@
     return [item('energy'), item('battery'), item('climate')];
   });
 
-  const row1 = $derived([sunTile(house), loadTile(house), batteryTile(house), gridTile(house)]);
+  // Forecast line in the sun tile (M9): the demo's own model, or live the hourly PV
+  // forecast of the forecasting service. Live without it: no forecast, no made-up line.
+  let sunFc = $state<SunForecast | null>(
+    currentSource() === 'demo' ? demoSunForecast(house) : null,
+  );
+  onMount(async () => {
+    if (currentSource() === 'demo' || !store.pv) return;
+    try {
+      const res = await fetch('/api/pv/prognose', { signal: AbortSignal.timeout(15_000) });
+      if (!res.ok) return;
+      const body = (await res.json()) as {
+        prognosen?: { stunden: string[]; p10: number[]; p50: number[]; p90: number[] }[];
+      };
+      const today = body.prognosen?.find((d) =>
+        d.stunden.some((h) => {
+          const t = Date.parse(h);
+          return t <= house.now && house.now < t + 3_600_000;
+        }),
+      );
+      if (today) {
+        sunFc = {
+          at: today.stunden.map((h) => Date.parse(h)),
+          stepMs: 3_600_000,
+          p10: today.p10,
+          p50: today.p50,
+          p90: today.p90,
+        };
+      }
+    } catch {
+      // no forecast line – the tile still shows the measured values
+    }
+  });
+  const row1 = $derived([
+    sunTile(house, sunFc),
+    loadTile(house),
+    batteryTile(house),
+    gridTile(house),
+  ]);
   const row2 = $derived([
     yieldTodayTile(house),
     tomorrowTile(house),

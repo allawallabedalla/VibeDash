@@ -260,6 +260,8 @@ export const de = {
   'plan.missing.temperatur': 'Temperatur für heute und morgen',
   'plan.missing.zeit': 'passende Stunde (Uhrzeit des Servers prüfen)',
   'plan.missing.akku_jetzt': 'aktueller Ladestand des Hausakkus (älter als 30 min)',
+  'info.sun.forecast':
+    'Kurve: heute bis jetzt gemessen (durchgezogen), ab jetzt die Prognose als eigene gestrichelte Linie mit Spanne 10–90 %.',
   'page.asOf': 'Stand {date}, {time} · {source}',
   'source.demo': 'Demo-Daten',
   'source.influx': 'InfluxDB',
