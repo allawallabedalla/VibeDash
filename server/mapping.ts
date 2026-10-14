@@ -93,6 +93,7 @@ const COMMON_KEYS = [
   'kind',
   'unit',
   'room',
+  'device',
   'scale',
   'stepMs',
   'confirmed',
@@ -160,6 +161,9 @@ export function validateMapping(
     }
     if (!isText(entry.unit, 20)) errors.push(`${at}.unit: required text`);
     if (entry.room !== undefined && !isText(entry.room)) errors.push(`${at}.room: text`);
+    if (entry.device !== undefined && !isText(entry.device, 60)) {
+      errors.push(`${at}.device: text`);
+    }
     if (entry.confirmed !== undefined && typeof entry.confirmed !== 'boolean') {
       errors.push(`${at}.confirmed: true or false`);
     }
@@ -195,6 +199,7 @@ export function validateMapping(
       kind: entry.kind as EntityKind,
       unit: entry.unit as string,
       ...(entry.room ? { room: entry.room as string } : {}),
+      ...(entry.device ? { device: entry.device as string } : {}),
       // Unconfirmed until the person checked it against a source they trust.
       confirmed: entry.confirmed === true,
       ...(typeof entry.maxPerDay === 'number' ? { maxPerDay: entry.maxPerDay } : {}),

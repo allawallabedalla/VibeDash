@@ -115,8 +115,41 @@ export function loadTile(data: DemoData): TileProps {
     unit: 'kW',
     sub: t('sub.now'),
     graphic: { kind: 'spark', values: last24h(data, 'load_power').map(kw), min: 0 },
-    info: { what: t('info.home.what'), source: t('info.home.source') },
+    info: { what: t('info.home.what'), source: loadSource(data) },
   });
+}
+
+/**
+ * Where the house load comes from. A derived consumption (integral of the
+ * load, see `home_energy` / `load_balance_energy` in the mapping) is named as
+ * such, with the car share and the inverter's own balance to compare.
+ */
+function loadSource(data: DemoData): string {
+  const today = localDateKey(data.now, data.timeZone);
+  const todayOf = (id: string) => {
+    if (!data.series[id]?.samples.length) return undefined;
+    const d = daily(data, id).at(-1);
+    return d && d.day === today ? d.value : undefined;
+  };
+  const balance = todayOf('load_balance_energy');
+  const home = todayOf('home_energy');
+  if (balance === undefined && home === undefined) return t('info.home.source');
+  const load = todayOf('load_energy');
+  const parts: string[] = [];
+  if (load !== undefined) parts.push(t('info.home.derived', { load: num(load, 1) }));
+  if (load !== undefined && home !== undefined) {
+    parts.push(t('info.home.car', { car: num(load - home, 1), home: num(home, 1) }));
+  }
+  if (load !== undefined && balance !== undefined && balance > 0) {
+    parts.push(
+      t('info.home.balance', {
+        balance: num(balance, 1),
+        diff: num(balance - load, 1),
+        pct: num(((balance - load) / balance) * 100),
+      }),
+    );
+  }
+  return parts.join(' ');
 }
 
 export function batteryTile(data: DemoData): TileProps {

@@ -114,7 +114,12 @@ test('one series times out: page renders, tile says "keine Daten", notice names 
     'wird geprüft',
   );
   await expect(page.locator('.tile', { hasText: 'Wohnzimmer' })).toContainText('Daten fehlen seit');
-  await expect(page.getByText('Ein Wert ist noch nicht bestätigt')).toBeVisible();
+  // Question groups are folded on the phone; a tap opens them.
+  const confirm = page.getByText('Ein Wert ist noch nicht bestätigt');
+  if (!(await confirm.isVisible())) {
+    await page.locator('details.qgroup summary', { hasText: 'Bestätigen' }).click();
+  }
+  await expect(confirm).toBeVisible();
   await page.screenshot({
     path: `screenshots/state-partial-${info.project.name}.png`,
     fullPage: true,

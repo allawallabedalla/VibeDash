@@ -11,6 +11,8 @@ export interface Entity {
   name: string;
   kind: EntityKind;
   room?: string;
+  /** Device it belongs to (inverter, wallbox …); questions are grouped by it. */
+  device?: string;
   unit: string;
   /**
    * false until the person has checked the value against something they know

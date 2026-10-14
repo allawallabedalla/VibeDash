@@ -38,6 +38,11 @@ export const en: Record<MessageKey, string> = {
   'info.sun.source': 'Inverter, every 5 minutes. A logger gap stays empty.',
   'info.home.what': 'What the house needs right now.',
   'info.home.source': 'House meter, every 5 minutes.',
+  'info.home.derived':
+    'Today so far {load} kWh – summed up from the power, no meter of its own; gaps do not count.',
+  'info.home.car': 'Of that, car {car} kWh (wallbox meter), house without car {home} kWh.',
+  'info.home.balance':
+    'Balance from the inverter (direct + import + battery discharge − battery charged from the grid): {balance} kWh. The difference of {diff} kWh ({pct} %) is conversion and battery loss.',
   'info.battery.what': 'State of charge of the home battery.',
   'info.battery.source': 'Battery storage, state of charge in percent.',
   'info.grid.what': 'Plus = power goes to the grid. Minus = power comes from the grid.',
@@ -157,6 +162,10 @@ export const en: Record<MessageKey, string> = {
     'The living room sensor was silent last night from {from} to {to}. Is its battery low?',
   'q.title': 'Questions for you',
   'q.gap': '{name} reported nothing on {date} from {from} to {to}. Was something restarted?',
+  'q.gapMany': '{name} reported nothing on {date} from {from} to {to}. Was something restarted?',
+  'q.gapRepeat':
+    '{name} went silent {n} times since {since}, longest on {date} from {from} to {to}. Does the sensor only report changes, or does it drop out?',
+  'q.groupConfirm': 'Confirm',
   'q.reset': 'The meter {name} jumped back on {date} at {time}. Was it replaced or reset?',
   'q.open': 'Open: {count}',
   'q.count': '{n} questions',

@@ -82,6 +82,17 @@ listed in `local/mapping.json` – there is no way to send a query from the brow
 
 Without `local/mapping.json` the server runs in demo mode.
 
+Optional keys per series: `device` groups the questions (e.g. "inverter"), `maxPerDay`
+leaves out implausible days of a meter, `helper: true` makes a series only an input for
+others. A meter reading that drops (often to 0) or jumps and comes back within 10 minutes
+is treated as a read error, not a reset. No meter for something (e.g. the house load)?
+A **derived** counter sums up power and/or other meters – always named as such behind ⓘ:
+
+```json
+"load_energy": { "source": "derived", "name": "House", "kind": "energy_counter", "unit": "kWh",
+  "stepMs": 60000, "terms": [{ "integrate": "load_power" }, { "counter": "car_energy", "sign": -1 }] }
+```
+
 New values are shown as **"being checked"** until you compared them with something you trust
 (vendor app, meter) and set `"confirmed": true` for that series in `local/mapping.json`.
 A sensor that stopped reporting shows **"data missing since …"** instead of an old number.
