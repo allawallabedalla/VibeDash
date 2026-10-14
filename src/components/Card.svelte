@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import Explanation from '../components/Explanation.svelte';
-  import Icon, { type IconName } from '../components/Icon.svelte';
-  import InfoButton from '../components/InfoButton.svelte';
+  import Explanation from './Explanation.svelte';
+  import Icon, { type IconName } from './Icon.svelte';
+  import InfoButton from './InfoButton.svelte';
 
   interface Props {
     title: string;
@@ -10,9 +10,11 @@
     color?: string;
     note?: string;
     info?: { what: string; source: string };
+    /** Controls in the header, e.g. a period choice. */
+    actions?: Snippet;
     children: Snippet;
   }
-  let { title, icon, color, note, info, children }: Props = $props();
+  let { title, icon, color, note, info, actions, children }: Props = $props();
 
   const uid = $props.id();
   let open = $state(false);
@@ -23,6 +25,7 @@
     {#if icon}<span class="icon" style:color><Icon name={icon} /></span>{/if}
     <h3>{title}</h3>
     <span class="spacer"></span>
+    {#if actions}<div class="actions">{@render actions()}</div>{/if}
     {#if info}<InfoButton bind:open controls="{uid}-info" />{/if}
   </header>
   {#if open && info}
@@ -59,6 +62,9 @@
   }
   .spacer {
     flex: 1;
+  }
+  .actions {
+    margin: -6px 0;
   }
   .note {
     margin: 0;

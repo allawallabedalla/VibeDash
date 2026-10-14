@@ -18,20 +18,10 @@
         band?: { low: (number | null)[]; high: (number | null)[] };
         min?: number;
       };
-</script>
 
-<script lang="ts">
-  /** Value + 1–2 words + one small graphic. Details behind ⓘ. */
-  import Explanation from './Explanation.svelte';
-  import Icon, { type IconName } from './Icon.svelte';
-  import InfoButton from './InfoButton.svelte';
-  import Ring from './Ring.svelte';
-  import Scale from './Scale.svelte';
-  import Sparkline from './Sparkline.svelte';
-
-  interface Props {
+  export interface TileProps {
     label: string;
-    icon: IconName;
+    icon: import('./Icon.svelte').IconName;
     color?: string;
     value: string;
     unit?: string;
@@ -44,6 +34,16 @@
     statusLabel?: string;
     info?: { what: string; source: string };
   }
+</script>
+
+<script lang="ts">
+  /** Value + 1–2 words + one small graphic. Details behind ⓘ. */
+  import Explanation from './Explanation.svelte';
+  import Icon from './Icon.svelte';
+  import InfoButton from './InfoButton.svelte';
+  import Ring from './Ring.svelte';
+  import Scale from './Scale.svelte';
+  import Sparkline from './Sparkline.svelte';
 
   let {
     label,
@@ -57,7 +57,7 @@
     status,
     statusLabel,
     info,
-  }: Props = $props();
+  }: TileProps = $props();
 
   const uid = $props.id();
   let open = $state(false);
@@ -132,12 +132,14 @@
     gap: 10px;
     min-height: 150px;
     min-width: 0;
+    position: relative;
   }
   header {
     display: flex;
     align-items: center;
     gap: 6px;
     min-height: 20px;
+    padding-right: 26px;
   }
   .icon {
     display: inline-flex;
@@ -148,8 +150,12 @@
     line-height: 1.2;
     min-width: 0;
   }
+  /* ⓘ sits in the corner (44 px target) so the label keeps its width. */
   header > :global(.info) {
-    margin-left: auto;
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    margin: 0;
   }
   .status {
     width: 8px;
@@ -204,12 +210,8 @@
   }
 
   @media (max-width: 600px) {
-    header > :global(.info) {
-      margin-right: -14px;
-      margin-left: auto;
-    }
     .tile {
-      padding: 12px 14px 14px;
+      padding: 12px 12px 14px;
       min-height: 140px;
       border-radius: 18px;
     }
