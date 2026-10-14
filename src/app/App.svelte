@@ -2,7 +2,6 @@
   import Icon from '../components/Icon.svelte';
   import Tabs from '../components/Tabs.svelte';
   import { i18n, t } from '../i18n/index.svelte';
-  import Charging from '../pages/Charging.svelte';
   import Forecasts from '../pages/Forecasts.svelte';
   import Now from '../pages/Now.svelte';
   import Overview from '../pages/Overview.svelte';
@@ -102,7 +101,10 @@
       {:else if router.route === 'forecasts'}
         <Forecasts />
       {:else if router.route === 'charging'}
-        <Charging />
+        <!-- Loaded on demand: only homes with evcc need it. -->
+        {#await import('../pages/Charging.svelte') then { default: Charging }}
+          <Charging />
+        {/await}
       {:else}
         <Overview />
       {/if}
