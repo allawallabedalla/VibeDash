@@ -10,6 +10,7 @@ import { handleApi, type ApiDeps } from './api';
 import { createBackends } from './backends';
 import { evccClient } from '../src/adapters/evcc';
 import { forecastBridge } from './forecast-bridge';
+import { pvBridge } from './pv-bridge';
 import { weatherClient } from '../src/adapters/openmeteo';
 import { fromEnv, fromHomeAssistant, readSettings, writeSettings } from './location';
 import type { ResolvedLocation } from './location';
@@ -89,7 +90,25 @@ if (process.env.FORECAST_URL && deps.mapping && deps.series) {
     timeoutMs: config.timeoutMs,
   });
   deps.forecast = { names: Object.keys(deps.mapping.forecasts), read: bridge.read };
-  const run = () => void bridge.syncAll();
+  const mapping = deps.mapping;
+  const pvb = mapping.pv
+    ? pvBridge({
+        url: process.env.FORECAST_URL,
+        mapping: { ...mapping, pv: mapping.pv },
+        fetchFn: fetch,
+        series: deps.series,
+        location: async () => (deps.weather?.enabled ? await deps.weather.location() : null),
+        weatherOn: deps.weather?.enabled ?? false,
+        now: Date.now,
+        log,
+        timeoutMs: config.timeoutMs,
+      })
+    : null;
+  if (pvb) deps.pv = { read: pvb.read };
+  const run = () => {
+    void bridge.syncAll();
+    if (pvb) void pvb.syncAll();
+  };
   setTimeout(run, 5_000);
   setInterval(run, 3_600_000).unref();
   log(`forecast service: ${Object.keys(deps.mapping.forecasts).length} daily forecasts`);

@@ -115,3 +115,68 @@ export function weatherClient(fetchFn: FetchLike, timeoutMs = 10_000, cacheMs = 
     },
   };
 }
+
+/** A roof plane in the Open-Meteo convention (azimuth 0 = south, -90 = east, 90 = west). */
+export interface RoofPlane {
+  name: string;
+  tilt: number;
+  azimuth: number;
+  kwp: number;
+}
+
+/** Hourly irradiance on a tilted plane (W/m², hour start in UTC ms). */
+export interface HourValue {
+  t: number;
+  v: number;
+}
+
+/**
+ * GTI forecast for one roof plane. `archive`: the day-ahead forecasts of the
+ * past days (Previous Runs API, `previous_day1`) – what was known about each
+ * hour about one day earlier, for an honest backtest.
+ */
+export function gtiUrl(l: Location, plane: RoofPlane, archive: boolean, pastDays = 60): string {
+  const r = roundLocation(l);
+  const p = new URLSearchParams({
+    latitude: String(r.lat),
+    longitude: String(r.lon),
+    hourly: archive ? 'global_tilted_irradiance_previous_day1' : 'global_tilted_irradiance',
+    tilt: String(plane.tilt),
+    azimuth: String(plane.azimuth),
+    timezone: 'GMT',
+    ...(archive ? { past_days: String(pastDays), forecast_days: '1' } : { forecast_days: '3' }),
+  });
+  const host = archive ? 'https://previous-runs-api.open-meteo.com' : 'https://api.open-meteo.com';
+  return `${host}/v1/forecast?${p}`;
+}
+
+export function parseHourly(body: unknown, key: string): HourValue[] {
+  const hourly = (body as { hourly?: Record<string, unknown[]> })?.hourly;
+  if (!hourly || !Array.isArray(hourly.time)) throw new WeatherError('unexpected hourly response');
+  const out: HourValue[] = [];
+  hourly.time.forEach((time, i) => {
+    const v = hourly[key]?.[i];
+    // timezone=GMT: times come without offset and are UTC
+    const t = Date.parse(`${String(time)}:00Z`);
+    if (Number.isFinite(t) && typeof v === 'number' && Number.isFinite(v)) out.push({ t, v });
+  });
+  return out;
+}
+
+export async function fetchGti(
+  fetchFn: FetchLike,
+  l: Location,
+  plane: RoofPlane,
+  archive: boolean,
+  timeoutMs = 10_000,
+): Promise<HourValue[]> {
+  const res = await fetchFn(gtiUrl(l, plane, archive), {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!res.ok) throw new WeatherError(`HTTP ${res.status}`);
+  return parseHourly(
+    await res.json(),
+    archive ? 'global_tilted_irradiance_previous_day1' : 'global_tilted_irradiance',
+  );
+}

@@ -6,6 +6,7 @@
  */
 import { isHaEntityId, type HaMapping } from '../src/adapters/homeassistant';
 import type { InfluxMapping } from '../src/adapters/influx1';
+import type { RoofPlane } from '../src/adapters/openmeteo';
 import type { EntityKind } from '../src/model/types';
 
 export type SeriesMapping =
@@ -19,10 +20,19 @@ export interface ForecastMapping {
   weather: boolean;
 }
 
+/** The PV plant for the hourly forecast (M11); the person confirms the roof planes. */
+export interface PvMapping {
+  /** Energy counter of the PV generation. */
+  from: string;
+  planes: RoofPlane[];
+  maxKw?: number;
+}
+
 export interface Mapping {
   timeZone: string;
   series: Record<string, SeriesMapping>;
   forecasts: Record<string, ForecastMapping>;
+  pv?: PvMapping;
 }
 
 const KINDS: EntityKind[] = [
@@ -58,7 +68,7 @@ export function validateMapping(
   if (!isObj(raw)) return { ok: false, errors: ['mapping: must be a JSON object'] };
 
   for (const key of Object.keys(raw)) {
-    if (!['timeZone', 'series', 'forecasts', '$comment'].includes(key)) {
+    if (!['timeZone', 'series', 'forecasts', 'pv', '$comment'].includes(key)) {
       errors.push(`mapping.${key}: unknown key`);
     }
   }
@@ -192,8 +202,67 @@ export function validateMapping(
     }
   }
 
+  let pv: PvMapping | undefined;
+  if (raw.pv !== undefined) {
+    const at = 'mapping.pv';
+    const p = raw.pv;
+    if (!isObj(p)) errors.push(`${at}: must be an object`);
+    else {
+      for (const key of Object.keys(p)) {
+        if (!['from', 'planes', 'maxKw'].includes(key)) errors.push(`${at}.${key}: unknown key`);
+      }
+      const src = typeof p.from === 'string' ? series[p.from] : undefined;
+      if (!src || src.entity.kind !== 'energy_counter') {
+        errors.push(`${at}.from: name of the PV energy_counter series`);
+      }
+      const planes: RoofPlane[] = [];
+      if (!Array.isArray(p.planes) || p.planes.length === 0 || p.planes.length > 8) {
+        errors.push(`${at}.planes: 1 to 8 roof planes`);
+      } else {
+        p.planes.forEach((pl: unknown, i: number) => {
+          const q = pl as Record<string, unknown>;
+          const ok =
+            isObj(q) &&
+            typeof q.name === 'string' &&
+            /^[a-z][a-z0-9_]{0,31}$/.test(q.name) &&
+            typeof q.tilt === 'number' &&
+            q.tilt >= 0 &&
+            q.tilt <= 90 &&
+            typeof q.azimuth === 'number' &&
+            q.azimuth >= -180 &&
+            q.azimuth <= 180 &&
+            typeof q.kwp === 'number' &&
+            q.kwp > 0;
+          if (!ok) {
+            errors.push(
+              `${at}.planes[${i}]: {name (a-z), tilt 0–90, azimuth −180–180 (0 = south, −90 = east), kwp > 0}`,
+            );
+          } else {
+            planes.push({
+              name: q.name as string,
+              tilt: q.tilt as number,
+              azimuth: q.azimuth as number,
+              kwp: q.kwp as number,
+            });
+          }
+        });
+      }
+      if (p.maxKw !== undefined && (typeof p.maxKw !== 'number' || p.maxKw <= 0)) {
+        errors.push(`${at}.maxKw: number > 0`);
+      }
+      pv = {
+        from: String(p.from),
+        planes,
+        ...(typeof p.maxKw === 'number' ? { maxKw: p.maxKw } : {}),
+      };
+    }
+  }
+
   if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, mapping: { timeZone: raw.timeZone as string, series, forecasts } };
+  return {
+    ok: true,
+    mapping: { timeZone: raw.timeZone as string, series, forecasts, ...(pv ? { pv } : {}) },
+  };
 }
 
 /** Which back-ends a mapping needs. */

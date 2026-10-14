@@ -33,6 +33,9 @@ export interface ApiDeps {
     now: () => Promise<EvccNow>;
     sessions: (year?: number) => Promise<EvccSession[]>;
   };
+  pv?: {
+    read: (what: 'prognose' | 'guete' | 'status') => Promise<{ status: number; body: unknown }>;
+  };
   forecast?: {
     names: string[];
     read: (
@@ -154,12 +157,20 @@ export async function handleApi(
       source: deps.mode,
       backends: deps.mapping ? sourcesOf(deps.mapping) : [],
       evcc: Boolean(deps.evcc),
+      pv: Boolean(deps.pv),
       timeZone: deps.mapping?.timeZone ?? null,
     });
   }
 
   if (deps.mode === 'demo' || !deps.mapping || !deps.series) {
     return json(404, { error: 'demo_mode' });
+  }
+
+  const pvm = /^\/api\/pv\/(prognose|guete|status)$/.exec(path);
+  if (pvm) {
+    if (!deps.pv) return json(404, { error: 'no_pv_forecast' });
+    const r = await deps.pv.read(pvm[1] as 'prognose' | 'guete' | 'status');
+    return json(r.status, r.body);
   }
 
   if (path === '/api/forecasts') {
