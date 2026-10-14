@@ -1,0 +1,200 @@
+# Projektanleitung: ruhige Haus-Dashboards, von einem KI-Agenten gebaut
+
+> Arbeitstitel: **„Hausblick“** (Platzhalter – Namensvorschläge unten).
+> Diese Datei ist die Übergabe an eine neue Claude-Code-Sitzung in einem **neuen, leeren Repo**.
+> Sie enthält bewusst **keine Daten aus einem echten Haus** (keine Adressen, IPs, Gruppenadressen, Grundrisse, Namen).
+
+---
+
+## 1. Die Idee in drei Sätzen
+
+1. Klassische Dashboard-Software (Grafana, Homepage, Dashy) muss für alle passen und wird deshalb per Konfiguration angepasst – das ist für Nicht-Nerds zu schwer und sieht nie ruhig aus.
+2. Mit einem KI-Agenten geht es umgekehrt: **Der Agent baut jedem Haus sein eigenes Dashboard** – aus festen Design-Bausteinen, mit geprüften Daten.
+3. Das Projekt liefert deshalb **keine Riesen-App**, sondern drei Dinge: eine **Design-Sprache** (Bausteine), **Datenanschlüsse** und eine **Bauanleitung für den Agenten**.
+
+## 2. Für wen
+
+- Menschen mit Smart Home / PV / Wärmepumpe / E-Auto, die **auf einen Blick** wissen wollen, was los ist – ohne Diagramm-Lesen zu lernen.
+- Ausdrücklich auch für Menschen mit ADHS: ein Blick, wenige Wörter, keine Reizüberflutung.
+- Am Mac **und** am iPhone gleich gut.
+
+## 3. Was es NICHT ist (Nicht-Ziele)
+
+- Kein Grafana-Nachbau. Für tiefe Zeitreihen-Analysen bleibt Grafana (oder Ähnliches) – verlinkt als „zweite Ebene“.
+- Keine YAML-Konfigurationswüste, kein Drag-and-drop-Editor.
+- Keine Cloud. Alles läuft lokal im Heimnetz.
+- Keine Steuerung (Schalten, Laden) im ersten Wurf – nur Anzeige.
+
+---
+
+## 4. Architektur
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Web-App (statisch gebaut, lokal ausgeliefert)              │
+│  Seiten = Komposition aus Design-Bausteinen                 │
+├─────────────────────────────────────────────────────────────┤
+│  Design-Bausteine (Komponenten-Bibliothek)                  │
+│  Kachel · Sparkline · Ring · Skala · Fortschritt · Tagesleiste│
+│  Treffsicherheits-Karte · Zeitreihe weich · Herkunftsbogen  │
+├─────────────────────────────────────────────────────────────┤
+│  Einheitliches Datenmodell (Entitäten, Messwerte, Prognosen)│
+├─────────────────────────────────────────────────────────────┤
+│  Datenanschlüsse (Adapter)                                  │
+│  InfluxDB 1.x · Home Assistant · generische JSON-API · CSV  │
+└─────────────────────────────────────────────────────────────┘
+        ▲
+        │  baut und pflegt
+┌───────┴─────────────────────────────────────────────────────┐
+│  Agenten-Bauanleitung (CLAUDE.md / Skill)                   │
+│  Inventur → Datenwahrheit prüfen → Seiten bauen → testen     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Technik-Empfehlung (Startpunkt, darf der Agent begründet ändern)
+
+| Teil | Wahl | Warum |
+|---|---|---|
+| Sprache | TypeScript | Typen fürs Datenmodell, ein Ökosystem für Front- und Backend |
+| Oberfläche | Svelte (oder reine Web Components) | klein, schnell am iPhone, wenig Boilerplate |
+| Diagramme | uPlot (Zeitreihen) + eigenes SVG (Kachel-Grafiken) | uPlot ist winzig und schnell; Kachel-Grafiken sind einfache SVGs |
+| Server | kleiner Node/Bun-Server **oder** gar keiner (App liest direkt eine JSON-API) | Adapter brauchen einen Ort für Zugangsdaten |
+| Tests | Vitest (Logik) + Playwright (Screenshots Mac 1440 px / iPhone 390 px) | Optik ist das Produkt – sie muss getestet werden |
+| Auslieferung | ein Docker-Image **und** ein statischer Build | Homelab-üblich |
+
+**Leistungsbudget:** erste Seite < 200 KB JavaScript, sichtbar < 1 s im Heimnetz am iPhone. Keine CDNs, alles lokal gebündelt.
+
+**Nicht Rust/WebAssembly für die Oberfläche** – bringt bei Kacheln und Diagrammen nur Ladezeit. WASM höchstens später für interaktive Rechenspiele (z. B. „Was wäre, wenn ich jetzt lade?“).
+
+---
+
+## 5. Design-Regeln (das Herz des Projekts)
+
+Diese Regeln sind aus echter Nutzung entstanden. Der Agent hält sie **immer** ein.
+
+### Erste Ebene = Infografik, nicht Zahlenfriedhof
+1. Jede Seite beginnt mit **Kacheln**: Wert groß, 1–2 Wörter Beschriftung, **eine kleine Grafik** (Ring, Skala, Anteil, Punkte, Sparkline, Vergleich ▲/▼).
+2. **Tabellen nie allein** – immer mit Infografik davor; Tabellen kommen als zweiter Abschnitt unter die Kacheln.
+3. **Symbol = Outline-Icon + 1–2 Wörter.** Keine Emojis, keine Symbolketten („✓ ✓ ⏳ ✓“ → „Module ok · Akku ok · Nacht läuft“).
+4. **Details hinter ⓘ** – und ⓘ öffnet per **Antippen**, nicht per Darüberfahren (iPhone hat kein Hover).
+5. **Weich und ruhig:** abgerundete Formen, sanfte Verläufe, kräftige aber geschwungene Linien, wenige Farben. Hell- und Dunkelmodus.
+6. **IST zuerst**, dann Rückblick mit frei wählbarem Zeitraum.
+
+### Zahlen ehrlich zeigen
+7. **Jede Näherung mit Unsicherheit:** Spanne oder ± und Stichprobengröße n („≈ 18 kWh (12–25), n = 30“).
+8. **Prognose = eigene, durchgehende Linie**, nie an die Ist-Linie angeklebt.
+9. **Vorzeichen fest:** Einspeisung oben/positiv, Netzbezug unten/negativ.
+10. **Modelle zeigen ihre Treffsicherheit**, nicht ihren „Lernfortschritt“: je Modell ein Balken 0–100 % „korrekt“ + Sparkline des Verlaufs („wird es besser?“).
+11. **Keine Schein-Genauigkeit:** Was (noch) nicht bewertbar ist, heißt „offen · n = 2 · ab ca. …“ – nicht 100 %.
+
+### Nicht nerven
+12. **Hinweise nur bei Handlungsbedarf.** Kein „unter Soll – prüfen“, kein Dauer-Gelb.
+13. Pushes (falls später) nur bei echten Defekten oder nötigen Handgriffen, kurz, mit Link zur Seite.
+
+### Plattformen
+14. **Mac und iPhone sind gleichwertig.** Jede Seite hat ein eigenes, bewusst gestaltetes Handy-Layout (kein bloßes Untereinanderstapeln).
+15. Antippflächen ≥ 44 px, Schrift ≥ 14 px auf dem Handy.
+
+---
+
+## 6. Datenwahrheit (wichtiger als jeder Algorithmus)
+
+Der Agent prüft Daten, **bevor** er sie darstellt oder Modelle darauf baut. Typische Fallen aus der Praxis:
+
+| Falle | Regel |
+|---|---|
+| Schaltbefehl ≠ Zustand (z. B. Melder schickt „Ein“ und gleichzeitig „Helligkeit 0“) | Zustand immer aus **Rückmeldungen der Aktoren** (Status), nicht aus Befehlen |
+| Leistung aufintegriert ≠ Energie | **Zählerstände** sind die Wahrheit; Integrale nur als Notlösung |
+| Zwei Meldungen in derselben Sekunde | Reihenfolge des Eingangs behalten, **nie nach Wert sortieren** |
+| Lücken (Sensor schweigt, Neustart) | Lücken sichtbar machen, nicht als 0 oder „gleich geblieben“ werten |
+| Zeitumstellung, Zeitzonen | intern UTC, Anzeige lokal; Tage nach lokaler Zeit schneiden |
+| Mehrfachläufe eines Jobs am Tag | je Tag den **planmäßigen** Lauf zählen |
+| Bewertung von Modellen | nur mit Daten lernen, die **vor** dem bewerteten Tag bekannt waren; fairer Vergleich bei **gleichem Prognose-Vorlauf**; nie das Ergebnis gegen sich selbst prüfen (zirkulär) |
+| Mittelwerte mit Vorzeichen | +40 % und −40 % ergeben 0 – für Fehler den **Betrag** mitteln |
+
+**Wichtig:** Auffälligkeiten als **Frage an den Menschen** formulieren („Brennt in der Küche nachts wirklich Licht?“), nicht als Bug behaupten. Der Mensch kennt sein Haus.
+
+---
+
+## 7. Bausteine (erste Liste)
+
+| Baustein | Zweck |
+|---|---|
+| `Kachel` | Wert + Wort + Mini-Grafik (Arten: ring, skala, anteil, punkte, spark, vergleich) + Status-Punkt |
+| `KachelReihe` | 2–6 Kacheln, auf dem Handy 2 je Zeile |
+| `Sparkline` | weicher Verlauf, optional Band (Spanne) |
+| `Fortschritt` | Balken 0–100 % mit Wort („82 % korrekt“) |
+| `TrefferKarte` | Modell: Balken „korrekt“ + Sparkline-Verlauf + n + Stufe (gut/mäßig/schlecht/offen) |
+| `Tagesleiste` | Tage als Zeilen: Symbol · Tief ▬▬ Hoch · Regen · Sonnenstunden · kWh (wie eine Wetter-App) |
+| `ZeitreiheWeich` | Ist-Linie + eigene Prognoselinie + Band; Zeitraumwahl |
+| `Herkunftsbogen` | woher kommt der Strom gerade (Sonne/Akku/Netz) als weicher Bogen |
+| `Ampelleiste` | Bereiche als ruhige Punkte (ok / ansehen / handeln) |
+| `Reiter` | 6 Hauptbereiche als Leiste oben, auf dem Handy kompakt |
+| `Erklaerung` | ⓘ-Inhalt: „Was heißt das?“ + „Woher kommt die Zahl?“ |
+
+**Seitenvorlage (anpassbar je Haus):** Übersicht · Jetzt · Wartung · Garten · Geräte-Historie · Vorhersagen (Treffsicherheit).
+
+---
+
+## 8. Datenanschlüsse (Reihenfolge)
+
+1. **Demo-Daten (synthetisch)** – für Entwicklung, Tests und Screenshots. Realistische Tagesgänge, Lücken, Fehler absichtlich eingebaut.
+2. **InfluxDB 1.x (InfluxQL)** – weit verbreitet in Homelabs.
+3. **Generische JSON-API** – für eigene Skripte.
+4. **Home Assistant** (REST/WebSocket) – größte Zielgruppe.
+5. Später: Prometheus, MQTT, CSV-Import.
+
+Einheitliches Datenmodell: `Entitaet` (id, Name, Art, Raum, Einheit) · `Messreihe` (Zeit, Wert, Quelle, Lückeninfo) · `Prognose` (Zeitpunkt, erstellt_am, Vorlauf, Wert, Spanne) · `Bewertung` (Modell, n, korrekt_pct, Verlauf).
+
+---
+
+## 9. Qualität
+
+- **Screenshot-Tests** jeder Seite: Mac (1440 × 900) und iPhone (390 × 844), hell und dunkel. Abweichungen werden angesehen, nicht nur gezählt.
+- **Prüfliste je Seite:** erste Ebene nur Kacheln/Infografiken? keine Emojis? ⓘ per Tippen? Unsicherheiten angegeben? Prognose eigene Linie? Handy-Layout bewusst?
+- **Keine echten Hausdaten im Repo**, auch nicht in Screenshots, Tests oder Commits. Zugangsdaten nur in `.env` (nicht eingecheckt).
+- Kleine Commits, klare Nachrichten.
+
+---
+
+## 10. Fahrplan
+
+| Meilenstein | Inhalt | Fertig, wenn … |
+|---|---|---|
+| M0 Gerüst | Repo, Lizenz, TypeScript + Svelte + uPlot, Lint, Tests, CI | `npm test` und Screenshot-Test laufen in CI |
+| M1 Bausteine | 11 Bausteine + Demo-Daten + Galerie-Seite | Galerie sieht auf Mac und iPhone ruhig und stimmig aus |
+| M2 Übersicht | erste echte Seite aus Demo-Daten | Seite besteht die Prüfliste |
+| M3 InfluxDB-Anschluss | Adapter + Datenmodell-Abbildung | Übersicht läuft mit echter Influx (lokal, nicht im Repo) |
+| M4 Jetzt + Vorhersagen | Echtzeit-Seite, Treffsicherheits-Karten | Prognosen mit Spanne und n, Bewertung fair |
+| M5 Agenten-Bauanleitung | `AGENT.md`/Skill: wie ein Agent ein Haus inventarisiert, prüft und Seiten baut | ein frischer Agent baut aus Demo-Daten eine Seite nur mit der Anleitung |
+| M6 Home Assistant | Adapter | Demo mit HA-Testinstanz |
+| v0.1 | Doku, Beispiel-Screenshots, Docker-Image | jemand Fremdes bekommt es in 15 min zum Laufen |
+
+---
+
+## 11. Offene Entscheidungen (vom Menschen zu treffen)
+
+1. **Name.** Vorschläge: *Hausblick*, *ruhig*, *Calmboard*, *Glance Home*, *stillstand* (Wortspiel). Kurz prüfen: frei auf GitHub/npm?
+2. **Lizenz.** MIT (maximal offen) · Apache-2.0 (offen + Patentklausel) · AGPL-3.0 (Ableitungen müssen offen bleiben).
+3. **Sprache von Code und Doku.** Empfehlung: Code und README **englisch** (Reichweite), Oberfläche **mehrsprachig** ab Start (de + en).
+4. **Öffentlich ab Tag 1 oder erst ab v0.1?** Empfehlung: privat bis M2, dann öffentlich.
+
+---
+
+## 12. Erster Auftrag an Claude Code (zum Kopieren)
+
+```
+Lies ANLEITUNG.md und CLAUDE.md vollständig. Das ist ein neues, leeres Repo.
+
+Ziel dieser Sitzung: Meilenstein M0 und der Anfang von M1.
+1. Schlage mir zuerst kurz vor: Ordnerstruktur, Paketmanager, genaue Versionen
+   (TypeScript, Svelte, uPlot, Vitest, Playwright), Lizenzdatei – warte auf mein Okay.
+2. Dann: Gerüst anlegen, CI (Lint + Tests + Screenshot-Test Mac 1440 / iPhone 390),
+   synthetische Demo-Daten (24 h und 30 Tage: PV, Hausverbrauch, Akku, Raumklima,
+   mit absichtlichen Lücken und einem Sensor-Artefakt).
+3. Die ersten drei Bausteine: Kachel (mit Grafik-Arten ring, skala, spark),
+   Sparkline, Fortschritt – plus eine Galerie-Seite.
+4. Screenshots von Mac und iPhone machen, selbst ansehen, gegen die Design-Regeln
+   in Abschnitt 5 prüfen, nachbessern, dann mir zeigen.
+Keine echten Hausdaten verwenden. Committe in kleinen Schritten, pushe nicht ohne Frage.
+```
