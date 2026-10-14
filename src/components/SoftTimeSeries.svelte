@@ -178,13 +178,15 @@
       {/if}
       <span class="unit">{unit}</span>
     </div>
-    <div class="seg" role="group" aria-label={labels.periods}>
-      {#each periods as p (p.id)}
-        <button type="button" aria-pressed={period === p.id} onclick={() => (period = p.id)}>
-          {p.label}
-        </button>
-      {/each}
-    </div>
+    {#if periods.length > 1}
+      <div class="seg" role="group" aria-label={labels.periods}>
+        {#each periods as p (p.id)}
+          <button type="button" aria-pressed={period === p.id} onclick={() => (period = p.id)}>
+            {p.label}
+          </button>
+        {/each}
+      </div>
+    {/if}
   </div>
   {#if isEmpty}<p class="empty">{labels.empty ?? '–'}</p>{/if}
   <div

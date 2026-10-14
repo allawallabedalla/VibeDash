@@ -16,6 +16,7 @@
 
   const tabs = $derived([
     { id: 'overview', label: t('page.overview'), icon: 'overview' as const },
+    { id: 'week', label: t('page.week'), icon: 'calendar' as const },
     { id: 'now', label: t('page.now'), icon: 'bolt' as const },
     { id: 'forecasts', label: t('page.forecasts'), icon: 'forecast' as const },
     ...(store.evcc || store.plan || (store.state.status === 'ready' && currentSource() === 'demo')
@@ -94,7 +95,9 @@
       </div>
     {/if}
     {#key store.version}
-      {#if router.route === 'now'}
+      {#if router.route === 'week'}
+        {#await import('../pages/Week.svelte') then { default: Week }}<Week />{/await}
+      {:else if router.route === 'now'}
         {#await import('../pages/Now.svelte') then { default: Now }}<Now />{/await}
       {:else if router.route === 'forecasts'}
         <!-- Pages after the first are loaded on demand (first page < 200 KB JS). -->
