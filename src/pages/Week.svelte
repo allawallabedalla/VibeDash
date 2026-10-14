@@ -15,7 +15,7 @@
   import Tile, { type TileProps } from '../components/Tile.svelte';
   import TileRow from '../components/TileRow.svelte';
   import { mulberry32, outlook, pvTimeSeries } from '../demo';
-  import { i18n, num, t } from '../i18n/index.svelte';
+  import { i18n, num, t, time } from '../i18n/index.svelte';
   import PageHead from './PageHead.svelte';
   import WeatherCard from './WeatherCard.svelte';
 
@@ -23,17 +23,31 @@
   const tz = house.timeZone;
   const locale = $derived(i18n.locale === 'de' ? 'de-DE' : 'en-GB');
   const w = weekNumbers(house);
-  const today = w.days.length - 1;
+  // charts: the seven completed days, then today (lighter, apart from the sums)
+  const today = w.days.length;
 
-  const labels = $derived(
-    w.days.map((d, i) =>
-      i === today
-        ? t('days.today')
-        : new Intl.DateTimeFormat(locale, { timeZone: tz, weekday: 'short' }).format(
-            d.start + 12 * 3_600_000,
-          ),
+  const labels = $derived([
+    ...w.days.map((d) =>
+      new Intl.DateTimeFormat(locale, { timeZone: tz, weekday: 'short' }).format(
+        d.start + 12 * 3_600_000,
+      ),
     ),
-  );
+    t('days.today'),
+  ]);
+  const dm = (ms: number) =>
+    new Intl.DateTimeFormat(locale, { timeZone: tz, day: '2-digit', month: '2-digit' }).format(
+      ms + 12 * 3_600_000,
+    );
+  // "07.–13.10." (both days, the month once when it is the same)
+  const period = $derived.by(() => {
+    const a = dm(w.days[0]!.start);
+    const b = dm(w.days.at(-1)!.start);
+    return i18n.locale === 'de' && a.slice(3) === b.slice(3)
+      ? `${a.slice(0, 3)}–${b}`
+      : `${a}–${b}`;
+  });
+  const until = $derived(t('week.todayUntil', { time: time(house.now, tz) }));
+  const periodNote = $derived(`${period}, ${until}`);
 
   const nowTiles = $derived([
     sunNowTile(house),
@@ -161,10 +175,18 @@
     {#each nowTiles as tile (tile.label)}<Tile {...tile} />{/each}
   </TileRow>
 
-  <h2>{t('week.last7')}</h2>
+  <h2>{t('week.last7')} · {period}</h2>
   <TileRow count={5}>
     {#each weekTiles as tile (tile.label)}<Tile {...tile} />{/each}
   </TileRow>
+  <p class="muted-note">
+    {t('week.todayApart', {
+      until,
+      pv: kwh(w.today.pv),
+      load: kwh(w.today.load),
+      imp: kwh(w.today.imp),
+    })}
+  </p>
 
   {#if demo}
     <h2>{t('week.weather')}</h2>
@@ -196,9 +218,9 @@
 
   <h2>{t('week.batteryLoad')}</h2>
   <div class="cards">
-    <Card title={t('week.socRange')} icon="battery" color="var(--battery)">
+    <Card title={t('week.socRange')} icon="battery" color="var(--battery)" note={periodNote}>
       <DayRanges
-        ranges={w.soc}
+        ranges={[...w.soc, w.today.soc]}
         {labels}
         color="var(--battery)"
         unit="%"
@@ -206,9 +228,9 @@
         label={t('week.socRange')}
       />
     </Card>
-    <Card title={t('week.loadPerDay')} icon="home" color="var(--home)">
+    <Card title={t('week.loadPerDay')} icon="home" color="var(--home)" note={periodNote}>
       <DayBars
-        values={w.load}
+        values={[...w.load, w.today.load]}
         {labels}
         color="var(--home)"
         unit="kWh"
@@ -218,7 +240,7 @@
     </Card>
   </div>
 
-  <h2>{t('week.flows')}</h2>
+  <h2>{t('week.flows')} · {period}</h2>
   <div class="cards">
     <Card title={t('week.whereTo')} icon="sun" color="var(--sun)">
       <FlowBars flows={whereTo} />

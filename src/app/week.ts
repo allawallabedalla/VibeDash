@@ -1,7 +1,9 @@
 /**
  * The last seven days in numbers: daily meter values, battery charge range,
- * night base load and where the energy went. Meters first; battery energy has
- * no meter and is summed up from power (marked as an approximation).
+ * night base load and where the energy went. Sums and comparisons use the
+ * seven *completed* days (yesterday and the six before), so they do not move
+ * during the day; the running day is kept apart. Meters first; battery energy
+ * has no meter and is summed up from power (marked as an approximation).
  */
 import { daily, type DemoData } from '../demo';
 import { localDateKey, localMidnight } from '../model/time';
@@ -90,7 +92,19 @@ export function integrateSplit(
   return { pos: pos / 1000, neg: neg / 1000 };
 }
 
+export interface Today {
+  day: string;
+  start: number;
+  pv: number | null;
+  load: number | null;
+  imp: number | null;
+  feed: number | null;
+  soc: { low: number; high: number } | null;
+  night: number | null;
+}
+
 export interface WeekNumbers {
+  /** The seven completed days, oldest first. */
   days: { day: string; start: number }[];
   pv: (number | null)[];
   load: (number | null)[];
@@ -105,11 +119,14 @@ export interface WeekNumbers {
   autarky: number | null;
   /** Battery energy summed up from power (no meter): charged / discharged kWh. */
   battery: { charged: number; discharged: number } | null;
+  /** The running day, apart from the sums. */
+  today: Today;
 }
 
 export function weekNumbers(data: DemoData): WeekNumbers {
-  const days = weekDays(data);
-  const earlier = weekDays({ ...data, now: data.now - 7 * DAY });
+  const days = weekDays({ ...data, now: data.now - DAY });
+  const earlier = weekDays({ ...data, now: data.now - 8 * DAY });
+  const todayDay = weekDays(data, 1);
   const pv = perDay(data, 'pv_energy', days);
   const load = perDay(data, 'load_energy', days);
   const imp = perDay(data, 'import_energy', days);
@@ -121,21 +138,23 @@ export function weekNumbers(data: DemoData): WeekNumbers {
         const e = integrateSplit(
           bat.samples,
           days[0]!.start,
-          data.now,
+          todayDay[0]!.start,
           // long ranges arrive thinned to 5-min values; bridge those, not real gaps
           Math.max(bat.stepMs * 2.5, 15 * 60_000),
         );
         return { charged: e.pos, discharged: e.neg };
       })()
     : null;
+  const socSamples = data.series.battery_soc?.samples ?? [];
+  const loadSamples = data.series.load_power?.samples ?? [];
   return {
     days,
     pv,
     load,
     imp,
     feed,
-    soc: rangePerDay(data.series.battery_soc?.samples ?? [], days),
-    night: nightMean(data.series.load_power?.samples ?? [], days),
+    soc: rangePerDay(socSamples, days),
+    night: nightMean(loadSamples, days),
     total,
     before: {
       pv: sum(perDay(data, 'pv_energy', earlier)),
@@ -146,5 +165,18 @@ export function weekNumbers(data: DemoData): WeekNumbers {
         ? Math.max(0, 1 - total.imp / total.load)
         : null,
     battery,
+    today: {
+      ...todayDay[0]!,
+      pv: perDay(data, 'pv_energy', todayDay)[0]!,
+      load: perDay(data, 'load_energy', todayDay)[0]!,
+      imp: perDay(data, 'import_energy', todayDay)[0]!,
+      feed: perDay(data, 'feed_in_energy', todayDay)[0]!,
+      soc: rangePerDay(socSamples, todayDay)[0]!,
+      // the night is only complete after 5 o'clock
+      night:
+        data.now - todayDay[0]!.start >= 5 * 3_600_000
+          ? nightMean(loadSamples, todayDay)[0]!
+          : null,
+    },
   };
 }
