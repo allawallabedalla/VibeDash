@@ -11,8 +11,8 @@ VibeDash is not one big app. It ships three things:
 
 Everything runs locally. No cloud, no CDN.
 
-> Status: early (milestones M0–M2). Three pages (Overview, Now, Forecasts) and a gallery
-> of all building blocks, running on synthetic demo data. Agent build guide: [AGENT.md](AGENT.md). Project background and roadmap (German): [ANLEITUNG.md](ANLEITUNG.md).
+> Status: early (milestones M0–M2, M3 in progress). Three pages (Overview, Now, Forecasts)
+> and a gallery of all building blocks; synthetic demo data or InfluxDB 1.x via the server. Agent build guide: [AGENT.md](AGENT.md). Project background and roadmap (German): [ANLEITUNG.md](ANLEITUNG.md).
 
 ## Quick start
 
@@ -23,6 +23,36 @@ pnpm install
 pnpm dev          # http://localhost:5173 (#/, #/now, #/forecasts, #/gallery; ?lang=de|en, ?theme=light|dark)
 ```
 
+## Connect InfluxDB 1.x
+
+The browser only talks to the VibeDash server. The server runs **only the named series**
+listed in `local/mapping.json` – there is no way to send a query from the browser.
+
+1. Create a **read-only** InfluxDB user for VibeDash (it never writes):
+
+   ```sql
+   CREATE USER vibedash_read WITH PASSWORD '…'
+   GRANT READ ON "your_db" TO vibedash_read
+   ```
+
+2. Copy `.env.example` to `.env` and fill in URL, database, user and password.
+   `.env` is git-ignored. Credentials never go into the URL.
+3. Copy `local/mapping.example.json` to `local/mapping.json` (git-ignored) and map your
+   measurements/fields/tags to the series names. The file is checked at start; any typo or
+   unknown key stops the server with a clear message.
+4. Build and start:
+
+   ```sh
+   pnpm build
+   pnpm start        # http://localhost:8080
+   ```
+
+Without `local/mapping.json` the server runs in demo mode.
+
+API (read-only, `GET` only): `/api/health`, `/api/entities`,
+`/api/series/<name>?range=1h|24h|7d|31d`. Every Influx request times out after 10 s; the
+page then shows "keine Daten" with the reason and a retry button, never endless loading.
+
 ## Scripts
 
 | Command            | What it does                                                |
@@ -30,7 +60,9 @@ pnpm dev          # http://localhost:5173 (#/, #/now, #/forecasts, #/gallery; ?l
 | `pnpm lint`        | ESLint + Prettier check                                     |
 | `pnpm check`       | Type check (svelte-check)                                   |
 | `pnpm test`        | Unit tests (Vitest)                                         |
-| `pnpm build`       | Static build into `dist/`                                   |
+| `pnpm build`       | Static build into `dist/`, server into `dist-server/`       |
+| `pnpm start`       | Run the server (serves `dist/` and the API)                 |
+| `pnpm budget`      | Fail if the first page loads more than 200 KB JavaScript    |
 | `pnpm test:visual` | Screenshots Mac 1440×900 and iPhone 390×844, light and dark |
 
 Screenshots are written to `screenshots/` (and uploaded as a CI artifact) to be looked at
@@ -48,6 +80,9 @@ src/styles/      design tokens, light and dark
 src/app/         app shell, router, shared tile definitions, data questions
 src/pages/       Overview, Now, Forecasts
 src/gallery/     gallery page
+src/adapters/    InfluxDB 1.x adapter (query builder, parser, client)
+server/          read-only Node server: config, mapping schema, API, static files
+local/           your mapping.json (git-ignored); mapping.example.json is made up
 tests/unit/      Vitest
 tests/visual/    Playwright
 ```

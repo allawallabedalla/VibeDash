@@ -25,8 +25,14 @@ With the InfluxDB 1.x adapter (`src/adapters/influx1.ts`):
    `inventory.tagValues(m, key)`.
 3. Pull 2–3 days of raw samples for each candidate and look at them (min, max, step,
    gaps) before deciding what it is.
-4. Write one `InfluxMapping` per entity: `entity` (id, name, kind, unit, room),
-   `measurement`, `field`, `tags`, `scale`, `stepMs`.
+4. Write one entry per entity into `local/mapping.json` (git-ignored; start from
+   `local/mapping.example.json`): `name`, `kind`, `unit`, `room`, `measurement`, `field`,
+   `tags`, `scale`, `stepMs`. Use the standard series names the pages expect
+   (`pv_power`, `load_power`, `battery_soc`, `grid_power`, `pv_energy`, …).
+5. Start the server (`pnpm build && pnpm start`). It refuses an invalid mapping with a
+   clear list of errors. The browser can only ask for these names – never send InfluxQL.
+
+The Influx user in `.env` must be **read-only**.
 
 Prefer, in this order:
 

@@ -171,7 +171,8 @@ Einheitliches Datenmodell: `Entitaet` (id, Name, Art, Raum, Einheit) · `Messrei
 | M4 Jetzt + Vorhersagen | Echtzeit-Seite, Treffsicherheits-Karten | Prognosen mit Spanne und n, Bewertung fair |
 | M5 Agenten-Bauanleitung | `AGENT.md`/Skill: wie ein Agent ein Haus inventarisiert, prüft und Seiten baut | ein frischer Agent baut aus Demo-Daten eine Seite nur mit der Anleitung |
 | M6 Home Assistant | Adapter | Demo mit HA-Testinstanz |
-| v0.1 | Doku, Beispiel-Screenshots, Docker-Image | jemand Fremdes bekommt es in 15 min zum Laufen |
+| v0.1 | Doku, Beispiel-Screenshots, Docker-Image (`node:24-alpine`) | jemand Fremdes bekommt es in 15 min zum Laufen |
+| M7 Prognose-Dienst | Python-Dienst für Modelle, **hinter** dem Node-Server | Browser spricht weiterhin nur mit dem Node-Server |
 
 ---
 
@@ -234,6 +235,7 @@ Einheitliches Datenmodell: `Entitaet` (id, Name, Art, Raum, Einheit) · `Messrei
 2. ~~Lizenz~~ – entschieden: **MIT** (`LICENSE`, Copyright allawallabedalla).
 3. ~~Sprache~~ – entschieden: Code und README **englisch**, Oberfläche **Deutsch + Englisch** ab Start.
 4. **Öffentlich ab Tag 1 oder erst ab v0.1?** Empfehlung: privat bis M2, dann öffentlich.
+5. ~~Server~~ – entschieden (M3): reiner Node-Server (Node 24 LTS), führt nur benannte Abfragen aus `local/mapping.json` aus, nie InfluxQL aus dem Browser; Influx-Zugang nur mit Lese-Benutzer in `.env`; jede Anfrage mit 10 s Timeout und sichtbarem Fehlerzustand.
 
 ---
 
