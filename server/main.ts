@@ -8,6 +8,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { handleApi, type ApiDeps } from './api';
 import { createBackends } from './backends';
+import { forecastBridge } from './forecast-bridge';
 import { weatherClient } from '../src/adapters/openmeteo';
 import { fromEnv, fromHomeAssistant, readSettings, writeSettings } from './location';
 import type { ResolvedLocation } from './location';
@@ -62,6 +63,29 @@ deps.weather = {
   geocode: (place, language) => weather.geocode(place, language),
   forecast: (l) => weather.forecast(l, deps.mapping?.timeZone ?? 'Europe/Berlin'),
 };
+
+// Forecasting service (Python) behind this server – optional.
+if (process.env.FORECAST_URL && deps.mapping && deps.series) {
+  const bridge = forecastBridge({
+    url: process.env.FORECAST_URL,
+    mapping: deps.mapping,
+    fetchFn: fetch,
+    series: deps.series,
+    weather: async () => {
+      const w = deps.weather;
+      const l = w?.enabled ? await w.location() : null;
+      return l && w ? w.forecast(l) : null;
+    },
+    now: Date.now,
+    log,
+    timeoutMs: config.timeoutMs,
+  });
+  deps.forecast = { names: Object.keys(deps.mapping.forecasts), read: bridge.read };
+  const run = () => void bridge.syncAll();
+  setTimeout(run, 5_000);
+  setInterval(run, 3_600_000).unref();
+  log(`forecast service: ${Object.keys(deps.mapping.forecasts).length} daily forecasts`);
+}
 
 const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',

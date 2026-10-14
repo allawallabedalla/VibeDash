@@ -71,6 +71,11 @@ def ridge(history: History, features: Features, target: date) -> float | None:
     names = feature_names(features)
     if names and not all(n in features.get(target, {}) for n in names):
         names = []  # target has no forecast features: calendar only
+    with_features = sum(
+        1 for d, _ in known(history, target) if all(n in features.get(d, {}) for n in names)
+    )
+    if names and with_features < 21:
+        names = []  # too few days with features yet: calendar only
     rows, ys = [], []
     for d, v in known(history, target):
         f = features.get(d, {})

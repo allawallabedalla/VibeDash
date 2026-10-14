@@ -131,7 +131,7 @@ export function parseList(res: InfluxResponse, column?: string): string[] {
 
 export type FetchLike = (
   url: string,
-  init?: { headers?: Record<string, string>; signal?: AbortSignal },
+  init?: { method?: string; body?: string; headers?: Record<string, string>; signal?: AbortSignal },
 ) => Promise<{ ok: boolean; status: number; json(): Promise<unknown>; text(): Promise<string> }>;
 
 /**

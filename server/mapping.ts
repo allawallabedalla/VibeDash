@@ -11,9 +11,18 @@ import type { EntityKind } from '../src/model/types';
 export type SeriesMapping =
   ({ source: 'influx' } & InfluxMapping) | ({ source: 'homeassistant' } & HaMapping);
 
+/** A daily forecast made by the forecasting service from a meter reading. */
+export interface ForecastMapping {
+  /** Energy counter series the daily values come from. */
+  from: string;
+  /** Pass the weather forecast (sunshine, radiation) as features known in advance. */
+  weather: boolean;
+}
+
 export interface Mapping {
   timeZone: string;
   series: Record<string, SeriesMapping>;
+  forecasts: Record<string, ForecastMapping>;
 }
 
 const KINDS: EntityKind[] = [
@@ -49,7 +58,7 @@ export function validateMapping(
   if (!isObj(raw)) return { ok: false, errors: ['mapping: must be a JSON object'] };
 
   for (const key of Object.keys(raw)) {
-    if (!['timeZone', 'series', '$comment'].includes(key)) {
+    if (!['timeZone', 'series', 'forecasts', '$comment'].includes(key)) {
       errors.push(`mapping.${key}: unknown key`);
     }
   }
@@ -153,8 +162,34 @@ export function validateMapping(
     }
   }
 
+  const forecasts: Record<string, ForecastMapping> = {};
+  if (raw.forecasts !== undefined) {
+    if (!isObj(raw.forecasts)) errors.push('mapping.forecasts: must be an object');
+    else {
+      for (const [id, entry] of Object.entries(raw.forecasts)) {
+        const at = `mapping.forecasts.${id}`;
+        if (!NAME.test(id)) errors.push(`${at}: name must match ${NAME}`);
+        if (!isObj(entry)) {
+          errors.push(`${at}: must be an object`);
+          continue;
+        }
+        for (const key of Object.keys(entry)) {
+          if (!['from', 'weather'].includes(key)) errors.push(`${at}.${key}: unknown key`);
+        }
+        const src = typeof entry.from === 'string' ? series[entry.from] : undefined;
+        if (!src || src.entity.kind !== 'energy_counter') {
+          errors.push(`${at}.from: name of an energy_counter series in this mapping`);
+        }
+        if (entry.weather !== undefined && typeof entry.weather !== 'boolean') {
+          errors.push(`${at}.weather: true or false`);
+        }
+        forecasts[id] = { from: String(entry.from), weather: entry.weather === true };
+      }
+    }
+  }
+
   if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, mapping: { timeZone: raw.timeZone as string, series } };
+  return { ok: true, mapping: { timeZone: raw.timeZone as string, series, forecasts } };
 }
 
 /** Which back-ends a mapping needs. */

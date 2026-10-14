@@ -28,6 +28,13 @@ export interface ApiDeps {
   series?: (m: SeriesMapping, fromMs: number, toMs: number) => Promise<Series>;
   now: () => number;
   log: (msg: string) => void;
+  forecast?: {
+    names: string[];
+    read: (
+      name: string,
+      what: 'status' | 'guete' | 'prognose',
+    ) => Promise<{ status: number; body: unknown }>;
+  };
   weather?: {
     /** false when WEATHER=off: no external request at all */
     enabled: boolean;
@@ -135,6 +142,16 @@ export async function handleApi(
 
   if (deps.mode === 'demo' || !deps.mapping || !deps.series) {
     return json(404, { error: 'demo_mode' });
+  }
+
+  if (path === '/api/forecasts') {
+    return json(200, { names: deps.forecast?.names ?? [] });
+  }
+  const fc = /^\/api\/forecast\/([a-z][a-z0-9_]{0,63})\/(status|guete|prognose)$/.exec(path);
+  if (fc) {
+    if (!deps.forecast) return json(404, { error: 'no_forecast_service' });
+    const r = await deps.forecast.read(fc[1]!, fc[2] as 'status' | 'guete' | 'prognose');
+    return json(r.status, r.body);
   }
 
   if (path === '/api/entities') {
