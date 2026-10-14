@@ -45,6 +45,10 @@
     }
   }
 
+  $effect(() => {
+    active = (items?.length ?? 0) > 0;
+  });
+
   onMount(async () => {
     const list = await get('/api/forecasts');
     const names = (list.body as { names?: string[] }).names ?? [];
@@ -62,7 +66,6 @@
         };
       }),
     );
-    active = items.length > 0;
   });
 
   const label = (name: string) =>
