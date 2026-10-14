@@ -69,3 +69,19 @@ test('info opens by tap or click, not by hover', async ({ page, isMobile }, info
   else await close.click();
   await expect(tile.getByText('Was heißt das?')).toHaveCount(0);
 });
+
+test('time series period switch redraws the chart', async ({ page, isMobile }, info) => {
+  await page.goto('/?lang=de');
+  const card = page.locator('.ts');
+  const canvas = card.locator('canvas');
+  await expect(canvas).toBeVisible();
+  const before = await canvas.screenshot();
+
+  const month = card.getByRole('button', { name: '30 Tage' });
+  if (isMobile) await month.tap();
+  else await month.click();
+  await expect(month).toHaveAttribute('aria-pressed', 'true');
+  const after = await canvas.screenshot();
+  expect(after.equals(before)).toBe(false);
+  await card.screenshot({ path: `screenshots/timeseries-month-${info.project.name}.png` });
+});

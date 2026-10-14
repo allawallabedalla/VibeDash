@@ -1,11 +1,25 @@
 <script lang="ts">
+  import AccuracyCard from '../components/AccuracyCard.svelte';
+  import DayList, { type DayRow } from '../components/DayList.svelte';
   import Icon from '../components/Icon.svelte';
+  import SoftTimeSeries from '../components/SoftTimeSeries.svelte';
+  import SourceArc from '../components/SourceArc.svelte';
+  import StatusBar from '../components/StatusBar.svelte';
+  import Tabs from '../components/Tabs.svelte';
+  import TileRow from '../components/TileRow.svelte';
   import Card from './Card.svelte';
   import Progress from '../components/Progress.svelte';
   import Sparkline from '../components/Sparkline.svelte';
   import Tile from '../components/Tile.svelte';
   import {
+    accuracy,
     BATTERY_CAPACITY_WH,
+    checkForecasts,
+    mulberry32,
+    outlook,
+    pvTimeSeries,
+    sourcesAt,
+    type Period,
     daily,
     generateDemo,
     last24h,
@@ -45,11 +59,56 @@
   const signed = (v: number, digits: number) =>
     `${v > 0 ? '+' : v < 0 ? '−' : ''}${num(Math.abs(v), digits)}`;
 
+  const sunAccuracy = accuracy(checkForecasts(demo));
+  const days = outlook(demo, mulberry32(7));
+  const dayRows = $derived<DayRow[]>(
+    days.map((d) => ({
+      label:
+        d.offset === 0
+          ? t('days.today')
+          : new Intl.DateTimeFormat(i18n.locale === 'de' ? 'de-DE' : 'en-GB', {
+              timeZone: tz,
+              weekday: 'short',
+            }).format(d.start + 12 * 3_600_000),
+      sky: d.sky,
+      skyLabel: t(`sky.${d.sky}`),
+      tempLow: d.tempLow,
+      tempHigh: d.tempHigh,
+      rainMm: d.rainMm,
+      sunHours: d.sunHours,
+      energy: d.energy,
+    })),
+  );
+
+  // Two moments with mixed sources: yesterday evening (sun + battery), this morning (sun + grid).
+  const arcMoments = [demo.now - 19 * 3_600_000, demo.now - 7.5 * 3_600_000].map((at) => ({
+    at,
+    src: sourcesAt(demo, at),
+  }));
+  const srcParts = (s: NonNullable<ReturnType<typeof sourcesAt>>) => [
+    { label: t('sources.sun'), value: s.sun, color: 'var(--sun)' },
+    { label: t('sources.battery'), value: s.battery, color: 'var(--battery)' },
+    { label: t('sources.grid'), value: s.grid, color: 'var(--import)' },
+  ];
+
+  let period = $state<Period>('day');
+  const tsData = $derived(pvTimeSeries(demo, period));
+
+  let tab = $state('overview');
+  const tabs = $derived([
+    { id: 'overview', label: t('tabs.overview'), icon: 'overview' as const },
+    { id: 'now', label: t('tabs.now'), icon: 'bolt' as const },
+    { id: 'maintenance', label: t('tabs.maintenance'), icon: 'wrench' as const },
+    { id: 'garden', label: t('tabs.garden'), icon: 'leaf' as const },
+    { id: 'devices', label: t('tabs.devices'), icon: 'clock' as const },
+    { id: 'forecasts', label: t('tabs.forecasts'), icon: 'forecast' as const },
+  ]);
+
   // Sample ratings (synthetic, for the gallery only).
   const ratings = [
-    { key: 'model.sun', pct: 82, n: 28 },
-    { key: 'model.home', pct: 61, n: 28 },
-    { key: 'model.battery', pct: null, n: 2, from: 'model.batteryFrom' },
+    { key: 'sample.good', pct: 82, n: 28 },
+    { key: 'sample.fair', pct: 61, n: 28 },
+    { key: 'sample.open', pct: null, n: 2, from: 'model.batteryFrom' },
   ] as const;
 
   function toggleTheme() {
@@ -81,8 +140,22 @@
     </div>
   </header>
 
+  <h2>{t('gallery.tabs')}</h2>
+  <Tabs items={tabs} bind:active={tab} label={t('tabs.label')} />
+
+  <h2>{t('gallery.status')}</h2>
+  <StatusBar
+    label={t('status.label')}
+    items={[
+      { label: t('status.modules'), state: 'ok' },
+      { label: t('status.battery'), state: 'ok' },
+      { label: t('status.night'), state: 'ok' },
+      { label: t('status.humidity'), state: 'look' },
+    ]}
+  />
+
   <h2>{t('gallery.tiles')}</h2>
-  <div class="tiles">
+  <TileRow count={4}>
     <Tile
       label={t('tile.sun')}
       icon="sun"
@@ -126,6 +199,9 @@
       graphic={{ kind: 'spark', values: grid24, signed: true, color: 'var(--feed)' }}
       info={{ what: t('info.grid.what'), source: t('info.grid.source') }}
     />
+  </TileRow>
+  <div class="spacer"></div>
+  <TileRow count={3}>
     <Tile
       label={t('tile.temp')}
       icon="thermometer"
@@ -166,6 +242,26 @@
       }}
       info={{ what: t('info.yield.what'), source: t('info.yield.source', { n: yieldEst.n }) }}
     />
+  </TileRow>
+
+  <h2>{t('gallery.sources')}</h2>
+  <div class="cards">
+    {#each arcMoments as a (a.at)}
+      {@const title = t(a.at < demo.now - 14 * 3_600_000 ? 'sources.yesterday' : 'sources.today', {
+        time: time(a.at, tz),
+      })}
+      <Card {title} icon="home" color="var(--home)">
+        {#if a.src}
+          <SourceArc
+            parts={srcParts(a.src)}
+            total={num(a.src.total / 1000, 1)}
+            caption={t('tile.home')}
+          />
+        {:else}
+          <p class="empty">{t('sources.gap')}</p>
+        {/if}
+      </Card>
+    {/each}
   </div>
 
   <h2>{t('gallery.sparklines')}</h2>
@@ -200,9 +296,59 @@
     </Card>
   </div>
 
+  <h2>{t('gallery.timeseries')}</h2>
+  <Card title={t('ts.title')} icon="sun" color="var(--sun)">
+    <SoftTimeSeries
+      data={tsData}
+      periods={[
+        { id: 'day', label: t('ts.day') },
+        { id: 'week', label: t('ts.week') },
+        { id: 'month', label: t('ts.month') },
+      ]}
+      bind:period={() => period, (v) => (period = v as Period)}
+      labels={{
+        actual: t('ts.actual'),
+        forecast: t('ts.forecast'),
+        band: t('ts.band'),
+        periods: t('ts.periods'),
+      }}
+      unit={tsData.unit === 'kW' ? 'kW' : t('ts.perDay')}
+      timeZone={tz}
+      locale={i18n.locale === 'de' ? 'de-DE' : 'en-GB'}
+    />
+  </Card>
+
+  <h2>{t('gallery.days')}</h2>
+  <Card
+    title={t('days.title')}
+    icon="cloudSun"
+    color="var(--sun)"
+    note={t('days.note', { n: days[0]!.energy.n })}
+  >
+    <DayList days={dayRows} />
+  </Card>
+
+  <h2>{t('acc.title')}</h2>
+  <div class="cards">
+    <AccuracyCard
+      label={t('model.sun')}
+      pct={sunAccuracy.pct}
+      n={sunAccuracy.n}
+      history={sunAccuracy.history}
+    />
+    <AccuracyCard
+      label={t('model.battery')}
+      pct={null}
+      n={2}
+      history={[null, null]}
+      openFrom={t('model.batteryFrom')}
+    />
+  </div>
+  <p class="foot">{t('acc.sunNote')}</p>
+
   <h2>{t('gallery.progress')}</h2>
   <Card
-    title={t('gallery.progress')}
+    title={t('gallery.progressCard')}
     icon="target"
     color="var(--muted)"
     note={t('gallery.progressNote')}
@@ -296,10 +442,17 @@
     letter-spacing: 0.06em;
     color: var(--muted);
   }
-  .tiles {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 16px;
+  .spacer {
+    height: 16px;
+  }
+  .empty,
+  .foot {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--small);
+  }
+  .foot {
+    margin-top: 10px;
   }
   .cards {
     display: grid;
@@ -310,12 +463,6 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 28px;
-  }
-
-  @media (max-width: 1000px) {
-    .tiles {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
   }
 
   /* Phone: own layout, not just stacked. */
@@ -337,9 +484,8 @@
     h2 {
       margin: 24px 0 10px;
     }
-    .tiles {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
+    .spacer {
+      height: 10px;
     }
     .cards {
       grid-template-columns: 1fr;
