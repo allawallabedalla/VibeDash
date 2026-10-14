@@ -8,7 +8,7 @@ playwright-report/
 blob-report/
 *.log
 .DS_Store
-screenshots/
+/screenshots/
 local/*
 !local/mapping.example.json
 !local/mapping.example.homeassistant.json
