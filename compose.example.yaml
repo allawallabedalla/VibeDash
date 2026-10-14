@@ -7,5 +7,20 @@ services:
     ports:
       - '8080:8080'
     env_file: .env
+    environment:
+      FORECAST_URL: http://forecast:8090
     volumes:
-      - ./local:/app/local:ro
+      - ./local:/app/local
+    depends_on:
+      - forecast
+
+  # Forecasting service: no published port – only the VibeDash server talks to it.
+  forecast:
+    build: ./forecast
+    image: vibedash-forecast:local
+    restart: unless-stopped
+    volumes:
+      - forecast-data:/data
+
+volumes:
+  forecast-data:

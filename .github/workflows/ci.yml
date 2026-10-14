@@ -73,3 +73,11 @@ jobs:
           curl -fsS -o /dev/null localhost:8080/
           test "$(docker exec vd id -un)" = node
           docker rm -f vd
+      - run: docker build -t vibedash-forecast:ci forecast
+      - name: Smoke test forecasting service
+        run: |
+          docker run -d --name vdf -p 8090:8090 vibedash-forecast:ci
+          for i in $(seq 1 30); do curl -fsS localhost:8090/gesund && break; sleep 1; done
+          curl -fsS localhost:8090/gesund | grep -q '"ok":true'
+          test "$(docker exec vdf id -un)" = app
+          docker rm -f vdf

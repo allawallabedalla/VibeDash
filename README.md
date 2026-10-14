@@ -76,6 +76,29 @@ automatically: `LATITUDE`/`LONGITUDE` in `.env` → `local/settings.json` → Ho
 own location. If none is known, the page asks once: use the browser location (needs
 `https` or `localhost`) or type a place. `WEATHER=off` disables all external requests.
 
+## Forecasting service (optional)
+
+`forecast/` is a small Python service (FastAPI + scikit-learn, SQLite) behind the VibeDash
+server; the browser never talks to it. It follows `ANLEITUNG.md` section 11: rules of thumb
+first, Ridge regression only if it beats them by ≥ 2 standard errors (paired), the same
+2-day lead in the backtest and live, the first scheduled forecast per day counts, accuracy
+as 100 % minus the mean size of the error – shown as "collecting data", "open · n" or a
+percentage with trend.
+
+```sh
+cd forecast && uv sync && uv run python -m vibedash_forecast   # listens on 127.0.0.1:8090
+```
+
+Then set `FORECAST_URL=http://127.0.0.1:8090` in `.env` and name daily forecasts in
+`local/mapping.json`:
+
+```json
+"forecasts": { "pv_tag": { "from": "pv_energy", "weather": true } }
+```
+
+Every hour the server sends complete days (from the meter reading) and, with
+`"weather": true`, the weather forecast for coming days as features known in advance.
+
 ## Docker
 
 ```sh
@@ -83,9 +106,11 @@ docker build -t vibedash .
 docker run -d -p 8080:8080 --env-file .env -v "$PWD/local:/app/local:ro" vibedash
 ```
 
-Or copy `compose.example.yaml` to `compose.yaml` and run `docker compose up -d`. The image
-is based on `node:24-alpine`, runs as a non-root user and contains no `node_modules` at
-runtime. Without `local/mapping.json` it starts in demo mode.
+Or copy `compose.example.yaml` to `compose.yaml` and run `docker compose up -d` (VibeDash +
+forecasting service; the service gets no published port). The VibeDash image is based on
+`node:24-alpine`, runs as a non-root user and contains no `node_modules` at runtime; the
+forecasting image (`python:3.13-slim`) is about 1 GB because of scikit-learn/NumPy.
+Without `local/mapping.json` VibeDash starts in demo mode.
 
 ## Scripts
 
@@ -118,6 +143,7 @@ src/gallery/     gallery page
 src/adapters/    InfluxDB 1.x and Home Assistant adapters (pure, tested with fixtures)
 server/          read-only Node server: config, mapping schema, API, static files
 local/           your mapping.json (git-ignored); mapping.example.json is made up
+forecast/        forecasting service (Python): ladder, backtest, honest accuracy
 tests/unit/      Vitest
 tests/visual/    Playwright
 ```
