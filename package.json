@@ -19,7 +19,8 @@
     "test": "vitest run",
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
-    "start": "node dist-server/main.js"
+    "start": "node dist-server/main.js",
+    "budget": "node scripts/check-budget.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
