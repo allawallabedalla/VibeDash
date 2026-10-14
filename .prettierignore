@@ -3,3 +3,5 @@ pnpm-lock.yaml
 tests/visual/**/*-snapshots/
 test-results/
 playwright-report/
+ANLEITUNG.md
+CLAUDE.md
