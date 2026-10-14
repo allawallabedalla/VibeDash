@@ -7,6 +7,7 @@ import { expect, test, type Page } from '@playwright/test';
  */
 const pages = [
   { name: 'overview', hash: '#/' },
+  { name: 'week', hash: '#/week' },
   { name: 'now', hash: '#/now' },
   { name: 'forecasts', hash: '#/forecasts' },
   { name: 'charging', hash: '#/charging' },
