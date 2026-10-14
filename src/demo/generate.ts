@@ -12,8 +12,8 @@ import { localDateKey, localHour } from '../model/time';
 import { gaussian, mulberry32 } from './random';
 
 export const DEMO_TIME_ZONE = 'Europe/Berlin';
-/** Fixed "now" so screenshots are stable: 21 June 2026, 22:00 local. */
-export const DEMO_NOW = Date.UTC(2026, 5, 21, 20, 0, 0);
+/** Fixed "now" so screenshots are stable: 21 June 2026, 14:00 local. */
+export const DEMO_NOW = Date.UTC(2026, 5, 21, 12, 0, 0);
 export const DEMO_STEP_MS = 5 * 60_000;
 export const DEMO_DAYS = 30;
 
@@ -56,7 +56,8 @@ const bump = (x: number, mu: number, sigma: number) =>
 /** Local wall-clock time on a given day, as UTC ms. Demo period is in summer time, so no DST switch inside. */
 const localAt = (dayStartUtc: number, hour: number) => dayStartUtc + hour * 3_600_000;
 
-export function generateDemo(seed = 42, now = DEMO_NOW): DemoData {
+export function generateDemo(seed = 42): DemoData {
+  const now = DEMO_NOW;
   const rand = mulberry32(seed);
   const tz = DEMO_TIME_ZONE;
   const dt = DEMO_STEP_MS;
@@ -67,15 +68,15 @@ export function generateDemo(seed = 42, now = DEMO_NOW): DemoData {
   const push = (id: string, t: number, v: number) => out[id]!.push({ t, v });
 
   // Known problem windows (local midnight of a day = UTC 22:00 the evening before).
-  const midnightToday = now - 22 * 3_600_000; // 00:00 local today
+  const midnightToday = now - 14 * 3_600_000; // 00:00 local today
   const loggerDay = midnightToday - 18 * 86_400_000;
   const loggerGap = { from: localAt(loggerDay, 10), to: localAt(loggerDay, 13.5) };
   const sensorGap = {
     from: localAt(midnightToday, 2 + 10 / 60),
     to: localAt(midnightToday, 4 + 40 / 60),
   };
-  const artifactAt = localAt(midnightToday, 15 + 35 / 60);
-  const sameSecondAt = localAt(midnightToday, 12);
+  const artifactAt = localAt(midnightToday, 9 + 35 / 60);
+  const sameSecondAt = localAt(midnightToday, 11);
 
   let cloud = 0.8;
   let dayCloud = 0.8;
