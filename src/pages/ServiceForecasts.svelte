@@ -30,7 +30,7 @@
     error?: string;
   }
 
-  let { active = $bindable(false) }: { active?: boolean } = $props();
+  let { onactive }: { onactive?: (active: boolean) => void } = $props();
   let items = $state<Item[] | null>(null);
 
   async function get(url: string): Promise<{ status: number; body: unknown }> {
@@ -44,10 +44,6 @@
       return { status: (e as Error).name === 'TimeoutError' ? 504 : 0, body: {} };
     }
   }
-
-  $effect(() => {
-    active = (items?.length ?? 0) > 0;
-  });
 
   onMount(async () => {
     const list = await get('/api/forecasts');
@@ -66,6 +62,7 @@
         };
       }),
     );
+    onactive?.(items.length > 0);
   });
 
   const label = (name: string) =>

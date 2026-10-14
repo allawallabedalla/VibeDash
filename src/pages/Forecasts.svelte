@@ -104,7 +104,7 @@
     {#each tiles as tile (tile.label)}<Tile {...tile} />{/each}
   </TileRow>
 
-  {#if !showOutlook}<ServiceForecasts bind:active={serviceActive} />{/if}
+  {#if !showOutlook}<ServiceForecasts onactive={(v) => (serviceActive = v)} />{/if}
   {#if !serviceActive}
     <h2>{t('page.models')}</h2>
     <div class="cards">
