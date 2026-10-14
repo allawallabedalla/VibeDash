@@ -16,7 +16,7 @@ Everything runs locally. No cloud, no CDN.
 
 ## Quick start
 
-Requires Node 22 and pnpm 10.
+Requires Node 24 (current LTS) and pnpm 10.
 
 ```sh
 pnpm install
