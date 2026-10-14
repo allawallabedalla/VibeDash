@@ -125,6 +125,17 @@ export const de = {
     'Vorhersage am Vorabend, korrekt = Ist innerhalb ±20 %. Geprüft gegen den Zählerstand.',
   'acc.title': 'Treffsicherheit je Modell',
   'acc.collecting': 'sammelt Daten',
+  'pv.title': 'Sonne stündlich',
+  'pv.today': 'heute',
+  'pv.model': 'PV-Stundenmodell',
+  'pv.hourly': 'Sonne je Stunde',
+  'pv.unit': 'kWh je Stunde',
+  'pv.inBand': '{pct} % im Band',
+  'pv.note':
+    'Physik je Dachfläche (Einstrahlung aus der Wetterprognose), Spanne aus ähnlichen Tagen.',
+  'pv.info.what': 'Erwarteter Solarertrag des Tages: Mitte und Spanne (10–90 %).',
+  'pv.info.source':
+    'Einstrahlung je Dachfläche (Open-Meteo) × gelernte Faktoren der letzten 45 Tage; Spanne aus 30 Tagen mit ähnlicher Wetterlage (n).',
   'acc.checking': 'Datenbasis wird geprüft',
   'acc.days': '{have} von {need} Tagen',
   'acc.service': 'Prognose-Dienst',

@@ -169,7 +169,9 @@
 <div class="ts">
   <div class="head">
     <div class="legend" aria-hidden="true">
-      <span><i class="l" style:background="var({color})"></i>{labels.actual}</span>
+      {#if data.actual.some((v) => v !== null)}
+        <span><i class="l" style:background="var({color})"></i>{labels.actual}</span>
+      {/if}
       {#if data.forecast}
         <span><i class="l thin" style:background="var({forecastColor})"></i>{labels.forecast}</span>
         <span><i class="b" style:background="var({forecastColor})"></i>{labels.band}</span>

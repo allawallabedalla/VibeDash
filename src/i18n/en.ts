@@ -127,6 +127,17 @@ export const en: Record<MessageKey, string> = {
     'Forecast made the evening before; correct = actual within ±20 %. Checked against the meter.',
   'acc.title': 'Accuracy per model',
   'acc.collecting': 'collecting data',
+  'pv.title': 'Solar by the hour',
+  'pv.today': 'today',
+  'pv.model': 'PV hourly model',
+  'pv.hourly': 'Solar per hour',
+  'pv.unit': 'kWh per hour',
+  'pv.inBand': '{pct} % inside the band',
+  'pv.note':
+    'Physics per roof plane (irradiance from the weather forecast), range from similar days.',
+  'pv.info.what': 'Expected solar yield of the day: middle and range (10–90 %).',
+  'pv.info.source':
+    'Irradiance per roof plane (Open-Meteo) × factors learned over the last 45 days; range from 30 days with similar weather (n).',
   'acc.checking': 'data base being checked',
   'acc.days': '{have} of {need} days',
   'acc.service': 'Forecasting service',

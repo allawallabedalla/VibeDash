@@ -327,3 +327,70 @@ test('charging page from evcc: now, sessions, weighted solar share', async ({
   expect(overflow).toBeLessThanOrEqual(0);
   await page.screenshot({ path: `screenshots/charging-${info.project.name}.png`, fullPage: true });
 });
+
+test('hourly PV forecast: day totals with range and n, hourly band, accuracy', async ({
+  page,
+  isMobile,
+}, info) => {
+  await influxMode(page, synthetic);
+  await page.route('**/api/health', (r) =>
+    r.fulfill(
+      json({ ok: true, source: 'live', backends: ['influx'], timeZone: 'Europe/Berlin', pv: true }),
+    ),
+  );
+  await page.route('**/api/location', (r) => r.fulfill(json({ enabled: false, location: null })));
+  await page.route('**/api/forecasts', (r) => r.fulfill(json({ names: [] })));
+  const day = (offset: number) => {
+    const d = new Date(Date.now() + offset * 86_400_000);
+    const tag = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(d);
+    const start = Date.parse(`${tag}T00:00:00+02:00`);
+    const stunden = Array.from({ length: 24 }, (_, h) =>
+      new Date(start + h * 3_600_000).toISOString(),
+    );
+    const p50 = stunden.map(
+      (_, h) => Math.max(0, 5 * Math.sin(((h - 6) / 14) * Math.PI)) * (offset ? 0.6 : 1),
+    );
+    return {
+      tag,
+      stunden,
+      p10: p50.map((v) => v * 0.6),
+      p50,
+      p90: p50.map((v) => v * 1.25),
+      summe: [
+        p50.reduce((a, b) => a + b, 0) * 0.65,
+        p50.reduce((a, b) => a + b, 0),
+        p50.reduce((a, b) => a + b, 0) * 1.2,
+      ],
+      n_analog: 30,
+      hinweis: null,
+    };
+  };
+  await page.route('**/api/pv/status', (r) => r.fulfill(json({ zustand: 'bereit', tage: 60 })));
+  await page.route('**/api/pv/prognose', (r) => r.fulfill(json({ prognosen: [day(0), day(1)] })));
+  await page.route('**/api/pv/guete', (r) =>
+    r.fulfill(
+      json({
+        zustand: 'bewertbar',
+        n: 46,
+        korrekt_pct: 81.2,
+        verlauf: [76, 79, 80, 82, 81],
+        im_band_pct: 78,
+        schlaegt_faustregel_pct: 34,
+      }),
+    ),
+  );
+  await page.goto('/?lang=de#/forecasts');
+  await expect(page.getByRole('heading', { name: 'Sonne stündlich' })).toBeVisible();
+  const tiles = page.locator('.tile', { hasText: 'Sonne' }).filter({ hasText: 'n = 30' });
+  await expect(tiles).toHaveCount(2);
+  await expect(page.locator('article.card', { hasText: 'PV-Stundenmodell' })).toContainText(
+    '78 % im Band',
+  );
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: `screenshots/pv-hourly-${info.project.name}.png`, fullPage: true });
+  expect(isMobile !== undefined).toBe(true);
+});

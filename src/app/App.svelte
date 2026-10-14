@@ -2,8 +2,6 @@
   import Icon from '../components/Icon.svelte';
   import Tabs from '../components/Tabs.svelte';
   import { i18n, t } from '../i18n/index.svelte';
-  import Forecasts from '../pages/Forecasts.svelte';
-  import Now from '../pages/Now.svelte';
   import Overview from '../pages/Overview.svelte';
   import { onMount } from 'svelte';
   import { load, store } from './data.svelte';
@@ -97,9 +95,11 @@
     {/if}
     {#key store.version}
       {#if router.route === 'now'}
-        <Now />
+        {#await import('../pages/Now.svelte') then { default: Now }}<Now />{/await}
       {:else if router.route === 'forecasts'}
-        <Forecasts />
+        <!-- Pages after the first are loaded on demand (first page < 200 KB JS). -->
+        {#await import('../pages/Forecasts.svelte') then { default: Forecasts }}<Forecasts
+          />{/await}
       {:else if router.route === 'charging'}
         <!-- Loaded on demand: only homes with evcc need it. -->
         {#await import('../pages/Charging.svelte') then { default: Charging }}

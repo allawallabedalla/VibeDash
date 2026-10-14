@@ -22,6 +22,8 @@
   import PageHead from './PageHead.svelte';
   import WeatherCard from './WeatherCard.svelte';
   import ServiceForecasts from './ServiceForecasts.svelte';
+  import PvForecastCard from './PvForecastCard.svelte';
+  import { store } from '../app/data.svelte';
 
   const house = currentData();
 
@@ -148,6 +150,7 @@
       <DayList days={dayRows} />
     </Card>
   {:else}
+    {#if store.pv}<PvForecastCard timeZone={tz} />{/if}
     <WeatherCard timeZone={tz} />
   {/if}
 </div>
