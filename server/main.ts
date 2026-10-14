@@ -8,6 +8,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { handleApi, type ApiDeps } from './api';
 import { createBackends } from './backends';
+import { evccClient } from '../src/adapters/evcc';
 import { forecastBridge } from './forecast-bridge';
 import { weatherClient } from '../src/adapters/openmeteo';
 import { fromEnv, fromHomeAssistant, readSettings, writeSettings } from './location';
@@ -41,6 +42,13 @@ if (existsSync(config.mappingPath)) {
   );
 } else {
   log(`no ${config.mappingPath}: demo mode (synthetic data in the browser)`);
+}
+
+// evcc (optional): values for "now" and the charging sessions evcc stores itself.
+if (config.evcc) {
+  const evcc = evccClient(config.evcc, fetch, config.timeoutMs);
+  deps.evcc = { now: evcc.now, sessions: evcc.sessions };
+  log('evcc: charging sessions and current values');
 }
 
 // Weather: on by default (WEATHER=off disables every external request).

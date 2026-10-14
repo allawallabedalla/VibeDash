@@ -2,6 +2,7 @@
  * JSON API. Only GET, only named series, only whitelisted ranges. Errors are
  * short codes for the UI ("timeout", "upstream"), details stay in the server log.
  */
+import { EvccError, type EvccNow, type EvccSession } from '../src/adapters/evcc';
 import { HaError } from '../src/adapters/homeassistant';
 import { InfluxError } from '../src/adapters/influx1';
 import {
@@ -28,6 +29,10 @@ export interface ApiDeps {
   series?: (m: SeriesMapping, fromMs: number, toMs: number) => Promise<Series>;
   now: () => number;
   log: (msg: string) => void;
+  evcc?: {
+    now: () => Promise<EvccNow>;
+    sessions: (year?: number) => Promise<EvccSession[]>;
+  };
   forecast?: {
     names: string[];
     read: (
@@ -58,7 +63,7 @@ function timeoutOr(e: Error, log: (m: string) => void, what: string): ApiResult 
     log(`${what}: timeout`);
     return json(504, { error: 'timeout' });
   }
-  log(`${what}: ${e instanceof WeatherError ? e.message : e.name}`);
+  log(`${what}: ${e instanceof WeatherError || e instanceof EvccError ? e.message : e.name}`);
   return json(502, { error: 'upstream' });
 }
 
@@ -119,6 +124,18 @@ export async function handleApi(
   }
   if (method !== 'GET') return json(405, { error: 'method_not_allowed' });
 
+  if (path === '/api/evcc/now' || path === '/api/evcc/sessions') {
+    if (!deps.evcc) return json(404, { error: 'no_evcc' });
+    try {
+      if (path === '/api/evcc/now') return json(200, await deps.evcc.now());
+      const y = url.searchParams.get('year');
+      if (y !== null && !/^20\d{2}$/.test(y)) return json(400, { error: 'bad_year' });
+      return json(200, { sessions: await deps.evcc.sessions(y ? Number(y) : undefined) });
+    } catch (e) {
+      return timeoutOr(e as Error, deps.log, 'evcc');
+    }
+  }
+
   if (path === '/api/weather') {
     const w = deps.weather;
     if (!w || !w.enabled) return json(404, { error: 'weather_off' });
@@ -136,6 +153,7 @@ export async function handleApi(
       ok: true,
       source: deps.mode,
       backends: deps.mapping ? sourcesOf(deps.mapping) : [],
+      evcc: Boolean(deps.evcc),
       timeZone: deps.mapping?.timeZone ?? null,
     });
   }

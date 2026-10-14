@@ -2,6 +2,7 @@
  * Configuration from environment (.env). Influx access must be a read-only
  * user; the server never writes. Errors name the variable, never its value.
  */
+import type { EvccConfig } from '../src/adapters/evcc';
 import type { HaConfig } from '../src/adapters/homeassistant';
 import type { InfluxConfig } from '../src/adapters/influx1';
 
@@ -13,6 +14,7 @@ export interface ServerConfig {
   timeoutMs: number;
   influx?: InfluxConfig;
   homeassistant?: HaConfig;
+  evcc?: EvccConfig;
 }
 
 function checkUrl(name: string, value: string, errors: string[]) {
@@ -56,6 +58,12 @@ export function readConfig(env: Record<string, string | undefined>): {
     homeassistant = { url: env.HA_URL, token: env.HA_TOKEN ?? '' };
   }
 
+  let evcc: EvccConfig | undefined;
+  if (env.EVCC_URL) {
+    checkUrl('EVCC_URL', env.EVCC_URL, errors);
+    evcc = { url: env.EVCC_URL };
+  }
+
   return {
     config: {
       host: env.HOST ?? '0.0.0.0',
@@ -65,6 +73,7 @@ export function readConfig(env: Record<string, string | undefined>): {
       timeoutMs: 10_000,
       ...(influx ? { influx } : {}),
       ...(homeassistant ? { homeassistant } : {}),
+      ...(evcc ? { evcc } : {}),
     },
     errors,
   };
