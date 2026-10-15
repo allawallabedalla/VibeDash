@@ -1,4 +1,6 @@
+import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import numpy as np
 from fastapi.testclient import TestClient
@@ -84,6 +86,11 @@ def test_plan_api_flow():
     assert r["spanne"][0] <= r["spanne"][1]
     assert r["grund"] in ("none", "sun", "sunBattery", "full")
     assert r["kwh"] > 0
+    # contract with the page (Audit01 P-02): every key the browser parses
+    keys_file = Path(__file__).parents[2] / "tests/contract/plan-api-keys.json"
+    contract = json.loads(keys_file.read_text())
+    assert set(contract["keys"]) <= set(r), set(contract["keys"]) - set(r)
+    assert r["akku"]["kapazitaet_kwh"] > 0 and r["auto"]["phasen"] in (1, 3)
 
     g = c.get("/plan/haus/guete").json()
     assert g["n"] + g["rechnet_noch"] >= 1

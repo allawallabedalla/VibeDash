@@ -1,0 +1,10 @@
+Metadata-Version: 2.4
+Name: vibedash-forecast
+Version: 0.0.0
+Summary: VibeDash forecasting service: simplest sufficient method wins, honest accuracy.
+License-Expression: MIT
+Requires-Python: <3.14,>=3.13
+Requires-Dist: fastapi==0.142.2
+Requires-Dist: uvicorn==0.54.0
+Requires-Dist: numpy==2.5.3
+Requires-Dist: scikit-learn==1.9.1

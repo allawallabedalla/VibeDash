@@ -152,6 +152,20 @@ def live(ctx: Context, now: datetime, soc_kwh: float) -> dict:
         "last_listen": r2(lists.load),
         "paar_pv": [int(x) for x in i],
         "paar_last": [int(x) for x in j],
+        # the page replays the plan in the browser and needs the same battery and car
+        "akku": {
+            "kapazitaet_kwh": ctx.battery.capacity_kwh,
+            "max_laden_kw": ctx.battery.max_charge_kw,
+            "max_entladen_kw": ctx.battery.max_discharge_kw,
+            "min_soc_pct": ctx.battery.min_soc_pct,
+            "reserve_kwh": ctx.battery.reserve_kwh,
+        },
+        "auto": {
+            "kapazitaet_kwh": ctx.car.capacity_kwh,
+            "phasen": ctx.car.phases,
+            "min_a": ctx.car.min_a,
+            "max_a": ctx.car.max_a,
+        },
         "soc_kwh": round(soc_kwh, 3),
         "geladen_kwh": round(ctx.car.charged_today_kwh, 3),
         "n_pv": lists.n_pv,
