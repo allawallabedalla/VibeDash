@@ -82,9 +82,11 @@
           d + 12 * 3_600_000,
         );
 
+  // The planner's span is no 10–90 % band (P-30): the lower number is the
+  // cautious plan (worst weather case), the upper what good weather allows.
   const range = (d: Plan['days'][number] | undefined) =>
     d && d.low !== null && d.high !== null && d.high > d.low
-      ? `${num(d.low)}–${num(d.high)} kWh (10–90 %)`
+      ? t('hc.span', { high: num(d.high) })
       : undefined;
 
   const tiles = $derived.by<TileProps[]>(() => {
@@ -104,6 +106,7 @@
         value: d?.kwh !== null && d?.kwh !== undefined ? num(d.kwh) : '–',
         unit: d?.kwh !== null && d?.kwh !== undefined ? 'kWh' : undefined,
         sub: range(d) ?? (plan ? t('hc.noCharge') : t('hc.noPlan')),
+        info: { what: t('hc.span.what'), source: t('hc.span.source') },
         ...(d && d.kwh !== null && d.high !== null
           ? {
               graphic: {

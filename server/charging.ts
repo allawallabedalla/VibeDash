@@ -95,11 +95,20 @@ export async function chargeSessions(
     const t = Number(r.time);
     const key = f.id && r[f.id] != null ? String(r[f.id]) : String(t);
     const s = byStart.get(key) ?? { start: t, end: null, kwh: null, source: null, gridKwh: null };
-    if (f.source && typeof r[f.source] === 'string') s.source = r[f.source] as string;
+    s.start = Math.min(s.start, t);
+    // the first known source wins; a later "unknown" never overwrites it
+    if (f.source && typeof r[f.source] === 'string' && s.source === null) {
+      s.source = r[f.source] as string;
+    }
     if (r[f.running] === false) {
-      s.kwh = num(r[f.energy]);
-      const d = f.duration ? num(r[f.duration]) : null;
-      s.end = d !== null ? t + d * 60_000 : t;
+      // a second end row of the same charge (e.g. a repeated stop) without
+      // energy never wipes the first one's energy (Audit02 N-06)
+      const kwh = num(r[f.energy]);
+      if (kwh !== null || s.kwh === null) {
+        const d = f.duration ? num(r[f.duration]) : null;
+        if (kwh !== null || s.end === null) s.end = d !== null ? t + d * 60_000 : t;
+        if (kwh !== null) s.kwh = kwh;
+      }
     }
     byStart.set(key, s);
   }

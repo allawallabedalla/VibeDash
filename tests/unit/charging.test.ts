@@ -36,6 +36,21 @@ describe('car charging from house records (read-only)', () => {
     ]);
   });
 
+  it('a repeated end row without energy keeps the first end (N-06)', async () => {
+    const values = [
+      [1000, 0.5, false, 8, 'pi', 7],
+      [460_000, null, false, 0, '?', 7],
+    ];
+    const q = async () => ({
+      results: [
+        { series: [{ columns: ['time', 'kwh', 'laeuft', 'dauer_min', 'quelle', 'tid'], values }] },
+      ],
+    });
+    expect(await chargeSessions(q, m, 0, 1e6)).toEqual([
+      { start: 1000, end: 1000 + 8 * 60_000, kwh: 0.5, source: 'pi', gridKwh: null },
+    ]);
+  });
+
   it('reads an external plan and drops broken blocks', () => {
     const p = parsePlan(
       [{ kurz: 'heute 11–17 Uhr', stand: 7, heute_kwh: 20, heute_p10: 18, heute_p90: 40, soc: 50 }],

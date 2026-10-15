@@ -466,6 +466,10 @@ export const de = {
   'hc.todayDone': 'abgeschlossene Ladungen',
   'hc.planToday': 'Plan heute',
   'hc.planTomorrow': 'Plan morgen',
+  'hc.span': 'vorsichtig geplant · bei gutem Wetter bis {high} kWh',
+  'hc.span.what':
+    'Die Zahl ist der vorsichtige Plan: so viel lädt das Auto auch bei schlechtem Wetter. Die zweite Zahl ist, was gutes Wetter zusätzlich erlaubt. Keine 10–90-%-Spanne.',
+  'hc.span.source': 'Ladeplaner des Hauses.',
   'hc.noCharge': 'keine Ladung geplant',
   'hc.noPlan': 'kein Plan',
   'hc.tomorrow': 'Morgen',

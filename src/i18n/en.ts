@@ -462,6 +462,10 @@ export const en: Record<MessageKey, string> = {
   'hc.todayDone': 'finished charges',
   'hc.planToday': 'Plan today',
   'hc.planTomorrow': 'Plan tomorrow',
+  'hc.span': 'cautious plan · with good weather up to {high} kWh',
+  'hc.span.what':
+    'The number is the cautious plan: the car gets this much even with bad weather. The second number is what good weather allows on top. Not a 10–90 % range.',
+  'hc.span.source': "The house's charge planner.",
   'hc.noCharge': 'no charge planned',
   'hc.noPlan': 'no plan',
   'hc.tomorrow': 'Tomorrow',
