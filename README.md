@@ -82,6 +82,13 @@ listed in `local/mapping.json` – there is no way to send a query from the brow
 
 Without `local/mapping.json` the server runs in demo mode.
 
+**Running it for good** (Audit01 C-04/S-05): never serve the development
+folder. `scripts/release.sh` builds the checked-out commit into
+`~/.local/share/vibedash/releases/<commit>` and switches `current` to it in one
+step (`scripts/release.sh rollback` goes back). Config (`.env`,
+`local/mapping.json`) lives in `~/.config/vibedash`. `deploy/vibedash.service`
+is a hardened user unit (no privilege gain, read-only system and home).
+
 Optional keys per series: `device` groups the questions (e.g. "inverter"), `maxPerDay`
 leaves out implausible days of a meter, `helper: true` makes a series only an input for
 others, `aheadMs` also reads values stored ahead of time (forecasts, at most 7 days).
