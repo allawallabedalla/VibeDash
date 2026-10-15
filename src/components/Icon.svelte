@@ -32,6 +32,7 @@
     lookCircle: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM12 7.6V13M12 16.2v.2',
     actCircle: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM9 9l6 6M15 9l-6 6',
     contrast: 'M12 3.5a8.5 8.5 0 1 0 0 17zM12 3.5a8.5 8.5 0 1 1 0 17',
+    floorplan: 'M4 4.5h16v15H4zM4 12h7M11 4.5V8M11 15.5v4M15 12h5M15 12V9',
   } as const;
   export type IconName = keyof typeof paths;
   /** A name from outside (e.g. a board's tab) as an icon; unknown names get "info". */

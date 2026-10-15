@@ -84,7 +84,56 @@ export type BoardSection =
         details?: { label: string; value: string }[];
       }[];
     })
-  | (Base & { type: 'text'; text: string });
+  | (Base & { type: 'text'; text: string })
+  | (Base & BoardPlan);
+
+/**
+ * A floor plan with live values per room (section type "plan"). Coordinates in
+ * plan units (e.g. metres); `box` is the visible area [x0, y0, x1, y1].
+ *   floors:   [{ id, name, box, walls: [[[x,y],…],…], rooms: [{ id, name, kind, polygon, label }] }]
+ *   views:    [{ id, label, kind, unit, values: { roomId: number|null }, texts?: { roomId: "23,1°" } }]
+ *             kind: temp (°C) · humidity (%) · valve (%) · light (1 on / 0 off) · presence (minutes
+ *             since the last motion; null = none recently)
+ *   details:  { roomId: [{ label, value }] } – shown when a room is tapped
+ *   timeline: { start, stepMs, steps, light?: { roomId: [0|1 …] }, presence?: { roomId: [0|1 …] } }
+ *             today in steps, for the replay slider
+ *   link:     { label, url } – e.g. a 3D view of the house
+ */
+export type PlanViewKind = 'temp' | 'humidity' | 'valve' | 'light' | 'presence';
+export type PlanRoomKind = 'room' | 'outside' | 'void' | 'stairs';
+export interface BoardPlan {
+  type: 'plan';
+  floors: {
+    id: string;
+    name: string;
+    box: [number, number, number, number];
+    walls: [number, number][][];
+    rooms: {
+      id: string;
+      name: string;
+      kind: PlanRoomKind;
+      polygon: [number, number][];
+      label: [number, number];
+    }[];
+  }[];
+  views: {
+    id: string;
+    label: string;
+    kind: PlanViewKind;
+    unit: string;
+    values: Record<string, number | null>;
+    texts: Record<string, string>;
+  }[];
+  details: Record<string, { label: string; value: string }[]>;
+  timeline?: {
+    start: number;
+    stepMs: number;
+    steps: number;
+    light: Record<string, number[]>;
+    presence: Record<string, number[]>;
+  };
+  link?: { label: string; url: string };
+}
 
 export interface Board {
   updated: number | null;
@@ -259,6 +308,11 @@ export function sanitizeBoard(raw: unknown): Board | null {
             }),
         });
         break;
+      case 'plan': {
+        const plan = sanitizePlan(s);
+        if (plan) sections.push({ ...base, ...plan });
+        break;
+      }
       case 'text':
         sections.push({ ...base, type: 'text', text: text(s.text, 3000) });
         break;
@@ -267,4 +321,105 @@ export function sanitizeBoard(raw: unknown): Board | null {
     }
   }
   return { updated: num(raw.updated), sections };
+}
+
+const VIEW_KINDS: PlanViewKind[] = ['temp', 'humidity', 'valve', 'light', 'presence'];
+const ROOM_KINDS: PlanRoomKind[] = ['room', 'outside', 'void', 'stairs'];
+const LIMIT = 10_000;
+const coord = (v: unknown): number | null => {
+  const n = num(v);
+  return n === null || Math.abs(n) > LIMIT ? null : n;
+};
+const point = (v: unknown): [number, number] | null => {
+  if (!Array.isArray(v) || v.length < 2) return null;
+  const x = coord(v[0]);
+  const y = coord(v[1]);
+  return x === null || y === null ? null : [x, y];
+};
+const points = (v: unknown, max: number): [number, number][] =>
+  list(v, max)
+    .map(point)
+    .filter((p): p is [number, number] => p !== null);
+const roomMap = <T>(v: unknown, ids: Set<string>, f: (x: unknown) => T): Record<string, T> => {
+  if (!isObj(v)) return {};
+  const out: Record<string, T> = {};
+  for (const [k, x] of Object.entries(v)) if (ids.has(k)) out[k] = f(x);
+  return out;
+};
+
+/** Check a floor plan; null when it has no floor with rooms. */
+function sanitizePlan(s: O): Omit<BoardPlan, never> | null {
+  const floors = list(s.floors, 4)
+    .filter(isObj)
+    .map((f) => {
+      const box = list(f.box, 4).map(coord);
+      return {
+        id: text(f.id, 30),
+        name: text(f.name, 40),
+        box: (box.length === 4 &&
+        box.every((b) => b !== null) &&
+        box[2]! > box[0]! &&
+        box[3]! > box[1]!
+          ? box
+          : [0, 0, 10, 10]) as [number, number, number, number],
+        walls: list(f.walls, 400)
+          .map((w) => points(w, 200))
+          .filter((w) => w.length >= 2),
+        rooms: list(f.rooms, 60)
+          .filter(isObj)
+          .map((r) => ({
+            id: text(r.id, 30),
+            name: text(r.name, 60),
+            kind: ROOM_KINDS.includes(r.kind as PlanRoomKind) ? (r.kind as PlanRoomKind) : 'room',
+            polygon: points(r.polygon, 200),
+            label: point(r.label) ?? [0, 0],
+          }))
+          .filter((r) => r.id && r.polygon.length >= 3),
+      };
+    })
+    .filter((f) => f.rooms.length);
+  if (!floors.length) return null;
+  const ids = new Set(floors.flatMap((f) => f.rooms.map((r) => r.id)));
+  const views = list(s.views, 8)
+    .filter(isObj)
+    .filter((v) => VIEW_KINDS.includes(v.kind as PlanViewKind))
+    .map((v) => ({
+      id: text(v.id, 20) || text(v.kind, 20),
+      label: text(v.label, 30),
+      kind: v.kind as PlanViewKind,
+      unit: text(v.unit, 8),
+      values: roomMap(v.values, ids, num),
+      texts: roomMap(v.texts, ids, (x) => text(x, 24)),
+    }));
+  const details = roomMap(s.details, ids, (x) =>
+    list(x, 16)
+      .filter(isObj)
+      .map((d) => ({ label: text(d.label, 30), value: text(d.value, 60) })),
+  );
+  const tl = isObj(s.timeline) ? s.timeline : null;
+  const steps = tl ? Math.min(200, Math.max(0, Math.round(num(tl.steps) ?? 0))) : 0;
+  const series = (v: unknown) =>
+    roomMap(v, ids, (x) => list(x, steps).map((y) => (num(y) ? 1 : 0)));
+  const timeline =
+    tl && steps > 0 && num(tl.start) !== null && (num(tl.stepMs) ?? 0) > 0
+      ? {
+          start: num(tl.start)!,
+          stepMs: num(tl.stepMs)!,
+          steps,
+          light: series(tl.light),
+          presence: series(tl.presence),
+        }
+      : undefined;
+  const lk = isObj(s.link) ? s.link : null;
+  const href = lk ? text(lk.url, 300) : '';
+  return {
+    type: 'plan',
+    floors,
+    views,
+    details,
+    ...(timeline ? { timeline } : {}),
+    ...(lk && /^https?:\/\/\S+$/.test(href)
+      ? { link: { label: text(lk.label, 30), url: href } }
+      : {}),
+  };
 }
