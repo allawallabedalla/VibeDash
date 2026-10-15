@@ -280,6 +280,7 @@ export const en: Record<MessageKey, string> = {
   'state.loading': 'Loading data …',
   'state.noData': 'no data',
   'state.stale': 'no current data',
+  'state.lastReport': 'last reported {when}',
   'state.missingSince': 'data missing since {when}',
   'state.checking': 'being checked',
   'q.unconfirmedOne':

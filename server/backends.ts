@@ -42,7 +42,11 @@ export function createBackends(
       if (!m.maxHoldMs) return influx!.series(m, from, to);
       // reports on change only: look back far enough to know the value at `from`
       const s = await influx!.series(m, from - m.maxHoldMs, to);
-      return { ...s, samples: holdForward(s.samples, m.stepMs, m.maxHoldMs, from, to) };
+      return {
+        ...s,
+        samples: holdForward(s.samples, m.stepMs, m.maxHoldMs, from, to),
+        held: { reports: s.samples.map((x) => x.t), holdMs: m.maxHoldMs },
+      };
     }
     if (m.source === 'homeassistant') return ha!.series(m, from, to);
     throw new Error('derived series inside a derived series');

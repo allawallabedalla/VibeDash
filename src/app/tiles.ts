@@ -9,7 +9,7 @@ import { sunToday, type SunForecast } from './sun-forecast';
 
 export { demoSunForecast, type SunForecast } from './sun-forecast';
 import { i18n, num, t, time } from '../i18n/index.svelte';
-import { steadyValue } from '../model/series';
+import { lastReport, steadyValue } from '../model/series';
 import { addDays, localDateKey, localMidnight } from '../model/time';
 
 const kw = (w: number | null) => (w === null ? null : w / 1000);
@@ -46,21 +46,35 @@ function withoutValue(
   };
 }
 
-/** "Data missing since 13:20" (or with the date if it was another day). */
-function missingSince(data: DemoData, id: string): string | null {
-  const last = data.series[id]?.samples.at(-1);
-  if (!last) return null;
-  const sameDay = localDateKey(last.t, data.timeZone) === localDateKey(data.now, data.timeZone);
-  const when = sameDay
-    ? time(last.t, data.timeZone)
+/** 13:20, or with the date if it was another day. */
+function whenText(data: DemoData, at: number): string {
+  return localDateKey(at, data.timeZone) === localDateKey(data.now, data.timeZone)
+    ? time(at, data.timeZone)
     : new Intl.DateTimeFormat(i18n.locale === 'de' ? 'de-DE' : 'en-GB', {
         timeZone: data.timeZone,
         day: 'numeric',
         month: 'short',
         hour: '2-digit',
         minute: '2-digit',
-      }).format(last.t);
-  return t('state.missingSince', { when });
+      }).format(at);
+}
+
+/** "Data missing since 13:20": since the last *real* report, not the last held value. */
+function missingSince(data: DemoData, id: string): string | null {
+  const last = lastReport(data.series[id], data.now);
+  return last === null ? null : t('state.missingSince', { when: whenText(data, last) });
+}
+
+/**
+ * A held value (sensor reports on change) older than 2.5 steps says its age:
+ * "last reported 15:32" – the number is real, but not new (N-02).
+ */
+export function reportedAt(data: DemoData, id: string): string | null {
+  const s = data.series[id];
+  if (!s?.held) return null;
+  const last = lastReport(s, data.now);
+  if (last === null || data.now - last <= s.stepMs * 2.5) return null;
+  return t('state.lastReport', { when: whenText(data, last) });
 }
 
 /** Marks values the person has not confirmed yet (RISIKEN.md: "being checked"). */
@@ -70,7 +84,10 @@ function checking(data: DemoData, id: string, tile: TileProps): TileProps {
 }
 
 function staleOr(data: DemoData, id: string, tile: TileProps): TileProps {
-  if (freshValue(data, id) !== null) return checking(data, id, tile);
+  if (freshValue(data, id) !== null) {
+    const age = reportedAt(data, id);
+    return checking(data, id, age ? { ...tile, sub: age } : tile);
+  }
   const since = missingSince(data, id);
   if (since) return { ...withoutValue(tile, 'state.stale'), sub: since };
   return withoutValue(tile, 'state.noData');

@@ -8,6 +8,7 @@
  * same with `_measured`; pv_forecast_day with pv_forecast_day_low / _high.
  */
 import { daily, type DemoData } from '../demo';
+import { reportedSamples } from '../model/series';
 import { readSky, type Sky } from '../model/sky';
 import { addDays, localDateKey, localMidnight } from '../model/time';
 
@@ -47,13 +48,14 @@ export function hasWeatherDays(data: DemoData): boolean {
  * High and low of a day from the house's outdoor sensor (`outdoor_temp`), if
  * it reported over the day (from before 06:00 to after 18:00, at least six
  * reports – a sensor that sends on change reports seldom when it is calm).
+ * Only real reports count, never values held forward (N-03).
  */
 export function sensorHighLow(
   data: DemoData,
   start: number,
   end: number,
 ): { high: number; low: number } | null {
-  const s = data.series.outdoor_temp?.samples.filter((x) => x.t >= start && x.t < end) ?? [];
+  const s = reportedSamples(data.series.outdoor_temp).filter((x) => x.t >= start && x.t < end);
   if (s.length < 6) return null;
   if (s[0]!.t > start + 6 * 3_600_000 || s.at(-1)!.t < start + 18 * 3_600_000) return null;
   return { high: Math.max(...s.map((x) => x.v)), low: Math.min(...s.map((x) => x.v)) };

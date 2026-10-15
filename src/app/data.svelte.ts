@@ -109,8 +109,12 @@ async function loadLive(
         missing.push({ id, reason: reasonOf(r) });
         return;
       }
-      const rows = (r.body as { samples: [number, number][] }).samples;
-      series[id]!.samples = rows.map(([t, v]) => ({ t, v }));
+      const body = r.body as {
+        samples: [number, number][];
+        held?: { reports: number[]; holdMs: number };
+      };
+      series[id]!.samples = body.samples.map(([t, v]) => ({ t, v }));
+      if (body.held && Array.isArray(body.held.reports)) series[id]!.held = body.held;
     }),
   );
 

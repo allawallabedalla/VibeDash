@@ -283,6 +283,7 @@ export const de = {
   'state.loading': 'Lade Daten …',
   'state.noData': 'keine Daten',
   'state.stale': 'keine aktuellen Daten',
+  'state.lastReport': 'zuletzt gemeldet {when}',
   'state.missingSince': 'Daten fehlen seit {when}',
   'state.checking': 'wird geprüft',
   'q.unconfirmedOne':

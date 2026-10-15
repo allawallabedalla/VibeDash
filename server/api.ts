@@ -309,6 +309,7 @@ export async function handleApi(
         from,
         to,
         samples: samples.map((x) => [x.t, x.v]),
+        ...(s.held ? { held: s.held } : {}),
       });
     } catch (err) {
       const e = err as Error;
