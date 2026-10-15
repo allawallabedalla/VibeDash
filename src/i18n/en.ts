@@ -52,9 +52,9 @@ export const en: Record<MessageKey, string> = {
   'info.grid.what': 'Plus = power goes to the grid. Minus = power comes from the grid.',
   'info.grid.source': 'Grid meter. Two messages in the same second keep their arrival order.',
   'info.temp.what': 'Room temperature. The light band is the comfort range.',
-  'info.temp.source': 'Room sensor. Silent last night 02:10–04:40 – the gap stays visible.',
-  'info.humidity.what': 'At 09:35 today it reported 0 % once. Was the sensor briefly disturbed?',
-  'info.humidity.source': 'Room sensor. The single value is flagged, not deleted.',
+  'info.temp.source': 'Room sensor.',
+  'info.humidity.what': 'Relative humidity in the room. The light band is the comfort range.',
+  'info.humidity.source': 'Room sensor.',
   'info.yield.what':
     'Expected solar yield for today: middle and usual range. So far {soFar} kWh (dot).',
   'info.yield.source':
@@ -400,4 +400,7 @@ export const en: Record<MessageKey, string> = {
   'sub.span': '{low}–{high} (10–90 %)',
   'info.yield.house': 'The house’s own daily forecast, span 10–90 %.',
   'sub.houseForecast': 'the house’s forecast',
+  'info.gapNote': 'Silent {from}–{to} – the gap stays visible.',
+  'info.outlier': 'At {time} a single odd value came in. Was the sensor briefly disturbed?',
+  'info.outlierNote': 'The single value is flagged, not deleted.',
 };

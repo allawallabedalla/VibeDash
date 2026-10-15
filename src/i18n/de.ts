@@ -51,9 +51,9 @@ export const de = {
   'info.grid.source':
     'Netzzähler. Zwei Meldungen in derselben Sekunde bleiben in Eingangsreihenfolge.',
   'info.temp.what': 'Raumtemperatur. Der helle Bereich ist der Wohlfühlbereich.',
-  'info.temp.source': 'Raumsensor. Heute Nacht 02:10–04:40 ohne Meldung – Lücke bleibt sichtbar.',
-  'info.humidity.what': 'Heute um 09:35 kam einmal 0 %. War der Sensor kurz gestört?',
-  'info.humidity.source': 'Raumsensor. Der Einzelwert ist markiert, nicht gelöscht.',
+  'info.temp.source': 'Raumsensor.',
+  'info.humidity.what': 'Relative Luftfeuchte im Raum. Der helle Bereich ist der Wohlfühlbereich.',
+  'info.humidity.source': 'Raumsensor.',
   'info.yield.what':
     'Erwarteter Solarertrag für heute: Mitte und übliche Spanne. Bisher {soFar} kWh (Punkt).',
   'info.yield.source':
@@ -404,6 +404,9 @@ export const de = {
   'sub.span': '{low}–{high} (10–90 %)',
   'info.yield.house': 'Prognose des Hauses selbst (eigene Tagesprognose), Spanne 10–90 %.',
   'sub.houseForecast': 'Prognose des Hauses',
+  'info.gapNote': '{from}–{to} ohne Meldung – die Lücke bleibt sichtbar.',
+  'info.outlier': 'Um {time} kam ein auffälliger Einzelwert. War der Sensor kurz gestört?',
+  'info.outlierNote': 'Der Einzelwert ist markiert, nicht gelöscht.',
 } as const;
 
 export type MessageKey = keyof typeof de;

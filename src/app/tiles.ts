@@ -206,6 +206,18 @@ export function gridTile(data: DemoData): TileProps {
   });
 }
 
+/** The latest open gap / odd value of a sensor, from the data itself (never a fixed text). */
+function sensorNotes(data: DemoData, id: string): { gap?: string; outlier?: string } {
+  const mine = data.issues.filter((i) => i.entityIds.includes(id));
+  const gap = mine.filter((i) => i.kind === 'gap').at(-1);
+  const odd = mine.filter((i) => i.kind === 'artifact').at(-1);
+  const at = (ms: number) => time(ms, data.timeZone);
+  return {
+    ...(gap ? { gap: t('info.gapNote', { from: at(gap.from), to: at(gap.to) }) } : {}),
+    ...(odd ? { outlier: t('info.outlier', { time: at(odd.from) }) } : {}),
+  };
+}
+
 export function tempTile(data: DemoData): TileProps {
   const temp = nowValue(data, 'living_temp');
   return staleOr(data, 'living_temp', {
@@ -223,12 +235,18 @@ export function tempTile(data: DemoData): TileProps {
       zone: { low: 20, high: 24 },
       temperature: true,
     },
-    info: { what: t('info.temp.what'), source: t('info.temp.source') },
+    info: {
+      what: t('info.temp.what'),
+      source: [t('info.temp.source'), sensorNotes(data, 'living_temp').gap]
+        .filter(Boolean)
+        .join(' '),
+    },
   });
 }
 
 export function humidityTile(data: DemoData): TileProps {
   const humidity = nowValue(data, 'living_humidity');
+  const notes = sensorNotes(data, 'living_humidity');
   return staleOr(data, 'living_humidity', {
     label: t('tile.humidity'),
     icon: 'droplet',
@@ -244,10 +262,15 @@ export function humidityTile(data: DemoData): TileProps {
       zone: { low: 40, high: 60 },
     },
     // Only a real open question earns the dot, never a permanent one.
-    ...(data.issues.some((i) => i.entityIds.includes('living_humidity'))
-      ? { status: 'look' as const, statusLabel: t('info.humidity.what') }
+    ...(notes.outlier || notes.gap
+      ? { status: 'look' as const, statusLabel: notes.outlier ?? notes.gap }
       : {}),
-    info: { what: t('info.humidity.what'), source: t('info.humidity.source') },
+    info: {
+      what: notes.outlier ?? t('info.humidity.what'),
+      source: [t('info.humidity.source'), notes.gap, notes.outlier ? t('info.outlierNote') : '']
+        .filter(Boolean)
+        .join(' '),
+    },
   });
 }
 
