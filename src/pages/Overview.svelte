@@ -20,16 +20,16 @@
   import DataTable from '../components/DataTable.svelte';
   import Icon from '../components/Icon.svelte';
   import Segmented from '../components/Segmented.svelte';
-  import SourceArc from '../components/SourceArc.svelte';
   import StatusBar, { type StatusItem } from '../components/StatusBar.svelte';
   import Tile from '../components/Tile.svelte';
   import TileRow from '../components/TileRow.svelte';
-  import { hourlyPvForecast, pvTimeSeries, sourcesAt, type Period } from '../demo';
+  import { hourlyPvForecast, pvTimeSeries, type Period } from '../demo';
   import { notesIn } from '../model/notes';
   import { localMidnight } from '../model/time';
-  import { i18n, num, t } from '../i18n/index.svelte';
+  import { i18n, t } from '../i18n/index.svelte';
   import PageHead from './PageHead.svelte';
   import WeatherDaysCard from './WeatherDaysCard.svelte';
+  import EnergyFlowCard from './EnergyFlowCard.svelte';
 
   const house = currentData();
 
@@ -152,8 +152,6 @@
     })),
   );
 
-  const src = sourcesAt(house, house.now - 60_000);
-
   let reviewCount = $state<'7' | '30'>('7');
   const rows = $derived(reviewRows(house, Number(reviewCount)));
   const columns = $derived([
@@ -218,21 +216,7 @@
         />
       {/await}
     </Card>
-    <Card title={t('page.sources')} icon="home" color="var(--home)">
-      {#if src}
-        <SourceArc
-          parts={[
-            { label: t('sources.sun'), value: src.sun, color: 'var(--sun)' },
-            { label: t('sources.battery'), value: src.battery, color: 'var(--battery)' },
-            { label: t('sources.grid'), value: src.grid, color: 'var(--import)' },
-          ]}
-          total={num(src.total / 1000, 1)}
-          caption={t('tile.home')}
-        />
-      {:else}
-        <p class="muted-note">{t('sources.gap')}</p>
-      {/if}
-    </Card>
+    <EnergyFlowCard {house} />
   </div>
 
   <!-- loaded on demand: keeps the first page under its JS budget -->
