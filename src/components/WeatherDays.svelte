@@ -235,7 +235,7 @@
     .pv,
     .span {
       white-space: normal;
-      font-size: 13px;
+      font-size: 14px;
     }
   }
 </style>
