@@ -280,8 +280,12 @@
               {#if !l.blocks.length}<li class="muted">{t('hc.noCharge')}</li>{/if}
             </ul>
           {/each}
-          <div class="axis">
-            <span></span><span>6</span><span>12</span><span>18</span><span></span>
+          <!-- same grid as a lane, labels at their hour (Audit02 DE2-02) -->
+          <div class="lane axis" aria-hidden="true">
+            <span></span>
+            <div class="ticks">
+              {#each [6, 12, 18] as h (h)}<span style:left="{(h / 24) * 100}%">{h}</span>{/each}
+            </div>
           </div>
         </div>
       </Card>
@@ -364,11 +368,15 @@
   .blist .muted {
     color: var(--muted);
   }
-  .axis {
-    display: grid;
-    grid-template-columns: 74px repeat(4, 1fr);
+  .axis .ticks {
+    position: relative;
+    height: 18px;
     font-size: var(--small);
     color: var(--muted);
+  }
+  .axis .ticks span {
+    position: absolute;
+    transform: translateX(-50%);
   }
   @media (max-width: 600px) {
     .lane {
@@ -376,9 +384,6 @@
     }
     .blist {
       margin-left: 62px;
-    }
-    .axis {
-      grid-template-columns: 62px repeat(4, 1fr);
     }
   }
 </style>
