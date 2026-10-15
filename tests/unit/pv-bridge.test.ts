@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gtiUrl, parseHourly } from '../../src/adapters/openmeteo';
+import { gtiUrl, parseGti, parseHourly } from '../../src/adapters/openmeteo';
 import { hourlyFromCounter } from '../../server/pv-bridge';
 import { validateMapping } from '../../server/mapping';
 
@@ -49,6 +49,24 @@ describe('Open-Meteo GTI', () => {
       'global_tilted_irradiance',
     );
     expect(rows).toEqual([{ t: Date.UTC(2026, 5, 1, 10), v: 600 }]);
+  });
+
+  it('puts irradiance on the hour it averages (Open-Meteo: preceding hour)', () => {
+    // A real-shaped answer around sunrise: at 06:00 the mean of 05–06 is still tiny.
+    const rows = parseGti(
+      {
+        hourly: {
+          time: ['2026-10-10T05:00', '2026-10-10T06:00', '2026-10-10T07:00'],
+          global_tilted_irradiance: [0, 5.6, 92],
+        },
+      },
+      'global_tilted_irradiance',
+    );
+    expect(rows.map((r) => [new Date(r.t).toISOString().slice(11, 16), r.v])).toEqual([
+      ['04:00', 0],
+      ['05:00', 5.6],
+      ['06:00', 92],
+    ]);
   });
 });
 
