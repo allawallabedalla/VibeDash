@@ -7,6 +7,7 @@ import { expect, test, type Page } from '@playwright/test';
  */
 const pages = [
   { name: 'overview', hash: '#/' },
+  { name: 'week', hash: '#/week' },
   { name: 'now', hash: '#/now' },
   { name: 'forecasts', hash: '#/forecasts' },
   { name: 'charging', hash: '#/charging' },
@@ -35,6 +36,54 @@ for (const p of pages) {
         () => document.documentElement.scrollWidth - window.innerWidth,
       );
       expect(overflow).toBeLessThanOrEqual(0);
+
+      // Text contrast at least WCAG AA (Audit01 DE-01): 4.5:1, large text 3:1.
+      const lowContrast = await page.evaluate(() => {
+        const rgb = (c: string) => (c.match(/[\d.]+/g) ?? []).map(Number);
+        const lum = ([r, g, b]: number[]) =>
+          [r!, g!, b!]
+            .map((v) => v / 255)
+            .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
+            .reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i]!, 0);
+        const bgOf = (el: Element | null): number[] => {
+          // mix semi-transparent backgrounds up to the first solid one
+          const stack: number[][] = [];
+          for (let e = el; e; e = e.parentElement) {
+            const c = rgb(getComputedStyle(e).backgroundColor);
+            if (c.length >= 3 && (c[3] ?? 1) > 0) {
+              stack.push(c);
+              if ((c[3] ?? 1) >= 1) break;
+            }
+          }
+          let out = rgb(getComputedStyle(document.body).backgroundColor).slice(0, 3);
+          for (const c of stack.reverse()) {
+            const a = c[3] ?? 1;
+            out = out.map((v, i) => a * c[i]! + (1 - a) * v);
+          }
+          return out;
+        };
+        const out: string[] = [];
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          const text = n.textContent?.trim();
+          if (!text) continue;
+          const el = n.parentElement!;
+          if (el.closest('svg, .sr, [aria-hidden="true"]')) continue;
+          const st = getComputedStyle(el);
+          if (st.visibility === 'hidden' || st.display === 'none' || !el.getClientRects().length)
+            continue;
+          const fg = rgb(st.color);
+          if ((fg[3] ?? 1) < 1 || Number(st.opacity) < 1) continue;
+          const a = lum(fg);
+          const b = lum(bgOf(el));
+          const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+          const size = parseFloat(st.fontSize);
+          const large = size >= 24 || (size >= 18.66 && Number(st.fontWeight) >= 700);
+          if (ratio < (large ? 3 : 4.5)) out.push(`${text.slice(0, 30)} ${ratio.toFixed(2)}`);
+        }
+        return out;
+      });
+      expect(lowContrast).toEqual([]);
 
       // No emoji anywhere in the visible text.
       const text = await page.locator('body').innerText();
@@ -89,19 +138,30 @@ test('info opens by tap or click, not by hover', async ({ page, isMobile }, info
   await expect(tile.getByText('Was heißt das?')).toHaveCount(0);
 });
 
-test('time series period switch redraws the chart', async ({ page, isMobile }, info) => {
+test('the page period switch redraws the chart and the autarky', async ({
+  page,
+  isMobile,
+}, info) => {
   await page.goto('/?lang=de');
   const card = page.locator('.ts');
   const canvas = card.locator('canvas');
   await expect(canvas).toBeVisible();
   const before = await canvas.screenshot();
+  const autarky = page.locator('.tile', { hasText: 'Autarkie' });
+  const subBefore = await autarky.innerText();
 
-  const month = card.getByRole('button', { name: '30 Tage' });
+  const month = page.locator('.period').getByRole('button', { name: '30 Tage' });
   await tap(page, isMobile, month);
   await expect(month).toHaveAttribute('aria-pressed', 'true');
   const after = await canvas.screenshot();
   expect(after.equals(before)).toBe(false);
+  // the autarky now covers the 30 days, with their dates
+  expect(await autarky.innerText()).not.toBe(subBefore);
   await card.screenshot({ path: `screenshots/timeseries-month-${info.project.name}.png` });
+
+  // ±3 days: hourly, with the days ahead
+  await tap(page, isMobile, page.locator('.period').getByRole('button', { name: '±3 Tage' }));
+  await expect(canvas).toBeVisible();
 });
 
 test('tabs navigate between pages', async ({ page, isMobile }) => {

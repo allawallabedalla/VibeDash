@@ -20,14 +20,16 @@
   import DataTable from '../components/DataTable.svelte';
   import Icon from '../components/Icon.svelte';
   import Segmented from '../components/Segmented.svelte';
-  import SoftTimeSeries from '../components/SoftTimeSeries.svelte';
   import SourceArc from '../components/SourceArc.svelte';
   import StatusBar, { type StatusItem } from '../components/StatusBar.svelte';
   import Tile from '../components/Tile.svelte';
   import TileRow from '../components/TileRow.svelte';
-  import { pvTimeSeries, sourcesAt, type Period } from '../demo';
+  import { hourlyPvForecast, pvTimeSeries, sourcesAt, type Period } from '../demo';
+  import { notesIn } from '../model/notes';
+  import { localMidnight } from '../model/time';
   import { i18n, num, t } from '../i18n/index.svelte';
   import PageHead from './PageHead.svelte';
+  import WeatherDaysCard from './WeatherDaysCard.svelte';
 
   const house = currentData();
 
@@ -63,8 +65,24 @@
   let sunFc = $state<SunForecast | null>(
     currentSource() === 'demo' ? demoSunForecast(house) : null,
   );
+  // the house's own hourly forecast, if mapped (pv_forecast, _low, _high in kW or W)
+  {
+    const start = localMidnight(house.now, house.timeZone);
+    const x = Array.from({ length: 24 }, (_, h) => start + h * 3_600_000 + 1_800_000);
+    const own = hourlyPvForecast(house, x);
+    if (own && currentSource() !== 'demo') {
+      const w = (v: (number | null)[]) => v.map((k) => (k === null ? 0 : k * 1000));
+      sunFc = {
+        at: x.map((t) => t - 1_800_000),
+        stepMs: 3_600_000,
+        p10: w(own.low.some((v) => v !== null) ? own.low : own.value),
+        p50: w(own.value),
+        p90: w(own.high.some((v) => v !== null) ? own.high : own.value),
+      };
+    }
+  }
   onMount(async () => {
-    if (currentSource() === 'demo' || !store.pv) return;
+    if (currentSource() === 'demo' || !store.pv || sunFc) return;
     try {
       const res = await fetch('/api/pv/prognose', { signal: AbortSignal.timeout(15_000) });
       if (!res.ok) return;
@@ -90,6 +108,8 @@
       // no forecast line – the tile still shows the measured values
     }
   });
+  // one period for the page: the sun curve and the autarky follow it
+  let period = $state<Period>('day');
   const row1 = $derived([
     sunTile(house, sunFc),
     loadTile(house),
@@ -99,12 +119,38 @@
   const row2 = $derived([
     yieldTodayTile(house),
     tomorrowTile(house),
-    autarkyTile(house),
+    autarkyTile(house, period),
     tempTile(house),
   ]);
 
-  let period = $state<Period>('day');
   const tsData = $derived(pvTimeSeries(house, period));
+  // known events (mapping notes): named under the chart they show up in, and listed
+  const span = (n: { from: number; to: number }) => {
+    const f = new Intl.DateTimeFormat(locale, {
+      timeZone: tz,
+      day: 'numeric',
+      month: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const tf = new Intl.DateTimeFormat(locale, {
+      timeZone: tz,
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    return `${f.format(n.from)}–${tf.format(n.to)}`;
+  };
+  const chartNote = $derived(
+    notesIn(house.notes, tsData.x[0] ?? 0, (tsData.x.at(-1) ?? 0) + 86_400_000)
+      .map((n) => t('notes.gap', { when: span(n), text: n.text }))
+      .join(' · ') || undefined,
+  );
+  const known = $derived(
+    notesIn(house.notes, house.now - 14 * 86_400_000, house.now).map((n) => ({
+      from: n.from,
+      label: t('notes.item', { when: span(n), text: n.text }),
+    })),
+  );
 
   const src = sourcesAt(house, house.now - 60_000);
 
@@ -125,6 +171,22 @@
 
   <div class="status"><StatusBar label={t('status.label')} items={status} /></div>
 
+  <div class="period">
+    <Segmented
+      options={[
+        { id: 'day', label: t('ts.day') },
+        { id: 'week', label: t('ts.week') },
+        { id: 'month', label: t('ts.month') },
+        { id: 'span', label: t('ts.span') },
+      ]}
+      bind:value={() => period, (v) => (period = v as Period)}
+      label={t('page.period')}
+    />
+  </div>
+
+  <WeatherDaysCard {house} />
+  <div class="row-gap"></div>
+
   <TileRow count={4}>
     {#each row1 as tile (tile.label)}<Tile {...tile} />{/each}
   </TileRow>
@@ -133,28 +195,27 @@
     {#each row2 as tile (tile.label)}<Tile {...tile} />{/each}
   </TileRow>
 
-  <h2>{t('page.today')}</h2>
+  <h2>{period === 'day' ? t('page.today') : t('page.period')}</h2>
   <div class="cards wide-left">
-    <Card title={t('ts.title')} icon="sun" color="var(--sun)">
-      <SoftTimeSeries
-        data={tsData}
-        periods={[
-          { id: 'day', label: t('ts.day') },
-          { id: 'week', label: t('ts.week') },
-          { id: 'month', label: t('ts.month') },
-        ]}
-        bind:period={() => period, (v) => (period = v as Period)}
-        labels={{
-          actual: t('ts.actual'),
-          forecast: t('ts.forecast'),
-          band: t('ts.band'),
-          periods: t('ts.periods'),
-          empty: t('state.noData'),
-        }}
-        unit={tsData.unit === 'kW' ? 'kW' : t('ts.perDay')}
-        timeZone={tz}
-        {locale}
-      />
+    <Card title={t('ts.title')} icon="sun" color="var(--sun)" note={chartNote}>
+      <!-- the chart library loads after the first paint (first page < 200 KB JS) -->
+      {#await import('../components/SoftTimeSeries.svelte') then { default: SoftTimeSeries }}
+        <SoftTimeSeries
+          data={tsData}
+          periods={[{ id: period, label: '' }]}
+          {period}
+          labels={{
+            actual: t('ts.actual'),
+            forecast: period === 'span' ? t('ts.forecastSpan') : t('ts.forecast'),
+            band: t('ts.band'),
+            periods: t('ts.periods'),
+            empty: t('state.noData'),
+          }}
+          unit={tsData.unit === 'kW' ? 'kW' : t('ts.perDay')}
+          timeZone={tz}
+          {locale}
+        />
+      {/await}
     </Card>
     <Card title={t('page.sources')} icon="home" color="var(--home)">
       {#if src}
@@ -173,6 +234,11 @@
     </Card>
   </div>
 
+  <!-- loaded on demand: keeps the first page under its JS budget -->
+  {#await import('./YearSection.svelte') then { default: YearSection }}<YearSection
+      {house}
+    />{/await}
+
   <h2>{t('page.review')}</h2>
   <Card title={t('review.title')} icon="clock" color="var(--muted)" note={reviewNote(house)}>
     {#snippet actions()}
@@ -187,6 +253,17 @@
     {/snippet}
     <DataTable {columns} {rows} caption={t('review.title')} />
   </Card>
+
+  {#if known.length > 0}
+    <h2>{t('notes.title')}</h2>
+    <Card title={t('notes.title')} icon="clock" color="var(--muted)">
+      <ul class="questions">
+        {#each known as n (n.from)}
+          <li><span class="qicon"><Icon name="okCircle" size={18} /></span>{n.label}</li>
+        {/each}
+      </ul>
+    </Card>
+  {/if}
 
   {#if qs.length > 0}
     <h2>{t('q.title')}</h2>
@@ -217,6 +294,9 @@
 <style>
   .status {
     margin: 16px 0 16px;
+  }
+  .period {
+    margin: 0 0 16px;
   }
   .qgroup + .qgroup {
     border-top: 1px solid var(--line);
@@ -267,7 +347,7 @@
   }
   .qicon {
     flex: none;
-    color: var(--fair);
+    color: var(--fair-text);
     padding-top: 1px;
   }
 </style>

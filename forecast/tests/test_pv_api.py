@@ -83,3 +83,21 @@ def test_unknown_plant_and_bad_input():
     assert c.get("/pv/none/prognose").status_code == 404
     bad = {**ANLAGE, "flaechen": [{"name": "Süd!", "neigung": 30, "azimut": 0, "kwp": 5}]}
     assert c.put("/pv/x/anlage", json=bad).status_code == 422
+
+
+def test_gti_newest_run_before_the_day_wins():
+    """Audit01 P-03: not the first run seen (days ahead) but the freshest before the day."""
+    import sqlite3
+    from datetime import UTC, datetime
+
+    from vibedash_forecast.pv_store import PvStore
+
+    s = PvStore(sqlite3.connect(":memory:"))
+    hour = datetime(2026, 6, 10, 10, tzinfo=UTC)
+    early = datetime(2026, 6, 8, 12, tzinfo=UTC)  # two days ahead
+    fresh = datetime(2026, 6, 9, 21, tzinfo=UTC)  # the evening before
+    late = datetime(2026, 6, 10, 8, tzinfo=UTC)  # already during the day: not taken
+    s.put_gti("p", "Europe/Berlin", [(hour, "sued", 300.0, early)])
+    s.put_gti("p", "Europe/Berlin", [(hour, "sued", 500.0, fresh)])
+    s.put_gti("p", "Europe/Berlin", [(hour, "sued", 900.0, late)])
+    assert s.gti("p")[(hour, "sued")] == 500.0

@@ -3,7 +3,7 @@
 > Hier liegt der **echte Code** der Infografiken, die im ursprünglichen Haus-Dashboard (Grafana-HTML-Panels) entstanden und vom Nutzer abgenommen wurden.
 > ANLEITUNG.md beschreibt die Regeln nur in Worten – **dieser Ordner zeigt, wie es aussehen soll.**
 > Bereinigt: keine Hausdaten, keine Adressen; API-Port durch `<API-PORT>` ersetzt.
-> Es ist **Referenz, kein Bibliothekscode**: Grafana-spezifisches (`data.series`, `htmlNode`, Infinity) und Aktionen (z. B. „Gute Nacht“) **nicht übernehmen** – nur Optik, Proportionen, Farben, Verhalten nachbauen, in Svelte/SVG.
+> Es ist **Referenz, kein Bibliothekscode**: Grafana-spezifisches (`data.series`, `htmlNode`, Infinity) und Aktionen (Steuer-Knöpfe) **nicht übernehmen** – nur Optik, Proportionen, Farben, Verhalten nachbauen, in Svelte/SVG.
 
 ## Dateien und was daraus werden soll
 

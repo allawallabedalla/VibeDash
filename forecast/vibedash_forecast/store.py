@@ -29,6 +29,12 @@ CREATE TABLE IF NOT EXISTS merkmale (
   stand TEXT NOT NULL,
   PRIMARY KEY (reihe, tag, name)
 );
+-- every run of a feature, so a forecast for a day can use the newest run known before it
+CREATE TABLE IF NOT EXISTS merkmal_laeufe (
+  reihe TEXT NOT NULL, tag TEXT NOT NULL, name TEXT NOT NULL, wert REAL NOT NULL,
+  stand TEXT NOT NULL,
+  PRIMARY KEY (reihe, tag, name, stand)
+);
 CREATE TABLE IF NOT EXISTS prognosen (
   reihe TEXT NOT NULL, tag TEXT NOT NULL, erstellt_am TEXT NOT NULL, vorlauf_h REAL NOT NULL,
   p10 REAL NOT NULL, p50 REAL NOT NULL, p90 REAL NOT NULL, verfahren TEXT NOT NULL,
@@ -50,6 +56,9 @@ class Store:
     def __init__(self, path: str = ":memory:") -> None:
         self.db = sqlite3.connect(path, check_same_thread=False)
         self.db.executescript(SCHEMA)
+        # older databases kept only the first run per feature (merkmale): carry those over once
+        with self.db:
+            self.db.execute("INSERT OR IGNORE INTO merkmal_laeufe SELECT * FROM merkmale")
 
     def close(self) -> None:
         self.db.close()
@@ -86,23 +95,28 @@ class Store:
 
     # features known in advance -----------------------------------------
     def put_merkmal(self, rid: str, tag: str, name: str, wert: float, stand: datetime) -> bool:
-        """Store a feature only if it was known before the day began; first value wins."""
+        """Keep every run of a feature known before the day began (Audit01 P-03)."""
         if stand.date() >= date.fromisoformat(tag):
             return False
         with self.db:
             cur = self.db.execute(
-                "INSERT OR IGNORE INTO merkmale VALUES (?,?,?,?,?)",
+                "INSERT OR IGNORE INTO merkmal_laeufe VALUES (?,?,?,?,?)",
                 (rid, tag, name, wert, stand.isoformat()),
             )
         return cur.rowcount == 1
 
     def merkmale(self, rid: str) -> dict[date, dict[str, float]]:
+        """Per day the newest run known before it began: live and backtest use the
+        same, freshest lead instead of whichever run came first."""
         out: dict[date, dict[str, float]] = {}
         with closing(
-            self.db.execute("SELECT tag, name, wert FROM merkmale WHERE reihe=?", (rid,))
+            self.db.execute(
+                "SELECT tag, name, wert FROM merkmal_laeufe WHERE reihe=? ORDER BY stand",
+                (rid,),
+            )
         ) as c:
             for t, n, w in c.fetchall():
-                out.setdefault(date.fromisoformat(t), {})[n] = w
+                out.setdefault(date.fromisoformat(t), {})[n] = w  # later stand overwrites
         return out
 
     # made forecasts -----------------------------------------------------

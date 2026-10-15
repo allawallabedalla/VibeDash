@@ -118,6 +118,7 @@
             tempHigh: Math.round(d.tMax!),
             rainMm: d.regenMm,
             sunHours: d.sonneH,
+            when: i === 0 ? ('today' as const) : ('forecast' as const),
           }))
       : [],
   );

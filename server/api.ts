@@ -37,6 +37,8 @@ export interface ApiDeps {
   mode: 'live' | 'demo';
   mapping?: Mapping;
   series?: (m: SeriesMapping, fromMs: number, toMs: number) => Promise<Series>;
+  /** Daily energy of a meter, [local day start, kWh or null]. */
+  daily?: (m: SeriesMapping, fromMs: number, toMs: number) => Promise<[number, number | null][]>;
   now: () => number;
   log: (msg: string) => void;
   evcc?: {
@@ -60,6 +62,8 @@ export interface ApiDeps {
   weather?: {
     /** false when WEATHER=off: no external request at all */
     enabled: boolean;
+    /** false when LOCATION_WRITE=off: the location can only be set in .env */
+    writable?: boolean;
     location: () => Promise<ResolvedLocation | null>;
     setLocation: (l: Location & { name?: string }) => Promise<ResolvedLocation>;
     geocode: (place: string, language: string) => Promise<(Location & { name: string }) | null>;
@@ -73,6 +77,8 @@ export interface RequestInfo {
   contentType?: string;
   origin?: string;
   host?: string;
+  /** Sec-Fetch-Site from the browser: "same-origin" for the page itself. */
+  fetchSite?: string;
 }
 
 function timeoutOr(e: Error, log: (m: string) => void, what: string): ApiResult {
@@ -90,9 +96,14 @@ async function handleLocation(method: string, deps: ApiDeps, req: RequestInfo): 
   if (method === 'GET') {
     return json(200, { enabled: w.enabled, location: w.enabled ? await w.location() : null });
   }
-  // The only write: same origin, JSON, tiny body.
+  // The only write: switchable, same origin, JSON, tiny body.
   if (!w.enabled) return json(409, { error: 'weather_off' });
+  if (w.writable === false) return json(403, { error: 'location_write_off' });
   if (req.origin && req.host && new URL(req.origin).host !== req.host) {
+    return json(403, { error: 'cross_origin' });
+  }
+  // a browser says where the request comes from; only the page itself may write
+  if (req.fetchSite && req.fetchSite !== 'same-origin') {
     return json(403, { error: 'cross_origin' });
   }
   if (!(req.contentType ?? '').includes('application/json')) {
@@ -204,6 +215,10 @@ export async function handleApi(
     return json(r.status, r.body);
   }
 
+  if (path === '/api/notes') {
+    return json(200, { notes: deps.mapping.notes ?? [] });
+  }
+
   if (path === '/api/entities') {
     return json(200, {
       timeZone: deps.mapping.timeZone,
@@ -211,6 +226,29 @@ export async function handleApi(
         .filter((m) => !m.helper)
         .map((m) => ({ ...m.entity, stepMs: m.stepMs })),
     });
+  }
+
+  const dm = /^\/api\/daily\/([a-z][a-z0-9_]{0,63})$/.exec(path);
+  if (dm) {
+    const name = dm[1]!;
+    const m = Object.hasOwn(deps.mapping.series, name) ? deps.mapping.series[name] : undefined;
+    if (!m || m.helper) return json(404, { error: 'unknown_series' });
+    if (!deps.daily || m.source !== 'influx' || m.entity.kind !== 'energy_counter') {
+      return json(400, { error: 'not_a_meter' });
+    }
+    const days = Number(url.searchParams.get('days') ?? '400');
+    if (!Number.isInteger(days) || days < 1 || days > 800) return json(400, { error: 'bad_days' });
+    const now = deps.now();
+    try {
+      const rows = await deps.daily(m, now - days * 86_400_000, now);
+      return json(200, { name, unit: 'kWh', days: rows });
+    } catch (err) {
+      const e = err as Error;
+      if (e.name === 'TimeoutError' || e.name === 'AbortError')
+        return json(504, { error: 'timeout' });
+      deps.log(`daily ${name}: ${e instanceof InfluxError ? e.message : e.name}`);
+      return json(502, { error: 'upstream' });
+    }
   }
 
   const match = /^\/api\/series\/([a-z][a-z0-9_]{0,63})$/.exec(path);
@@ -222,11 +260,13 @@ export async function handleApi(
     if (!Object.hasOwn(RANGES, range)) {
       return json(400, { error: 'bad_range', allowed: Object.keys(RANGES) });
     }
-    const to = deps.now();
-    const from = to - RANGES[range as RangeName];
+    const now = deps.now();
+    const from = now - RANGES[range as RangeName];
+    // forecasts are stored ahead of time: read them up to aheadMs into the future
+    const to = now + (m.aheadMs ?? 0);
     try {
       const s = await deps.series(m, from, to);
-      const before = Math.floor((to - FULL_MS) / THIN_MS) * THIN_MS;
+      const before = Math.floor((now - FULL_MS) / THIN_MS) * THIN_MS;
       const samples =
         m.stepMs < THIN_MS && before > from
           ? thinBefore(s.samples, before, THIN_MS, ADDS_UP.has(m.entity.kind) ? 'last' : 'mean')

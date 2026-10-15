@@ -1,8 +1,9 @@
 """Storage for the hourly PV model: plant, hourly actuals, GTI forecasts, made forecasts.
 
 Same honesty rules as the daily store: GTI is only accepted if it was known
-before the local day began (first value wins); a made forecast is kept once
-per day and only if made before the day began.
+before the local day began; every run is kept and the newest one before the
+day began is used (Audit01 P-03). A made forecast is kept once per day and
+only if made before the day began.
 """
 
 import json
@@ -20,6 +21,10 @@ CREATE TABLE IF NOT EXISTS pv_gti (
   anlage TEXT NOT NULL, zeit TEXT NOT NULL, flaeche TEXT NOT NULL, wert REAL NOT NULL,
   stand TEXT NOT NULL, PRIMARY KEY (anlage, zeit, flaeche)
 );
+CREATE TABLE IF NOT EXISTS pv_gti_laeufe (
+  anlage TEXT NOT NULL, zeit TEXT NOT NULL, flaeche TEXT NOT NULL, wert REAL NOT NULL,
+  stand TEXT NOT NULL, PRIMARY KEY (anlage, zeit, flaeche, stand)
+);
 CREATE TABLE IF NOT EXISTS pv_prognosen (
   anlage TEXT NOT NULL, tag TEXT NOT NULL, erstellt_am TEXT NOT NULL, vorlauf_h REAL NOT NULL,
   p10 REAL NOT NULL, p50 REAL NOT NULL, p90 REAL NOT NULL, PRIMARY KEY (anlage, tag)
@@ -31,6 +36,9 @@ class PvStore:
     def __init__(self, db: sqlite3.Connection) -> None:
         self.db = db
         self.db.executescript(SCHEMA)
+        # older databases kept only the first run per hour (pv_gti): carry those over once
+        with self.db:
+            self.db.execute("INSERT OR IGNORE INTO pv_gti_laeufe SELECT * FROM pv_gti")
 
     def put_plant(self, pid: str, config: dict) -> None:
         with self.db:
@@ -68,15 +76,19 @@ class PvStore:
                 if stand >= day_start:
                     continue  # not known before the day began
                 cur = self.db.execute(
-                    "INSERT OR IGNORE INTO pv_gti VALUES (?,?,?,?,?)",
+                    "INSERT OR IGNORE INTO pv_gti_laeufe VALUES (?,?,?,?,?)",
                     (pid, t.isoformat(), plane, value, stand.isoformat()),
                 )
                 accepted += cur.rowcount
         return accepted
 
     def gti(self, pid: str) -> dict[tuple[datetime, str], float]:
+        """Per hour and plane the newest run known before its day began."""
         with closing(
-            self.db.execute("SELECT zeit, flaeche, wert FROM pv_gti WHERE anlage=?", (pid,))
+            self.db.execute(
+                "SELECT zeit, flaeche, wert FROM pv_gti_laeufe WHERE anlage=? ORDER BY stand",
+                (pid,),
+            )
         ) as c:
             return {(datetime.fromisoformat(t), f): w for t, f, w in c.fetchall()}
 

@@ -2,6 +2,7 @@
 import { haClient } from '../src/adapters/homeassistant';
 import { influxClient, type FetchLike } from '../src/adapters/influx1';
 import { deriveCounter } from '../src/model/derive';
+import { holdForward } from '../src/model/series';
 import type { Series } from '../src/model/types';
 import type { ServerConfig } from './config';
 import { ENERGY_TO_KWH, POWER_TO_KW, sourcesOf, type Mapping, type SeriesMapping } from './mapping';
@@ -11,7 +12,11 @@ export function createBackends(
   config: ServerConfig,
   fetchFn: FetchLike,
 ):
-  | { ok: true; series: (m: SeriesMapping, from: number, to: number) => Promise<Series> }
+  | {
+      ok: true;
+      series: (m: SeriesMapping, from: number, to: number) => Promise<Series>;
+      daily: (m: SeriesMapping, from: number, to: number) => Promise<[number, number | null][]>;
+    }
   | { ok: false; errors: string[] } {
   const needed = sourcesOf(mapping);
   const errors: string[] = [];
@@ -30,8 +35,13 @@ export function createBackends(
     ? haClient(config.homeassistant, fetchFn, config.timeoutMs)
     : null;
 
-  const measured = (m: SeriesMapping, from: number, to: number): Promise<Series> => {
-    if (m.source === 'influx') return influx!.series(m, from, to);
+  const measured = async (m: SeriesMapping, from: number, to: number): Promise<Series> => {
+    if (m.source === 'influx') {
+      if (!m.maxHoldMs) return influx!.series(m, from, to);
+      // reports on change only: look back far enough to know the value at `from`
+      const s = await influx!.series(m, from - m.maxHoldMs, to);
+      return { ...s, samples: holdForward(s.samples, m.stepMs, m.maxHoldMs, from, to) };
+    }
     if (m.source === 'homeassistant') return ha!.series(m, from, to);
     throw new Error('derived series inside a derived series');
   };
@@ -62,9 +72,47 @@ export function createBackends(
     };
   };
 
+  /**
+   * Daily energy of a meter over long ranges, cheaply: the last reading per
+   * local day from InfluxDB (older days from `history`), each day the
+   * difference to the day before. A drop or a day above maxPerDay is a gap
+   * (null), never a negative or a giant day.
+   */
+  const dailyOf = async (
+    m: SeriesMapping,
+    from: number,
+    to: number,
+  ): Promise<[number, number | null][]> => {
+    if (m.source !== 'influx' || m.entity.kind !== 'energy_counter') {
+      throw new Error('daily values only for Influx meters');
+    }
+    const tz = mapping.timeZone;
+    const main = await influx!.dailyLast(m, from - 86_400_000, to, tz);
+    const first = main[0]?.t ?? Infinity;
+    const older = m.history
+      ? (await influx!.dailyLast(m.history, from - 86_400_000, Math.min(to, first), tz)).filter(
+          (x) => x.t < first,
+        )
+      : [];
+    const readings = [...older, ...main];
+    const max = m.entity.maxPerDay ?? Infinity;
+    const out: [number, number | null][] = [];
+    for (let i = 1; i < readings.length; i++) {
+      const a = readings[i - 1]!;
+      const b = readings[i]!;
+      if (b.t < from) continue;
+      const d = b.v - a.v;
+      // a day without a reading in between (gap of days) is not split up
+      const oneDay = b.t - a.t <= 26 * 3_600_000;
+      out.push([b.t, oneDay && d >= 0 && d <= max ? d : null]);
+    }
+    return out;
+  };
+
   return {
     ok: true,
     series: (m, from, to) =>
       m.source === 'derived' ? derived(m, from, to) : measured(m, from, to),
+    daily: dailyOf,
   };
 }

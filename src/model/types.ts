@@ -3,9 +3,21 @@
  * display concern only (see ANLEITUNG.md section 6).
  */
 
-/** `capacity`: a nominal size (e.g. battery kWh) that should not change. */
+/**
+ * `capacity`: a nominal size (e.g. battery kWh) that should not change.
+ * `energy`: an amount per period that is not a meter (e.g. a daily forecast).
+ * `precipitation` (mm) and `sunshine` (h): daily weather values.
+ */
 export type EntityKind =
-  'power' | 'energy_counter' | 'state_of_charge' | 'capacity' | 'temperature' | 'humidity';
+  | 'power'
+  | 'energy_counter'
+  | 'energy'
+  | 'state_of_charge'
+  | 'capacity'
+  | 'temperature'
+  | 'humidity'
+  | 'precipitation'
+  | 'sunshine';
 
 export interface Entity {
   id: string;

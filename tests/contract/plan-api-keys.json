@@ -1,0 +1,21 @@
+{
+  "$comment": "Keys of GET /plan/{id} when zustand = bereit. Checked by the Python service test and by the page's parser test (Audit01 P-02).",
+  "keys": [
+    "akku",
+    "auto",
+    "auto_kw",
+    "geladen_kwh",
+    "grund",
+    "kwh",
+    "last_listen",
+    "n_last",
+    "n_pv",
+    "paar_last",
+    "paar_pv",
+    "pv_listen",
+    "soc_kwh",
+    "spanne",
+    "stunden",
+    "ungeprueft"
+  ]
+}

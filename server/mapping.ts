@@ -31,6 +31,8 @@ export type SeriesMapping = (
 ) & {
   /** Only an input for other series: not listed in /api/entities. */
   helper?: boolean;
+  /** Also read this far into the future (forecasts stored ahead of time). */
+  aheadMs?: number;
 };
 
 /** Factor from a unit to kW (power) or kWh (energy); undefined if not convertible. */
@@ -71,8 +73,16 @@ export interface PlanMapping {
   vehicle: { capacityKwh: number; phases: 1 | 3; minA: number; maxA: number };
 }
 
+/** A known event (e.g. a server move): its gaps are not asked about, charts name it. */
+export interface Note {
+  from: number;
+  to: number;
+  text: string;
+}
+
 export interface Mapping {
   timeZone: string;
+  notes?: Note[];
   series: Record<string, SeriesMapping>;
   forecasts: Record<string, ForecastMapping>;
   pv?: PvMapping;
@@ -82,10 +92,13 @@ export interface Mapping {
 const KINDS: EntityKind[] = [
   'power',
   'energy_counter',
+  'energy',
   'state_of_charge',
   'capacity',
   'temperature',
   'humidity',
+  'precipitation',
+  'sunshine',
 ];
 const NAME = /^[a-z][a-z0-9_]{0,63}$/;
 const COMMON_KEYS = [
@@ -100,8 +113,9 @@ const COMMON_KEYS = [
   'confirmed',
   'maxPerDay',
   'helper',
+  'aheadMs',
 ];
-const INFLUX_KEYS = [...COMMON_KEYS, 'measurement', 'field', 'tags'];
+const INFLUX_KEYS = [...COMMON_KEYS, 'measurement', 'field', 'tags', 'maxHoldMs', 'history'];
 const HA_KEYS = [...COMMON_KEYS, 'entityId', 'maxHoldMs', 'longTerm'];
 const DERIVED_KEYS = [...COMMON_KEYS, 'terms'];
 
@@ -126,7 +140,7 @@ export function validateMapping(
   if (!isObj(raw)) return { ok: false, errors: ['mapping: must be a JSON object'] };
 
   for (const key of Object.keys(raw)) {
-    if (!['timeZone', 'series', 'forecasts', 'pv', 'plan', '$comment'].includes(key)) {
+    if (!['timeZone', 'series', 'forecasts', 'pv', 'plan', 'notes', '$comment'].includes(key)) {
       errors.push(`mapping.${key}: unknown key`);
     }
   }
@@ -194,6 +208,16 @@ export function validateMapping(
       errors.push(`${at}.stepMs: integer between 1000 and 86400000`);
     }
 
+    if (
+      entry.aheadMs !== undefined &&
+      (typeof entry.aheadMs !== 'number' ||
+        !Number.isInteger(entry.aheadMs) ||
+        entry.aheadMs < 0 ||
+        entry.aheadMs > 7 * 86_400_000)
+    ) {
+      errors.push(`${at}.aheadMs: integer between 0 and 604800000 (7 days)`);
+    }
+
     const entity = {
       id,
       name: entry.name as string,
@@ -213,6 +237,7 @@ export function validateMapping(
     const common = {
       entity,
       ...(entry.helper === true ? { helper: true } : {}),
+      ...(typeof entry.aheadMs === 'number' && entry.aheadMs > 0 ? { aheadMs: entry.aheadMs } : {}),
       ...(entry.scale !== undefined ? { scale: entry.scale as number } : {}),
       stepMs: entry.stepMs as number,
     };
@@ -231,7 +256,41 @@ export function validateMapping(
         measurement: entry.measurement as string,
         field: entry.field as string,
         ...(entry.tags ? { tags: entry.tags as Record<string, string> } : {}),
+        ...(typeof entry.maxHoldMs === 'number' ? { maxHoldMs: entry.maxHoldMs } : {}),
+        ...(isObj(entry.history)
+          ? {
+              history: {
+                measurement: String(entry.history.measurement),
+                field: String(entry.history.field),
+                ...(isObj(entry.history.tags)
+                  ? { tags: entry.history.tags as Record<string, string> }
+                  : {}),
+                ...(typeof entry.history.scale === 'number' ? { scale: entry.history.scale } : {}),
+              },
+            }
+          : {}),
       };
+      if (entry.history !== undefined) {
+        const h = entry.history;
+        if (
+          !isObj(h) ||
+          !isText(h.measurement) ||
+          !isText(h.field) ||
+          (h.tags !== undefined &&
+            (!isObj(h.tags) || !Object.values(h.tags).every((v) => isText(v))))
+        ) {
+          errors.push(`${at}.history: { measurement, field, tags? } of an older measurement`);
+        }
+        if (entry.kind !== 'energy_counter') errors.push(`${at}.history: only for energy_counter`);
+      }
+      if (
+        entry.maxHoldMs !== undefined &&
+        (typeof entry.maxHoldMs !== 'number' ||
+          !Number.isInteger(entry.maxHoldMs) ||
+          entry.maxHoldMs < 60_000)
+      ) {
+        errors.push(`${at}.maxHoldMs: integer ≥ 60000`);
+      }
     } else if (source === 'derived') {
       if (entry.kind !== 'energy_counter' || entry.unit !== 'kWh') {
         errors.push(`${at}: a derived series is an energy_counter in kWh`);
@@ -446,11 +505,28 @@ export function validateMapping(
     }
   }
 
+  const notes: Note[] = [];
+  if (raw.notes !== undefined) {
+    if (!Array.isArray(raw.notes)) errors.push('mapping.notes: list of { from, to, text }');
+    else
+      raw.notes.forEach((n: unknown, i: number) => {
+        const at = `mapping.notes[${i}]`;
+        const from = isObj(n) ? Date.parse(String(n.from)) : NaN;
+        const to = isObj(n) ? Date.parse(String(n.to)) : NaN;
+        if (!isObj(n) || !Number.isFinite(from) || !Number.isFinite(to) || to < from) {
+          errors.push(`${at}: from and to as ISO times with zone, from ≤ to`);
+        } else if (!isText(n.text, 120)) {
+          errors.push(`${at}.text: 1–120 characters`);
+        } else notes.push({ from, to, text: String(n.text).trim() });
+      });
+  }
+
   if (errors.length > 0) return { ok: false, errors };
   return {
     ok: true,
     mapping: {
       timeZone: raw.timeZone as string,
+      ...(notes.length ? { notes } : {}),
       series,
       forecasts,
       ...(pv ? { pv } : {}),

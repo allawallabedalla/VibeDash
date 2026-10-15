@@ -1,4 +1,4 @@
-// Hauptbereich Garten (haus-garten, E-30 13.10.2026). IC = {bedeutung: zeichen} setzt der Generator davor.
+// Hauptbereich Garten (seite-garten,  13.10.2026). IC = {bedeutung: zeichen} setzt der Generator davor.
 // Teil steht im HTML: <div class="gw" data-teil="tipp|wetter|frueher">.
 //   tipp:   A = /garten (Zeitraum der Seite, neueste zuerst) -> der jüngste Tipp groß, als Liste (ein Punkt je Zeile)
 //   wetter: A wetter_tag art=gemessen (3 Tage zurück), B wetter_tag art=prognose (heute + 3) -> je Tag eine Karte;

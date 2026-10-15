@@ -5,6 +5,7 @@ import {
   dropCounterGlitches,
   estimate,
   findGaps,
+  holdForward,
   meanAbsPctError,
   quantile,
   thinBefore,
@@ -116,6 +117,30 @@ describe('dropCounterGlitches', () => {
     expect(counterResets(samples)).toEqual([{ t: M, from: 3000, to: 0.1 }]);
   });
 
+  it('drops a long run of zeros that ends back at the level (logger outage, DA-05)', () => {
+    const H = 60 * M;
+    const samples = [
+      { t: 0, v: 1000 },
+      { t: M, v: 0 },
+      { t: 30 * M, v: 0 },
+      { t: 5 * H, v: 1003 },
+    ];
+    expect(dropCounterGlitches(samples).map((s) => s.v)).toEqual([1000, 1003]);
+    expect(counterResets(samples)).toEqual([]);
+    const day = (t: number) => (t < 24 * H ? 'd1' : 'd2');
+    expect(dailyFromCounter([{ t: -M, v: 999 }, ...samples], day)).toEqual([]);
+  });
+
+  it('keeps a real reset to 0 that grows from there', () => {
+    const samples = [
+      { t: 0, v: 1000 },
+      { t: M, v: 0 },
+      { t: 30 * M, v: 0.5 },
+      { t: 60 * M, v: 1.2 },
+    ];
+    expect(counterResets(samples)).toEqual([{ t: M, from: 1000, to: 0 }]);
+  });
+
   it('drops a glitch of several samples within the window', () => {
     const samples = [
       { t: 0, v: 50 },
@@ -183,5 +208,29 @@ describe('thinBefore', () => {
   it('changes nothing when every sample is after the cut', () => {
     const s = at([100, 110], () => 3);
     expect(thinBefore(s, 50_000, 60_000, 'mean')).toEqual(s);
+  });
+});
+
+describe('holdForward (sensors that report on change)', () => {
+  const H = 3_600_000;
+  it('keeps the last value up to the hold time, then leaves a real gap', () => {
+    const s = [
+      { t: 0, v: 21 },
+      { t: 3 * H, v: 22 },
+    ];
+    const out = holdForward(s, H, 12 * H, 0, 20 * H);
+    expect(out.map((x) => x.t / H)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+    expect(out.at(-1)!.v).toBe(22);
+    expect(findGaps({ entityId: 'x', source: 't', stepMs: H, samples: out })).toEqual([]);
+  });
+
+  it('knows the value at the start from a report before it', () => {
+    const out = holdForward([{ t: -2 * H, v: 20 }], H, 12 * H, 0, 3 * H);
+    expect(out.map((x) => [x.t / H, x.v])).toEqual([
+      [0, 20],
+      [1, 20],
+      [2, 20],
+      [3, 20],
+    ]);
   });
 });

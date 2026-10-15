@@ -1,4 +1,4 @@
-// Treffsicherheit (haus-treffsicherheit): Infografik über der Tabelle (Nutzer 13.10.2026: „datentabellen immer mit
+// Treffsicherheit (seite-treffsicherheit): Infografik über der Tabelle (Nutzer 13.10.2026: „datentabellen immer mit
 // infografiken“, „eine progressbar und eine Sparkline mit dem historischen verlauf des progress, um zu sehen, ob sich das
 // modell entwickelt“). IC = {bedeutung: zeichen} setzt der Generator davor.
 // Daten: /ml/treffer/grafik = EINE Zeile {json: [Programm, …]}; je Programm korrekt_pct (0–100 %, dieselbe Regel wie die

@@ -95,6 +95,7 @@
       rainMm: d.rainMm,
       sunHours: d.sunHours,
       energy: d.energy,
+      when: d.offset === 0 ? 'today' : d.offset < 0 ? 'past' : 'forecast',
     })),
   );
 </script>

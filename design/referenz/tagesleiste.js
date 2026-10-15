@@ -38,7 +38,7 @@ for (let i = 0; i < tag.length; i++) {
   const tg = tag[i].split(' ');
   const tgh = tg.length > 1 ? `${esc(tg[0])} <span class="dat">${esc(tg[1])}</span>` : esc(tag[i]);
   const quelle = qu[i] === 'Hof' ? 'Hof gemessen' : (qu[i] === 'Modell' ? 'Wettermodell' : 'keine Daten');
-  // BL-186: vergangener Tag mit Fühlerlücke (< 12 h Werte) -> Wettermodell, sichtbar markiert statt „gemessen“
+  // : vergangener Tag mit Fühlerlücke (< 12 h Werte) -> Wettermodell, sichtbar markiert statt „gemessen“
   const mod = art[i] === 'vergangen' && qu[i] !== 'Hof';
   const ca = mod ? '≈' : '';
   h += `<div class="z ${esc(art[i])}${mod ? ' mod' : ''}" title="${esc(tag[i])}: ${mod ? 'Hof-Fühler mit Lücke – Temperatur laut ' : ''}${quelle}">` +

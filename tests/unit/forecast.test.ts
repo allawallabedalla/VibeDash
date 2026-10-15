@@ -5,6 +5,8 @@ import {
   completeDays,
   dayAheadForecasts,
   generateDemo,
+  hourlyPvForecast,
+  pvTimeSeries,
   mulberry32,
   outlook,
   powerCurve,
@@ -118,5 +120,64 @@ describe('pvTimeSeries', () => {
     s.x.forEach((t, i) => {
       if (t >= demo.now) expect(s.actual[i]).toBeNull();
     });
+  });
+});
+
+describe('hourly PV forecast of the house', () => {
+  it('draws through the hour middles and keeps a missing hour as a gap', () => {
+    const H = 3_600_000;
+    const demo = generateDemo();
+    const day = Math.floor(demo.now / (24 * H)) * 24 * H;
+    const data = {
+      ...demo,
+      entities: [
+        ...demo.entities,
+        {
+          id: 'pv_forecast',
+          name: 'PV forecast',
+          kind: 'power' as const,
+          unit: 'kW',
+          confirmed: true,
+        },
+      ],
+      series: {
+        ...demo.series,
+        pv_forecast: {
+          entityId: 'pv_forecast',
+          source: 'test',
+          stepMs: H,
+          samples: [
+            { t: day + 10 * H, v: 2 },
+            { t: day + 11 * H, v: 4 },
+            { t: day + 13 * H, v: 6 },
+          ],
+        },
+      },
+    };
+    const x = [10.5, 11, 11.5, 12.5].map((h) => day + h * H);
+    const f = hourlyPvForecast(data, x)!;
+    expect(f.value[0]).toBeCloseTo(2);
+    expect(f.value[1]).toBeCloseTo(3);
+    expect(f.value[2]).toBeCloseTo(4);
+    expect(f.value[3]).toBeNull();
+    expect(f.low.every((v) => v === null)).toBe(true);
+  });
+
+  it('is absent without such a series', () => {
+    expect(hourlyPvForecast(generateDemo(), [0, 1])).toBeNull();
+  });
+});
+
+describe('three days back to three days ahead (span)', () => {
+  it('is hourly over seven days and has actual values only for past hours', () => {
+    const demo = generateDemo();
+    const s = pvTimeSeries(demo, 'span');
+    expect(s.unit).toBe('kW');
+    expect(s.x.length).toBeGreaterThanOrEqual(7 * 24 - 1);
+    expect(s.x.length).toBeLessThanOrEqual(7 * 24 + 1);
+    s.x.forEach((t, i) => {
+      if (t + 3_600_000 > demo.now) expect(s.actual[i]).toBeNull();
+    });
+    expect(s.forecast.some((v) => v !== null)).toBe(true);
   });
 });

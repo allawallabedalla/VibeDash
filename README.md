@@ -82,9 +82,30 @@ listed in `local/mapping.json` – there is no way to send a query from the brow
 
 Without `local/mapping.json` the server runs in demo mode.
 
+**Running it for good** (Audit01 C-04/S-05): never serve the development
+folder. `scripts/release.sh` builds the checked-out commit into
+`~/.local/share/vibedash/releases/<commit>` and switches `current` to it in one
+step (`scripts/release.sh rollback` goes back). Config (`.env`,
+`local/mapping.json`) lives in `~/.config/vibedash`. `deploy/vibedash.service`
+is a hardened user unit (no privilege gain, read-only system and home).
+
+**Network** (Audit01 S-01/S-02): the server listens on this machine only
+(`HOST=127.0.0.1`) unless `.env` says `HOST=0.0.0.0`. It answers only Host
+names it knows (this machine's name and addresses, `localhost`, plus
+`ALLOWED_HOSTS`) – a page on a foreign domain cannot reach it by DNS
+rebinding. The one write (`POST /api/location`) needs the page itself
+(`Sec-Fetch-Site: same-origin`) and can be switched off with
+`LOCATION_WRITE=off`.
+
 Optional keys per series: `device` groups the questions (e.g. "inverter"), `maxPerDay`
 leaves out implausible days of a meter, `helper: true` makes a series only an input for
-others. A meter reading that drops (often to 0) or jumps and comes back within 10 minutes
+others (a meter that a page shows, e.g. `battery_charge_energy`,
+`battery_discharge_energy` or `direct_energy` for the week's energy flows,
+must not be a helper), `maxHoldMs` (Influx too) keeps the last value of a sensor that reports only on change valid that long before it counts as a gap, `aheadMs` also reads values stored ahead of time (forecasts, at most 7 days).
+A house that keeps its own hourly PV forecast maps it as `pv_forecast` (kind `power`,
+mean power of the hour starting at the timestamp), optionally `pv_forecast_low` /
+`pv_forecast_high` for the 10–90 % span; the "today" curve then uses it instead of the
+daily forecast spread over the day. A meter reading that drops (often to 0) or jumps and comes back within 10 minutes
 is treated as a read error, not a reset. No meter for something (e.g. the house load)?
 A **derived** counter sums up power and/or other meters – always named as such behind ⓘ:
 

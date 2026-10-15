@@ -1,13 +1,11 @@
-// Startseite haus-start (Health-Stil 08.10.2026, ADHS-Umbau 09.10.2026: Symbol + 1–2 Wörter, Gründe ins ⓘ) –
+// Startseite seite-start (Health-Stil 08.10.2026, ADHS-Umbau 09.10.2026: Symbol + 1–2 Wörter, Gründe ins ⓘ) –
 // Icons seit 09.10.2026 nur Font Awesome (IC = {bedeutung: zeichen} aus der Icon-Tabelle, von haus.py vor diesen Code
 // gesetzt, ebenso die Injektion der Icon-Schrift); keine Emojis. Native Tooltips (title=) ohne Icons (tt()).
 // onInit aller HTML-graphics-Panels (gleicher Code, Teil steht im HTML: <div class="wurzel" data-teil="…">).
 // Daten: EINE Infinity-Abfrage /entwurf/haus/start im Panel "Kopf", die anderen Panels lesen sie ueber die Datenquelle
 // "-- Dashboard --". onRender ruft htmlNode._h.render(data, htmlGraphics).
-// Teile: kopf (Symbolzeile ✓/!/✕/⏳ + Gute Nacht) · tun („Im Blick“, 📋 Empfehlungen, 🧠 Lernen x/13) · heute („7 Tage“:
+// Teile: kopf (Symbolzeile ✓/!/✕/⏳) · tun („Im Blick“, 📋 Empfehlungen, 🧠 Lernen x/13) · heute („7 Tage“:
 // ☀️ selbst versorgt, ✋ Handgriffe/Tag, ⚡ Netzbezug – eine Zeitbasis; darunter „Jetzt“) · raum · bereiche · mehr.
-// Gute Nacht (nur Panel "Kopf"): POST <host>:<API-PORT>/aktion/gute-nacht, Antwort wird geprueft (200/409/429/5xx/Netz),
-// danach GET …/aktion/gute-nacht/status; 60 s Sperre. Ein Klick, keine Rueckfrage (Nutzerentscheidung).
 const n = htmlNode;
 const H = (n._h = {});
 const TZ = "Europe/Berlin";
@@ -23,9 +21,9 @@ H.zrJetzt = zrJetzt;
 const API = location.protocol + "//" + location.hostname + ":<API-PORT>";
 H.hg = htmlGraphics;
 // Grafana-Hinweis „Unterstützt von Grafana“ (klebt im Kiosk-Modus mitten über den Kacheln, Nutzer 11.10.2026) ausblenden
-if (!document.getElementById("haus-ohne-fuss")) {
+if (!document.getElementById("seite-ohne-fuss")) {
   const st = document.createElement("style");
-  st.id = "haus-ohne-fuss";
+  st.id = "seite-ohne-fuss";
   st.textContent = 'div:has(> a[href*="cnt=kiosk"]) { display: none !important; }';
   document.head.appendChild(st);
 }
@@ -166,7 +164,7 @@ function band(w, o) {
 /* ── Teile ───────────────────────────────────────────────────────────── */
 const T = {};
 
-// Kopf: Datum, „Haus“, Stand; rechts Gute Nacht. Die Symbolzeile (! 3 prüfen · ⏳ 1 lernt · ✓ 4 ok) ist seit 11.10.2026
+// Kopf: Datum, „Haus“, Stand. Die Symbolzeile (! 3 prüfen · ⏳ 1 lernt · ✓ 4 ok) ist seit 11.10.2026
 // weg (Nutzer: „erklären sich nicht“) – was zu prüfen ist, steht in „Bitte ansehen“ und an den Kacheln.
 const chips = k => {
   const c = [];
@@ -187,10 +185,7 @@ T.kopf = function (w, D) {
   w.innerHTML = `<header class="kopf">
     <div class="datum">${esc(datum)}</div>
     <h1>Jetzt</h1>
-    <div class="gn"><button class="gn-knopf" id="gn" type="button" aria-label="Gute Nacht senden (Szene der Home-App)"></button>
-      <div class="gn-info" id="gn-info" aria-live="polite"></div></div>
   </header>`;
-  H.gnZeigen(D.gute_nacht || {});
 };
 
 // Lernfortschritt als EINE Zeile: fertig = Stufe "bereit"; gezählt nur Programme mit Ziel (prozent nicht null)
@@ -344,12 +339,12 @@ const VZ = {
 T.jetzt = function (w, D) {
   const j = D.jetzt || {}, R = D.raum || {}, A = D.aussen || {};
   const kW = x => j.verfuegbar && x != null ? de(Math.abs(x) / 1000, 1) : "–";
-  const eing = (R.raeume || []).find(r => r.id === "eingang");
+  const eing = (R.raeume || []).find(r => r.id === "aussen");
   const aussen = eing && eing.temp_c != null ? eing.temp_c : A.jetzt;
   const aussenWo = eing && eing.temp_c != null ? "Hof" : (A.jetzt_quelle || "");
   const lo = R.innen_min, hi = R.innen_max;
   const akkuWort = j.akku_w >= 100 ? "wird geladen" : j.akku_w <= -100 ? "liefert Strom" : "ruht";
-  // Netz wie auf allen Seiten (E-33, 13.10.2026): Einspeisung +, Bezug −; unter 50 W „ausgeglichen“ (Regelrauschen um 0)
+  // Netz wie auf allen Seiten: Einspeisung +, Bezug −; unter 50 W „ausgeglichen“ (Regelrauschen um 0)
   const netzRuhig = j.netz_w == null || Math.abs(j.netz_w) < 50;
   const netzWort = netzRuhig ? "ausgeglichen" : j.netz_w > 0 ? "Einspeisung" : "Bezug";
   const netzZahl = !j.verfuegbar || j.netz_w == null ? "–" : netzRuhig ? "0,0" : (j.netz_w > 0 ? "+" : "−") + kW(j.netz_w);
@@ -420,7 +415,7 @@ T.raum = function (w, D) {
     return;
   }
   const schmal = w.clientWidth < 560;
-  const dach = raeume.find(r => r.art === "dach"), eing = raeume.find(r => r.id === "eingang");
+  const dach = raeume.find(r => r.art === "dach"), eing = raeume.find(r => r.id === "aussen");
   const lo = R.innen_min, hi = R.innen_max;
   let text;
   const tipT = `Innen ${lo && hi ? `${de(lo.c, 1)}–${de(hi.c, 1)} °C: am kühlsten ${lo.raum}, am wärmsten ${hi.raum}` : "–"}. Hof = Fühler am Eingang`
@@ -433,7 +428,7 @@ T.raum = function (w, D) {
       <div class="leg"><span><i style="background:${mischen("#2c7bb6", .5)}"></i>kühl</span><span><i style="background:${mischen("#e8553a", .5)}"></i>warm</span><span><i class="punkt" style="background:#8E6CC9"></i><span class="emo">${IC.person}</span> jetzt${bew.size ? "" : ": –"}</span></div>`;
   } else {
     const tipA = "Präsenz (Räume mit Melder): Anteil der Zeit mit Bewegung, 7 Tage. Aktivität (übrige Räume): Licht-Einschaltungen je Tag. "
-      + "Aktivität ≠ Anwesenheit: „0“ heißt nur, dass kein Licht anging. Katzen lösen Melder mit aus.";
+      + "Aktivität ≠ Anwesenheit: „0“ heißt nur, dass kein Licht anging. ";
     text = `<div class="raum-gross" style="font-size:${schmal ? 19 : 22}px" title="${esc(tt(tipA))}"><span class="emo">${IC.person}</span> Anwesenheit <small>7 Tage</small>${ibox(tipA)}</div>
       <div class="leg"><span><i style="background:${mischen("#7e5bbd", .25)}"></i>% der Zeit</span>
       <span><i style="background:${mischen("#36a386", .35)}"></i><span class="emo">${IC.licht}</span> ×/Tag</span></div>`;
@@ -491,7 +486,7 @@ T.raum = function (w, D) {
   w.querySelectorAll(".segment button").forEach(b => b.addEventListener("click", ev => {
     ev.preventDefault(); ev.stopPropagation();
     n._ansicht = b.dataset.ansicht;
-    try { localStorage.setItem("haus-start-ansicht", n._ansicht); } catch (e) { /* egal */ }
+    try { localStorage.setItem("seite-start-ansicht", n._ansicht); } catch (e) { /* egal */ }
     T.raum(w, D);
   }));
 };
@@ -599,91 +594,7 @@ T.mehr = function (w, D) {
       ${k("/dashboards/f/haus/", IC.ordner, "Alle Seiten")}
     </nav>`;
 };
-/* ── Gute Nacht (nur Kopf) ───────────────────────────────────────────── */
-// Zustand ueberlebt das Neuzeichnen (Refresh jede Minute): n._gn = {art, bis, text, info}
-H.gnZeigen = function (gn) {
-  const knopf = n.querySelector("#gn"), info = n.querySelector("#gn-info");
-  if (!knopf) return;
-  if (gn) H.gnStatus = gn;
-  const s = n._gn || {}, jetzt = Date.now(), g = H.gnStatus || {};
-  let sperreRest = Math.ceil(((s.bis || 0) - jetzt) / 1000);
-  if (!(sperreRest > 0) && g.naechste_in_s > 0 && (!s.art || s.art === "bereit")) { s.bis = jetzt + g.naechste_in_s * 1000; n._gn = s; sperreRest = g.naechste_in_s; }
-  const zuletzt = g.letzte_wann ? `zuletzt ${g.letzte_wann}${g.letzte_ergebnis && g.letzte_ergebnis !== "ok" ? " (Fehler)" : ""}` : "noch nie gesendet";
-  knopf.classList.remove("sendet", "fertig", "fehler");
-  knopf.removeAttribute("aria-disabled");
-  if (s.art === "sendet") {
-    knopf.classList.add("sendet"); knopf.setAttribute("aria-disabled", "true");
-    knopf.innerHTML = `<span class="dreher"></span>Wird gesendet …`;
-    info.innerHTML = "&nbsp;";
-  } else if (s.art === "fertig" && jetzt < (s.zeigeBis || 0)) {
-    knopf.classList.add("fertig"); knopf.setAttribute("aria-disabled", "true");
-    knopf.innerHTML = `${HAKEN}${esc(s.knopf || "Gesendet")}`;
-    info.innerHTML = `<b>${esc(s.text)}</b><br>${esc(s.info || "")}`;
-  } else if (s.art === "fehler" && jetzt < (s.zeigeBis || 0)) {
-    knopf.classList.add("fehler");
-    knopf.innerHTML = `${MOND}Gute Nacht`;
-    info.innerHTML = `<b>${esc(s.text)}</b><br>${esc(s.info || zuletzt)}`;
-  } else if (sperreRest > 0) {
-    knopf.setAttribute("aria-disabled", "true");
-    knopf.innerHTML = `${MOND}Gute Nacht`;
-    info.innerHTML = `${s.text ? `<b>${esc(s.text)}</b><br>` : ""}wieder möglich in ${sperreRest} s · ${esc(zuletzt)}`;
-  } else {
-    if (s.art) n._gn = {};
-    knopf.innerHTML = `${MOND}Gute Nacht`;
-    info.innerHTML = `${esc(zuletzt)}<span class="nur-breit"><br>Szene der Home-App</span>${g.scharf === false ? "<br>Probebetrieb (sendet nichts)" : ""}`;
-  }
-  info.className = "gn-info" + (s.art === "fehler" && jetzt < (s.zeigeBis || 0) ? " fehler" : "");
-  clearTimeout(n._gnTimer);
-  if (sperreRest > 0 || s.art === "fertig" || s.art === "fehler") n._gnTimer = setTimeout(() => H.gnZeigen(), 1000);
-};
-H.gnStatusLaden = async function () {
-  try {
-    const r = await fetch(API + "/aktion/gute-nacht/status", { cache: "no-store" });
-    if (r.ok) { const j = await r.json(); H.gnStatus = Array.isArray(j) ? j[0] : j; }
-  } catch (e) { /* Rueckmeldung bleibt, naechster Refresh holt den Stand */ }
-  H.gnZeigen();
-};
-H.gnKlick = async function () {
-  const s = n._gn || {};
-  if (s.art === "sendet" || (s.bis && Date.now() < s.bis) || (s.art === "fertig" && Date.now() < (s.zeigeBis || 0))) return;
-  n._gn = { art: "sendet" }; H.gnZeigen();
-  const ac = typeof AbortController !== "undefined" ? new AbortController() : null;
-  const timer = setTimeout(() => ac && ac.abort(), 45000);
-  let r = null, j = {};
-  try {
-    r = await fetch(API + "/aktion/gute-nacht", { method: "POST", cache: "no-store", signal: ac ? ac.signal : undefined,
-      headers: { "Content-Type": "application/json", "X-Haus-Aktion": "1" }, body: JSON.stringify({ quelle: "grafana" }) });
-    j = await r.json().catch(() => ({}));
-  } catch (e) {
-    r = null;
-  } finally { clearTimeout(timer); }
-  const jetzt = Date.now(), sperre = ((H.gnStatus || {}).sperre_s || 60) * 1000;
-  if (r && r.ok && j.ok) {
-    const trocken = j.modus === "trocken";
-    n._gn = { art: "fertig", knopf: trocken ? "Probelauf" : "Gesendet", text: trocken ? "Probelauf – nichts gesendet" : "Gute Nacht gesendet",
-              info: trocken ? "Trockenmodus der Haus-API" : "Was die Szene schaltet, legt die Home-App fest", zeigeBis: jetzt + 6000, bis: jetzt + sperre };
-    H.gnStatus = Object.assign({}, H.gnStatus, { letzte_wann: "heute " + uhr(jetzt), letzte_ergebnis: "ok" });
-  } else if (r && r.status === 429) {
-    const rest = j.naechste_in_s || parseInt(r.headers.get("Retry-After") || "60", 10);
-    n._gn = { art: "bereit", text: "Gerade erst gesendet", bis: jetzt + rest * 1000 };
-  } else if (r && r.status === 409) {
-    n._gn = { art: "bereit", text: "Läuft bereits – bitte kurz warten", bis: jetzt + 5000 };
-  } else if (r && (r.status === 400 || r.status === 403)) {
-    n._gn = { art: "fehler", text: "Nicht gesendet – nicht erlaubt", info: j.fehler || `HTTP ${r.status}`, zeigeBis: jetzt + 8000 };
-  } else if (r) {
-    n._gn = { art: "fehler", text: "Nicht gesendet – Fehler im Haus-Dienst", info: (j.text || j.fehler || `HTTP ${r.status}`).replace(/^Fehler:\s*/, "").slice(0, 90), zeigeBis: jetzt + 8000 };
-  } else {
-    n._gn = { art: "fehler", text: "Keine Antwort vom Haus-Dienst", info: "Ob gesendet wurde, ist unklar – Stand wird geprüft.", zeigeBis: jetzt + 8000 };
-  }
-  H.gnZeigen();
-  H.gnStatusLaden();
-};
-// Nur zum Pruefen der Rueckmeldungen im Test (zeigt Zustaende, sendet nichts)
-n._gnVorschau = art => { const j = Date.now();
-  n._gn = art === "sendet" ? { art } : art === "fertig" ? { art, knopf: "Gesendet", text: "Gute Nacht gesendet", info: "Was die Szene schaltet, legt die Home-App fest", zeigeBis: j + 6e4, bis: j + 6e4 }
-    : art === "sperre" ? { art: "bereit", text: "Gerade erst gesendet", bis: j + 52000 } : { art: "fehler", text: "Keine Antwort vom Haus-Dienst", info: "Ob gesendet wurde, ist unklar – Stand wird geprüft.", zeigeBis: j + 6e4 };
-  H.gnZeigen(); };
-
+/* (Ein privater Steuer-Knopf des Hauses stand hier; für VibeDash ohne Belang, entfernt.) */
 /* ── Kiosk: die Startseite zeigt sich ohne Grafana-Kopfleiste (wie Grafana-Home /bereich?kiosk), auch wenn man
    ueber Brotkrumen/Zurueck kommt; beim Weg auf eine Unterseite wird der Kiosk-Modus verlassen (dort bleiben Kopfleiste
    und Zeitraumwahl). Grafana verlaesst Kiosk nur ueber seine Esc-Taste – genau die wird hier ausgeloest. ── */
@@ -702,7 +613,7 @@ H.kioskAus = function () {          // -> true, wenn Grafana dafuer einen Verlau
   document.dispatchEvent(ev);
   return history.length > vorher && !KIOSK_RE.test(location.search.slice(1));
 };
-// Seit 13.10.2026 (E-30) kein Kiosk mehr: die Seite „Jetzt“ zeigt wie alle Seiten die Tab-Leiste der Hauptbereiche
+// Seit 13.10.2026 kein Kiosk mehr: die Seite „Jetzt“ zeigt wie alle Seiten die Tab-Leiste der Hauptbereiche
 // (Grafana-Kopfleiste). H.kioskAn bleibt für einen Aufruf von Hand.
 
 /* ── ⓘ: Erklärung als kleines Feld im Panel (Mac: auch als Tooltip über title; iPhone: Antippen) ── */
@@ -721,12 +632,11 @@ H.iZeigen = function (k) {
   p.style.top = (unten + p.offsetHeight > wr.height - 4 ? Math.max(4, kr.top - wr.top - p.offsetHeight - 6) : unten) + "px";
 };
 
-/* ── Klicks: Gute Nacht, Links innerhalb Grafana ohne Neuladen (Zeitraum bleibt) ── */
+/* ── Klicks: Links innerhalb Grafana ohne Neuladen (Zeitraum bleibt) ── */
 if (!n._klicks) {
   n._klicks = true;
   n.addEventListener("click", ev => {
     const pfad = ev.composedPath ? ev.composedPath() : [];
-    if (pfad.find(x => x && x.id === "gn")) { ev.preventDefault(); H.gnKlick(); return; }
     const ik = pfad.find(x => x && x.classList && x.classList.contains("i-knopf"));
     if (ik) { ev.preventDefault(); ev.stopPropagation(); H.iZeigen(ik); return; }
     if (pfad.find(x => x && x.classList && x.classList.contains("i-pop"))) { H.iZu(); ev.preventDefault(); return; }
@@ -755,7 +665,7 @@ H.render = function (data, hg) {
   const w = n.querySelector(".wurzel");
   if (!w) return;
   const teil = w.dataset.teil;
-  if (n._ansicht == null) { try { n._ansicht = localStorage.getItem("haus-start-ansicht") || "temp"; } catch (e) { n._ansicht = "temp"; } }
+  if (n._ansicht == null) { try { n._ansicht = localStorage.getItem("seite-start-ansicht") || "temp"; } catch (e) { n._ansicht = "temp"; } }
   const D = H.daten(data);
   if (!D) {
     const fehler = data && (data.error || (data.errors && data.errors.length));
@@ -766,7 +676,7 @@ H.render = function (data, hg) {
   }
   H.D = D || H.D;
   try { (T[teil] || (() => {}))(w, H.D); } catch (e) {
-    console.error("haus-start " + teil, e);
+    console.error("seite-start " + teil, e);
     w.innerHTML = `<div class="fehler-karte">Anzeige gerade nicht möglich (${esc(e.message)}).</div>`;
   }
 };

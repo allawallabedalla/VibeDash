@@ -16,6 +16,7 @@
 
   const tabs = $derived([
     { id: 'overview', label: t('page.overview'), icon: 'overview' as const },
+    { id: 'week', label: t('page.week'), icon: 'calendar' as const },
     { id: 'now', label: t('page.now'), icon: 'bolt' as const },
     { id: 'forecasts', label: t('page.forecasts'), icon: 'forecast' as const },
     ...(store.evcc || store.plan || (store.state.status === 'ready' && currentSource() === 'demo')
@@ -75,12 +76,15 @@
       </section>
     </div>
   {:else}
-    {#if store.state.missing.length > 0}
+    <!-- Only real trouble (timeouts, errors) earns a notice; a sensor the house
+         simply does not have is not a need for action. -->
+    {@const failed = store.state.missing.filter((m) => m.reason !== 'not_mapped')}
+    {#if failed.length > 0}
       <div class="page">
         <section class="notice small" role="status">
           <p class="title">{t('state.missingTitle')}</p>
           <ul>
-            {#each store.state.missing as m (m.id)}
+            {#each failed as m (m.id)}
               <li>
                 {t('state.missingItem', {
                   name: store.state.data.entities.find((e) => e.id === m.id)?.name ?? m.id,
@@ -94,7 +98,9 @@
       </div>
     {/if}
     {#key store.version}
-      {#if router.route === 'now'}
+      {#if router.route === 'week'}
+        {#await import('../pages/Week.svelte') then { default: Week }}<Week />{/await}
+      {:else if router.route === 'now'}
         {#await import('../pages/Now.svelte') then { default: Now }}<Now />{/await}
       {:else if router.route === 'forecasts'}
         <!-- Pages after the first are loaded on demand (first page < 200 KB JS). -->

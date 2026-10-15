@@ -124,7 +124,7 @@ export interface RoofPlane {
   kwp: number;
 }
 
-/** Hourly irradiance on a tilted plane (W/m², hour start in UTC ms). */
+/** Hourly value at a time (UTC ms). For irradiance (`parseGti`): the hour start. */
 export interface HourValue {
   t: number;
   v: number;
@@ -175,10 +175,19 @@ export async function fetchGti(
     signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) throw new WeatherError(`HTTP ${res.status}`);
-  return parseHourly(
+  return parseGti(
     await res.json(),
     archive ? 'global_tilted_irradiance_previous_day1' : 'global_tilted_irradiance',
   );
+}
+
+/**
+ * Open-Meteo gives radiation as the mean of the *preceding* hour: the value
+ * stamped 10:00 is 09:00–10:00. Generation is kept per hour start, so the
+ * irradiance moves one hour back to its hour start (Audit01 P-01).
+ */
+export function parseGti(body: unknown, key: string): HourValue[] {
+  return parseHourly(body, key).map((x) => ({ t: x.t - 3_600_000, v: x.v }));
 }
 
 /**

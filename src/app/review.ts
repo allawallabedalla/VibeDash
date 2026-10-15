@@ -27,6 +27,10 @@ export function reviewRows(data: DemoData, count: number): Row[] {
         .map((i) => localDateKey(i.from, data.timeZone)),
     );
   const loggerGaps = gapDays('pv_power');
+  // a known event of that day (mapping notes) names the gap instead
+  const known = new Map(
+    (data.notes ?? []).map((n) => [localDateKey(n.from, data.timeZone), n.text] as const),
+  );
   // A consumption summed up from the power misses what happened in a gap.
   const loadGaps = loadIsDerived(data) ? gapDays('load_power') : new Set<string>();
   const fmt = new Intl.DateTimeFormat(i18n.locale === 'de' ? 'de-DE' : 'en-GB', {
@@ -50,11 +54,13 @@ export function reviewRows(data: DemoData, count: number): Row[] {
         import: kwh(i),
         autarky: l && i !== undefined ? `${num(Math.max(0, 1 - i / l) * 100)} %` : '–',
       },
-      note: loadGaps.has(day)
-        ? t('review.gapDerived')
-        : loggerGaps.has(day)
-          ? t('review.loggerGap')
-          : undefined,
+      note: known.get(day)
+        ? t('review.known', { text: known.get(day)! })
+        : loadGaps.has(day)
+          ? t('review.gapDerived')
+          : loggerGaps.has(day)
+            ? t('review.loggerGap')
+            : undefined,
     };
   });
 }

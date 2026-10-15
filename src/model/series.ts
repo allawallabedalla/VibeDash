@@ -112,8 +112,10 @@ export const COUNTER_GLITCH_MS = 10 * 60_000;
 /**
  * Drops read errors from a cumulative meter reading: a reading that goes
  * down (often to 0) or jumps up and comes back to the previous level within
- * `windowMs` is an outlier, not a reset. A lower reading that stays (more
- * than `windowMs`) is kept: that is a real reset or meter swap.
+ * `windowMs` is an outlier, not a reset. A run of exact zeros that ends at or
+ * above the previous level is a read error however long it lasted (a logger
+ * that reported 0 and then went silent, Audit01 DA-05). A lower reading that
+ * stays (more than `windowMs`) is kept: that is a real reset or meter swap.
  */
 export function dropCounterGlitches(
   samples: readonly Sample[],
@@ -132,6 +134,14 @@ export function dropCounterGlitches(
       if (j < samples.length && samples[j]!.t - cur.t <= windowMs) {
         i = j; // samples i..j-1 were the outlier
         continue;
+      }
+      if (cur.v === 0 && level > 0) {
+        let k = i + 1;
+        while (k < samples.length && samples[k]!.v === 0) k++;
+        if (k < samples.length && samples[k]!.v >= level) {
+          i = k; // zeros only, then back: no reset
+          continue;
+        }
       }
     }
     out.push(cur);
@@ -228,5 +238,31 @@ export function thinBefore(
   }
   flush();
   for (; i < samples.length; i++) out.push(samples[i]!);
+  return out;
+}
+
+/**
+ * For sensors that report only on change: the last value stays valid for
+ * `holdMs` and is written forward every `stepMs` up to the next report (or
+ * `to`). After `holdMs` without a report the series stops – a real gap.
+ * Only samples from `from` on are returned.
+ */
+export function holdForward(
+  samples: readonly Sample[],
+  stepMs: number,
+  holdMs: number,
+  from: number,
+  to: number,
+): Sample[] {
+  const out: Sample[] = [];
+  for (let i = 0; i < samples.length; i++) {
+    const cur = samples[i]!;
+    if (cur.t >= from) out.push(cur);
+    const next = samples[i + 1]?.t ?? to + 1;
+    const until = Math.min(next, cur.t + holdMs, to + 1);
+    for (let t = cur.t + stepMs; t < until; t += stepMs) {
+      if (t >= from) out.push({ t, v: cur.v });
+    }
+  }
   return out;
 }

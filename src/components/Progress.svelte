@@ -66,7 +66,7 @@
   }
   .value.open {
     font-weight: 500;
-    color: var(--open);
+    color: var(--muted);
   }
   .word {
     margin-left: 0.3em;

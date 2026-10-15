@@ -237,3 +237,105 @@ describe('example mappings', () => {
     expect(validateMapping(ha).ok).toBe(true);
   });
 });
+
+describe('series stored ahead of time', () => {
+  it('reads a forecast up to aheadMs into the future, and checks the key', async () => {
+    const raw = JSON.parse(JSON.stringify(example));
+    raw.series.pv_forecast = {
+      source: 'influx',
+      name: 'PV forecast',
+      kind: 'power',
+      unit: 'kW',
+      measurement: 'forecast',
+      field: 'kw',
+      stepMs: 3_600_000,
+      aheadMs: 86_400_000,
+    };
+    const r = validateMapping(raw);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    let asked = 0;
+    const d: ApiDeps = {
+      mode: 'live',
+      mapping: r.mapping,
+      series: async (m, from, to) => {
+        asked = to;
+        return { entityId: m.entity.id, source: 'test', stepMs: m.stepMs, samples: [] };
+      },
+      now: () => 1_000_000_000,
+      log: () => {},
+    };
+    await handleApi('GET', new URL('http://x/api/series/pv_forecast?range=24h'), d);
+    expect(asked).toBe(1_000_000_000 + 86_400_000);
+    raw.series.pv_forecast.aheadMs = 30 * 86_400_000;
+    expect(validateMapping(raw).ok).toBe(false);
+  });
+});
+
+describe('host check and the one write (Audit01 S-01, S-02)', () => {
+  it('knows localhost and the names given, nothing else', async () => {
+    const { allowedHosts, hostOf } = await import('../../server/hosts');
+    const h = allowedHosts({ ALLOWED_HOSTS: 'dashboard.home, 10.0.0.5' });
+    expect(h.has('localhost') && h.has('127.0.0.1') && h.has('dashboard.home')).toBe(true);
+    expect(h.has('10.0.0.5')).toBe(true);
+    expect(h.has('evil.example')).toBe(false);
+    expect(hostOf('Evil.Example:8095')).toBe('evil.example');
+    expect(hostOf('[::1]:8095')).toBe('::1');
+    expect(hostOf('localhost')).toBe('localhost');
+  });
+
+  it('binds to this machine only unless HOST says otherwise', () => {
+    expect(readConfig({}).config.host).toBe('127.0.0.1');
+    expect(readConfig({ HOST: '0.0.0.0' }).config.host).toBe('0.0.0.0');
+  });
+
+  it('refuses a location write from another site or when switched off', async () => {
+    let saved = 0;
+    const weather = {
+      enabled: true,
+      location: async () => null,
+      setLocation: async (l: { lat: number; lon: number }) => {
+        saved++;
+        return { ...l, source: 'settings' as const };
+      },
+      geocode: async () => null,
+      forecast: async () => [],
+    };
+    const post = (w: object, fetchSite?: string) =>
+      handleApi('POST', new URL('http://x/api/location'), deps({ weather: w as never }), {
+        body: '{"lat":50,"lon":8}',
+        contentType: 'application/json',
+        host: 'x',
+        fetchSite,
+      });
+    expect((await post(weather, 'cross-site')).status).toBe(403);
+    expect((await post({ ...weather, writable: false }, 'same-origin')).status).toBe(403);
+    expect(saved).toBe(0);
+    expect((await post(weather, 'same-origin')).status).toBe(200);
+    expect(saved).toBe(1);
+  });
+});
+
+describe('mapping notes', () => {
+  it('accepts known events with zone and serves them', async () => {
+    const raw = JSON.parse(JSON.stringify(example));
+    raw.notes = [
+      { from: '2026-10-13T15:42:00+02:00', to: '2026-10-13T16:15:00+02:00', text: 'Umzug' },
+    ];
+    const r = validateMapping(raw);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const res = await handleApi('GET', new URL('http://x/api/notes'), deps({ mapping: r.mapping }));
+    expect(res.body).toEqual({
+      notes: [
+        {
+          from: Date.parse('2026-10-13T13:42:00Z'),
+          to: Date.parse('2026-10-13T14:15:00Z'),
+          text: 'Umzug',
+        },
+      ],
+    });
+    raw.notes = [{ from: 'gestern', to: 'heute', text: '' }];
+    expect(validateMapping(raw).ok).toBe(false);
+  });
+});

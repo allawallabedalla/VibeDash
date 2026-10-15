@@ -9,6 +9,7 @@ import { createServer } from 'node:http';
 import { handleApi, type ApiDeps } from './api';
 import { createBackends } from './backends';
 import { encodeBody } from './compress';
+import { allowedHosts, hostOf } from './hosts';
 import { evccClient } from '../src/adapters/evcc';
 import { forecastBridge } from './forecast-bridge';
 import { planBridge } from './plan-bridge';
@@ -39,7 +40,14 @@ if (existsSync(config.mappingPath)) {
   if (!result.ok) fail(result.errors);
   const backends = createBackends(result.mapping, config, fetch);
   if (!backends.ok) fail(backends.errors);
-  deps = { mode: 'live', mapping: result.mapping, series: backends.series, now: Date.now, log };
+  deps = {
+    mode: 'live',
+    mapping: result.mapping,
+    series: backends.series,
+    daily: backends.daily,
+    now: Date.now,
+    log,
+  };
   log(
     `live mode (${sourcesOf(result.mapping).join(' + ')}): ${Object.keys(result.mapping.series).length} named series from ${config.mappingPath}`,
   );
@@ -60,6 +68,7 @@ const settingsPath = process.env.SETTINGS_PATH ?? 'local/settings.json';
 let haLocation: ResolvedLocation | null | undefined;
 deps.weather = {
   enabled: process.env.WEATHER !== 'off',
+  writable: process.env.LOCATION_WRITE !== 'off',
   location: async () => {
     const own = fromEnv(process.env) ?? readSettings(settingsPath);
     if (own) return own;
@@ -142,8 +151,15 @@ const SECURITY_HEADERS = {
     "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'",
 };
 
+const hosts = allowedHosts(process.env);
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost');
+  // a foreign name pointing at this server (DNS rebinding) gets nothing
+  const host = hostOf(req.headers.host);
+  if (!host || !hosts.has(host)) {
+    res.writeHead(421, { ...SECURITY_HEADERS, 'Content-Type': 'text/plain' }).end('unknown host');
+    return;
+  }
   try {
     if (url.pathname.startsWith('/api/')) {
       let body: string | undefined;
@@ -158,6 +174,7 @@ const server = createServer(async (req, res) => {
         body,
         contentType: req.headers['content-type'],
         origin: req.headers.origin,
+        fetchSite: req.headers['sec-fetch-site'] as string | undefined,
         host: req.headers.host,
       });
       const out = await encodeBody(JSON.stringify(r.body), req.headers['accept-encoding']);
