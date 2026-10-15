@@ -34,6 +34,9 @@
     contrast: 'M12 3.5a8.5 8.5 0 1 0 0 17zM12 3.5a8.5 8.5 0 1 1 0 17',
   } as const;
   export type IconName = keyof typeof paths;
+  /** A name from outside (e.g. a board's tab) as an icon; unknown names get "info". */
+  export const iconOf = (name: string): IconName =>
+    Object.hasOwn(paths, name) ? (name as IconName) : 'info';
 </script>
 
 <script lang="ts">

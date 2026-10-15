@@ -137,6 +137,26 @@ API (read-only, `GET` only): `/api/health`, `/api/entities`,
 `/api/series/<name>?range=1h|24h|7d|31d`, `/api/plan`, `/api/plan/guete`. Every Influx request times out after 10 s; the
 page then shows "keine Daten" with the reason and a retry button, never endless loading.
 
+## Extra pages from house services (`mapping.boards`)
+
+A house may have its own services (maintenance checks, garden tips, model scores …).
+VibeDash shows them as extra tabs without knowing the house: each board names a URL
+that answers one JSON object; the server fetches it (usual timeout, 60 s cache), checks
+and trims it, and the page draws it with VibeDash's own blocks. Text is always shown as
+text, never as HTML.
+
+```json
+"boards": [
+  { "id": "garden", "title": "Garden", "icon": "leaf", "url": "http://127.0.0.1:9000/board/garden" }
+]
+```
+
+The answer: `{ "updated": <ms>, "sections": [ … ] }` with sections of the types
+`tiles`, `series`, `bars`, `table`, `list`, `accuracy` and `text` – the full contract,
+limits and an example are in `src/model/board.ts`. Each section may carry `note`
+(one line below) and `info` (`{ what, source }` behind ⓘ). Unknown section types are
+left out; colours and states come from a fixed list.
+
 ## Charging from the house's own records (`mapping.charging`)
 
 Without evcc, the **Charging** tab can read the house's own charge records from InfluxDB
