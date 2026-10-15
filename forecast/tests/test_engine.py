@@ -148,6 +148,9 @@ def test_store_first_forecast_wins_and_features_must_be_known_in_advance():
     assert not s.put_prognose("x", day, t1 + timedelta(hours=1), 3.0, (9, 9, 9), "b")
     assert s.prognosen("x")[0]["p50"] == 2
     assert s.put_merkmal("x", "2026-06-10", "sonne", 0.5, t1)
-    assert not s.put_merkmal("x", "2026-06-10", "sonne", 0.9, t1)  # first wins
+    assert not s.put_merkmal("x", "2026-06-10", "sonne", 0.9, t1)  # same run twice: kept once
+    # a fresher run before the day began replaces the older one (Audit01 P-03)
+    assert s.put_merkmal("x", "2026-06-10", "sonne", 0.7, t1 + timedelta(hours=2))
+    assert s.merkmale("x")[day]["sonne"] == 0.7
     late = datetime(2026, 6, 10, 9, tzinfo=UTC)
     assert not s.put_merkmal("x", "2026-06-11", "sonne", 0.1, late + timedelta(days=1))
