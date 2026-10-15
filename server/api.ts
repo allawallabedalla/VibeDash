@@ -48,6 +48,11 @@ export interface ApiDeps {
   daily?: (m: SeriesMapping, fromMs: number, toMs: number) => Promise<[number, number | null][]>;
   now: () => number;
   log: (msg: string) => void;
+  /**
+   * Short answer cache (Audit02 B-08): the same series asked again within a
+   * few seconds – by another tile, tab or device – costs no new query.
+   */
+  cache?: Map<string, { at: number; result: Promise<ApiResult> }>;
   evcc?: {
     now: () => Promise<EvccNow>;
     sessions: (year?: number) => Promise<EvccSession[]>;
@@ -154,6 +159,31 @@ export interface ApiResult {
 }
 
 const json = (status: number, body: unknown): ApiResult => ({ status, body });
+
+/** TTL of cached answers: "now" ranges briefly, long ranges and days longer. */
+export const CACHE_MS = { short: 20_000, long: 120_000, daily: 600_000 } as const;
+
+/** One answer per key and TTL; concurrent asks share it; only 200s are kept. */
+function cached(
+  deps: ApiDeps,
+  key: string,
+  ttlMs: number,
+  make: () => Promise<ApiResult>,
+): Promise<ApiResult> {
+  const c = deps.cache;
+  if (!c) return make();
+  const now = deps.now();
+  const hit = c.get(key);
+  if (hit && now - hit.at < ttlMs) return hit.result;
+  const result = make().then((r) => {
+    if (r.status !== 200) c.delete(key);
+    return r;
+  });
+  c.set(key, { at: now, result });
+  // keep the map small: drop what is old
+  if (c.size > 500) for (const [k, v] of c) if (now - v.at > CACHE_MS.daily) c.delete(k);
+  return result;
+}
 
 export async function handleApi(
   method: string,
@@ -284,17 +314,20 @@ export async function handleApi(
     }
     const days = Number(url.searchParams.get('days') ?? '400');
     if (!Number.isInteger(days) || days < 1 || days > 800) return json(400, { error: 'bad_days' });
-    const now = deps.now();
-    try {
-      const rows = await deps.daily(m, now - days * 86_400_000, now);
-      return json(200, { name, unit: 'kWh', days: rows });
-    } catch (err) {
-      const e = err as Error;
-      if (e.name === 'TimeoutError' || e.name === 'AbortError')
-        return json(504, { error: 'timeout' });
-      deps.log(`daily ${name}: ${e instanceof InfluxError ? e.message : e.name}`);
-      return json(502, { error: 'upstream' });
-    }
+    const daily = deps.daily;
+    return cached(deps, `daily|${name}|${days}`, CACHE_MS.daily, async () => {
+      const now = deps.now();
+      try {
+        const rows = await daily(m, now - days * 86_400_000, now);
+        return json(200, { name, unit: 'kWh', days: rows });
+      } catch (err) {
+        const e = err as Error;
+        if (e.name === 'TimeoutError' || e.name === 'AbortError')
+          return json(504, { error: 'timeout' });
+        deps.log(`daily ${name}: ${e instanceof InfluxError ? e.message : e.name}`);
+        return json(502, { error: 'upstream' });
+      }
+    });
   }
 
   const match = /^\/api\/series\/([a-z][a-z0-9_]{0,63})$/.exec(path);
@@ -306,36 +339,40 @@ export async function handleApi(
     if (!Object.hasOwn(RANGES, range)) {
       return json(400, { error: 'bad_range', allowed: Object.keys(RANGES) });
     }
-    const now = deps.now();
-    const from = now - RANGES[range as RangeName];
-    // forecasts are stored ahead of time: read them up to aheadMs into the future
-    const to = now + (m.aheadMs ?? 0);
-    try {
-      const s = await deps.series(m, from, to);
-      const before = Math.floor((now - FULL_MS) / THIN_MS) * THIN_MS;
-      const samples =
-        m.stepMs < THIN_MS && before > from
-          ? thinBefore(s.samples, before, THIN_MS, ADDS_UP.has(m.entity.kind) ? 'last' : 'mean')
-          : s.samples;
-      return json(200, {
-        name,
-        entity: m.entity,
-        stepMs: m.stepMs,
-        from,
-        to,
-        samples: samples.map((x) => [x.t, x.v]),
-        ...(s.held ? { held: s.held } : {}),
-      });
-    } catch (err) {
-      const e = err as Error;
-      if (e.name === 'TimeoutError' || e.name === 'AbortError') {
-        deps.log(`series ${name}: timeout`);
-        return json(504, { error: 'timeout' });
+    const ttl = range === '1h' || range === '24h' ? CACHE_MS.short : CACHE_MS.long;
+    const read = deps.series;
+    return cached(deps, `series|${name}|${range}`, ttl, async () => {
+      const now = deps.now();
+      const from = now - RANGES[range as RangeName];
+      // forecasts are stored ahead of time: read them up to aheadMs into the future
+      const to = now + (m.aheadMs ?? 0);
+      try {
+        const s = await read(m, from, to);
+        const before = Math.floor((now - FULL_MS) / THIN_MS) * THIN_MS;
+        const samples =
+          m.stepMs < THIN_MS && before > from
+            ? thinBefore(s.samples, before, THIN_MS, ADDS_UP.has(m.entity.kind) ? 'last' : 'mean')
+            : s.samples;
+        return json(200, {
+          name,
+          entity: m.entity,
+          stepMs: m.stepMs,
+          from,
+          to,
+          samples: samples.map((x) => [x.t, x.v]),
+          ...(s.held ? { held: s.held } : {}),
+        });
+      } catch (err) {
+        const e = err as Error;
+        if (e.name === 'TimeoutError' || e.name === 'AbortError') {
+          deps.log(`series ${name}: timeout`);
+          return json(504, { error: 'timeout' });
+        }
+        const known = e instanceof InfluxError || e instanceof HaError;
+        deps.log(`series ${name}: ${known ? e.message : e.name}`);
+        return json(502, { error: 'upstream' });
       }
-      const known = e instanceof InfluxError || e instanceof HaError;
-      deps.log(`series ${name}: ${known ? e.message : e.name}`);
-      return json(502, { error: 'upstream' });
-    }
+    });
   }
 
   return json(404, { error: 'not_found' });

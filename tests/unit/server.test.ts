@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import type { FetchLike } from '../../src/adapters/influx1';
 import { createBackends } from '../../server/backends';
 import { FULL_MS, handleApi, THIN_MS, type ApiDeps } from '../../server/api';
-import { acceptsGzip, encodeBody } from '../../server/compress';
+import { acceptsGzip, encodeBody, gzipStatic } from '../../server/compress';
 import { readConfig } from '../../server/config';
 import { validateMapping } from '../../server/mapping';
 import { staticFile } from '../../server/static';
@@ -341,5 +341,46 @@ describe('mapping notes', () => {
     });
     raw.notes = [{ from: 'gestern', to: 'heute', text: '' }];
     expect(validateMapping(raw).ok).toBe(false);
+  });
+});
+
+describe('answer cache and packed files (Audit02 B-08, DE2-05)', () => {
+  it('asks the backend once per series and range within the TTL', async () => {
+    let calls = 0;
+    let now = 1_000_000_000;
+    const d = deps({
+      cache: new Map(),
+      now: () => now,
+      series: async (m, from, to) => {
+        calls++;
+        return {
+          entityId: m.entity.id,
+          source: 'test',
+          stepMs: m.stepMs,
+          samples: [{ t: from, v: to }],
+        };
+      },
+    });
+    await Promise.all([
+      get('/api/series/pv_power?range=24h', d),
+      get('/api/series/pv_power?range=24h', d),
+    ]);
+    expect(calls).toBe(1);
+    await get('/api/series/pv_power?range=7d', d);
+    expect(calls).toBe(2);
+    now += 25_000;
+    await get('/api/series/pv_power?range=24h', d);
+    expect(calls).toBe(3);
+  });
+
+  it('gzips built text files once, leaves images as they are', async () => {
+    const js = Buffer.from('console.log(1);'.repeat(200));
+    const a = await gzipStatic('/x/a.js', 'text/javascript', js, 'gzip, br', 1);
+    expect(a.headers['Content-Encoding']).toBe('gzip');
+    expect(a.body.length).toBeLessThan(js.length / 5);
+    const b = await gzipStatic('/x/a.js', 'text/javascript', js, 'gzip', 1);
+    expect(b.body).toBe(a.body);
+    const png = await gzipStatic('/x/a.png', 'image/png', js, 'gzip', 1);
+    expect(png.headers['Content-Encoding']).toBeUndefined();
   });
 });

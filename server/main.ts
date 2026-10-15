@@ -8,7 +8,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { handleApi, type ApiDeps } from './api';
 import { createBackends } from './backends';
-import { encodeBody } from './compress';
+import { encodeBody, gzipStatic } from './compress';
 import { chargeSessions, fetchPlan } from './charging';
 import type { InfluxResponse } from '../src/adapters/influx1';
 import { allowedHosts, hostOf } from './hosts';
@@ -50,6 +50,7 @@ if (existsSync(config.mappingPath)) {
     daily: backends.daily,
     now: Date.now,
     log,
+    cache: new Map(),
   };
   backendsQuery = backends.query;
   log(
@@ -282,12 +283,21 @@ const server = createServer(async (req, res) => {
       res.writeHead(404, { ...SECURITY_HEADERS, 'Content-Type': 'text/plain' }).end('not found');
       return;
     }
+    // text files go gzipped (once per file, then from memory): Audit02 DE2-05
+    const packed = await gzipStatic(
+      file.path,
+      file.type,
+      file.body,
+      req.headers['accept-encoding'],
+      file.mtimeMs,
+    );
     res.writeHead(file.status, {
       ...SECURITY_HEADERS,
+      ...packed.headers,
       'Content-Type': file.type,
       'Cache-Control': file.immutable ? 'public, max-age=31536000, immutable' : 'no-cache',
     });
-    res.end(req.method === 'HEAD' ? undefined : file.body);
+    res.end(req.method === 'HEAD' ? undefined : packed.body);
   } catch (e) {
     log(`request failed: ${(e as Error).name}`);
     if (!res.headersSent) res.writeHead(500, SECURITY_HEADERS);

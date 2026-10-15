@@ -27,3 +27,31 @@ export async function encodeBody(
   }
   return { body: await gzipAsync(text), headers: { ...vary, 'Content-Encoding': 'gzip' } };
 }
+
+const packed = new Map<string, Buffer>();
+
+/**
+ * Built text files (JS, CSS, HTML, SVG, JSON) gzipped once and kept in
+ * memory; images and fonts as they are. Key: path + modification time.
+ */
+export async function gzipStatic(
+  path: string,
+  type: string,
+  body: Buffer,
+  acceptEncoding: string | string[] | undefined,
+  mtimeMs = 0,
+): Promise<{ body: Buffer; headers: Record<string, string> }> {
+  const vary = { Vary: 'Accept-Encoding' };
+  const text = /^(text\/|application\/json|image\/svg)/.test(type);
+  if (!text || body.length < MIN_BYTES || !acceptsGzip(acceptEncoding)) {
+    return { body, headers: vary };
+  }
+  const key = `${path}|${mtimeMs}`;
+  let z = packed.get(key);
+  if (!z) {
+    z = await gzipAsync(body, { level: 9 });
+    if (packed.size > 200) packed.clear();
+    packed.set(key, z);
+  }
+  return { body: z, headers: { ...vary, 'Content-Encoding': 'gzip' } };
+}
