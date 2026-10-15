@@ -66,9 +66,12 @@
       <div class="line">
         {d.source?.sun === 'pv' ? '≈ ' : ''}{d.sunHours === null ? '–' : num(d.sunHours)} h {t(
           'wd.sun',
-        )} · {d.rainMm === null ? '–' : num(d.rainMm, 1)} mm{d.source?.rain === 'model'
-          ? ` (${t('wd.modelShort')})`
-          : ''}
+        )}
+      </div>
+      <div class="line">
+        {d.rainMm === null ? '–' : num(d.rainMm, 1)} mm{d.source?.rain === 'model'
+          ? ` ${t('wd.rainModel')}`
+          : ` ${t('wd.rain')}`}
       </div>
       <div class="pv">
         <Icon name="sun" size={14} />
@@ -157,7 +160,8 @@
     font-weight: 600;
     color: var(--text-2);
   }
-  .skyword + .line {
+  .skyword + .line,
+  .line + .line {
     margin-top: 2px;
   }
   .line {

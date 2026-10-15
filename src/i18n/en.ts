@@ -441,4 +441,6 @@ export const en: Record<MessageKey, string> = {
   'wd.sky.clouds': 'single clouds',
   'wd.sky.hazy': 'hazy',
   'wd.sky.overcast': 'overcast',
+  'wd.rain': 'rain',
+  'wd.rainModel': 'rain (model)',
 };

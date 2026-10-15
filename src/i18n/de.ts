@@ -445,6 +445,8 @@ export const de = {
   'wd.sky.clouds': 'einzelne Wolken',
   'wd.sky.hazy': 'diesig',
   'wd.sky.overcast': 'bedeckt',
+  'wd.rain': 'Regen',
+  'wd.rainModel': 'Regen (Modell)',
 } as const;
 
 export type MessageKey = keyof typeof de;
