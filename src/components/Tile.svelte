@@ -67,6 +67,7 @@
   import Explanation from './Explanation.svelte';
   import Icon from './Icon.svelte';
   import InfoButton from './InfoButton.svelte';
+  import { flip } from './flip';
   import BatteryGauge from './BatteryGauge.svelte';
   import Compare from './Compare.svelte';
   import Dots from './Dots.svelte';
@@ -94,9 +95,11 @@
 
   const uid = $props.id();
   let open = $state(false);
+  let el = $state<HTMLElement>();
+  const toggle = () => flip(el, !open, () => (open = !open));
 </script>
 
-<article class="tile" class:open>
+<article class="tile" class:open bind:this={el}>
   <header>
     <span class="icon" style:color><Icon name={icon} /></span>
     <span class="label">{label}</span>
@@ -104,7 +107,7 @@
       <span class="status {status}" role="img" aria-label={statusLabel ?? status}></span>
     {/if}
     {#if info}
-      <InfoButton bind:open controls="{uid}-info" />
+      <InfoButton {open} ontoggle={toggle} controls="{uid}-info" />
     {/if}
   </header>
 
@@ -294,6 +297,12 @@
   }
   .details {
     color: var(--text);
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    /* a long explanation scrolls; the soft edge says there is more */
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent);
+    padding-bottom: 14px;
   }
 
   @media (max-width: 600px) {

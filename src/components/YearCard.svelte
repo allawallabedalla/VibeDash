@@ -6,6 +6,7 @@
    */
   import Icon, { type IconName } from './Icon.svelte';
   import InfoButton from './InfoButton.svelte';
+  import { flip } from './flip';
   import Explanation from './Explanation.svelte';
   import YearChart from './YearChart.svelte';
   import type { YearLine } from '../model/year';
@@ -30,15 +31,19 @@
   let props: Props = $props();
   const uid = $props.id();
   let open = $state(false);
+  let el = $state<HTMLElement>();
+  const toggle = () => flip(el, !open, () => (open = !open));
 </script>
 
-<article class="card">
+<article class="card" bind:this={el}>
   <header>
     <span class="title">{props.title}</span>
-    {#if props.info}<InfoButton bind:open controls="{uid}-info" />{/if}
+    {#if props.info}<InfoButton {open} ontoggle={toggle} controls="{uid}-info" />{/if}
   </header>
   {#if open && props.info}
-    <div id="{uid}-info"><Explanation what={props.info.what} source={props.info.source} /></div>
+    <div id="{uid}-info" class="flip-back">
+      <Explanation what={props.info.what} source={props.info.source} />
+    </div>
   {:else}
     <div class="lead">
       <span class="chip" style:color={props.color}><Icon name={props.icon} size={18} /></span>
@@ -63,6 +68,14 @@
 </article>
 
 <style>
+  .flip-back {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    /* a long explanation scrolls; the soft edge says there is more */
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent);
+    padding-bottom: 14px;
+  }
   .card {
     background: var(--surface);
     border-radius: 18px;
@@ -70,6 +83,8 @@
     padding: 12px 14px 12px;
     min-width: 0;
     position: relative;
+    display: flex;
+    flex-direction: column;
   }
   header {
     display: flex;
