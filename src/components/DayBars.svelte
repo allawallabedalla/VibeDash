@@ -16,7 +16,7 @@
   const max = $derived(Math.max(1e-9, ...values.map((v) => v ?? 0)));
 </script>
 
-<div class="days" role="img" aria-label={label}>
+<div class="days" class:many={values.length > 8} role="img" aria-label={label}>
   {#each values as v, i (i)}
     <div
       class="day"
@@ -90,5 +90,11 @@
   .now .d {
     color: var(--text);
     font-weight: 600;
+  }
+  /* many days on a phone: every third label (counted from today) */
+  @media (max-width: 600px) {
+    .many .day:not(:nth-last-child(3n + 1)) .d {
+      visibility: hidden;
+    }
   }
 </style>
