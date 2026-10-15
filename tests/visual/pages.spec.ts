@@ -147,16 +147,15 @@ test('the page period switch redraws the chart and the autarky', async ({
   const canvas = card.locator('canvas');
   await expect(canvas).toBeVisible();
   const before = await canvas.screenshot();
-  const autarky = page.locator('.tile', { hasText: 'Autarkie' });
-  const subBefore = await autarky.innerText();
+  const autarkyNote = card.locator('xpath=ancestor::section[1]').locator('.note');
 
   const month = page.locator('.period').getByRole('button', { name: '30 Tage' });
   await tap(page, isMobile, month);
   await expect(month).toHaveAttribute('aria-pressed', 'true');
   const after = await canvas.screenshot();
   expect(after.equals(before)).toBe(false);
-  // the autarky now covers the 30 days, with their dates
-  expect(await autarky.innerText()).not.toBe(subBefore);
+  // under the curve: the autarky of the 30 days, with their dates
+  await expect(autarkyNote).toContainText('Autarkie im Zeitraum');
   await card.screenshot({ path: `screenshots/timeseries-month-${info.project.name}.png` });
 
   // ±3 days: hourly, with the days ahead
