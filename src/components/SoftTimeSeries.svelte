@@ -240,7 +240,7 @@
     opacity: 0.18;
   }
   .unit {
-    color: var(--faint);
+    color: var(--muted);
   }
   .seg {
     display: flex;

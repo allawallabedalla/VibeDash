@@ -150,7 +150,7 @@
     margin-top: 4px;
     font-size: 14px;
     font-weight: 700;
-    color: #c77700;
+    color: var(--fair-text);
     white-space: nowrap;
   }
   :global(:root[data-theme='dark']) .pv {

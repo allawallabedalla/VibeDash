@@ -155,16 +155,16 @@
     gap: 5px;
     font-size: 14px;
     font-weight: 700;
-    color: var(--open);
+    color: var(--muted);
   }
   .chip.good {
-    color: var(--good);
+    color: var(--good-text);
   }
   .chip.fair {
-    color: var(--fair);
+    color: var(--fair-text);
   }
   .chip.poor {
-    color: var(--poor);
+    color: var(--poor-text);
   }
   .n {
     font-size: var(--small);
@@ -205,7 +205,7 @@
   .open {
     font-size: 17px;
     font-weight: 600;
-    color: var(--open);
+    color: var(--muted);
     letter-spacing: 0;
   }
   .bar {
@@ -254,11 +254,11 @@
     color: var(--muted);
   }
   .trend.up {
-    color: var(--good);
+    color: var(--good-text);
     font-weight: 600;
   }
   .trend.down {
-    color: var(--poor);
+    color: var(--poor-text);
     font-weight: 600;
   }
   .note {

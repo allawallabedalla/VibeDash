@@ -28,7 +28,7 @@
     border: 0;
     border-radius: 50%;
     background: transparent;
-    color: var(--faint);
+    color: var(--icon-soft);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }

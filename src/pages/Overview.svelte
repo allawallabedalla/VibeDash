@@ -288,7 +288,7 @@
   }
   .qicon {
     flex: none;
-    color: var(--fair);
+    color: var(--fair-text);
     padding-top: 1px;
   }
 </style>

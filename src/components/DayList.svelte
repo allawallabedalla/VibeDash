@@ -134,7 +134,7 @@
     color: var(--text-2);
   }
   .low.frost {
-    color: #2a78d6;
+    color: var(--rain);
     font-weight: 700;
   }
   .range {
@@ -159,7 +159,7 @@
     opacity: 0.7;
   }
   .rain {
-    color: #2a78d6;
+    color: var(--rain);
     font-size: 14px;
     white-space: nowrap;
   }

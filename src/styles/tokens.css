@@ -7,7 +7,7 @@
   --line: #e8e8ed;
   --text: #1d1d1f;
   --text-2: #424245;
-  --muted: #86868b;
+  --muted: #6c6c70;
   --faint: #c7c7cc;
   --track: #efeff4;
 
@@ -22,8 +22,14 @@
   --good: #2e9e5b;
   --fair: #e8a317;
   --poor: #d64545;
-  --accent: #0a6fcc;
+  --accent: #0058b0;
   --accent-bg: rgba(10, 132, 255, 0.14);
+  /* text in status colours: darker than the bars so it reads at WCAG AA (Audit01 DE-01) */
+  --good-text: #23784a;
+  --fair-text: #a35f00;
+  --poor-text: #c43c3c;
+  --rain: #1f62b0;
+  --icon-soft: #8e8e93;
   --look-bg: #fff6e5;
   --act-bg: #ffecea;
 
@@ -64,6 +70,11 @@
   --poor: #ff6961;
   --accent: #64a8ff;
   --accent-bg: rgba(10, 132, 255, 0.24);
+  --good-text: #30d158;
+  --fair-text: #ffb340;
+  --poor-text: #ff6961;
+  --rain: #5aa9ff;
+  --icon-soft: #8e8e93;
   --look-bg: #3a2e14;
   --act-bg: #3d1f1d;
 
@@ -98,6 +109,11 @@
     --poor: #ff6961;
     --accent: #64a8ff;
     --accent-bg: rgba(10, 132, 255, 0.24);
+    --good-text: #30d158;
+    --fair-text: #ffb340;
+    --poor-text: #ff6961;
+    --rain: #5aa9ff;
+    --icon-soft: #8e8e93;
     --look-bg: #3a2e14;
     --act-bg: #3d1f1d;
 
