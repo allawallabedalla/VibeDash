@@ -412,6 +412,7 @@ export const en: Record<MessageKey, string> = {
   'week.flowNoteMeter': 'From meters, battery and direct use too.',
   'week.flowNotePower': 'Meters; battery ≈ summed up from power (no battery meter mapped).',
   'sub.daysOf': '{n} of {of} days',
+  'ts.span1': '±1 day',
   'ts.span': '±3 days',
   'page.period': 'Period',
   'year.title': 'This year',

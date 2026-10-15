@@ -402,7 +402,7 @@ export function tomorrowTile(data: DemoData): TileProps {
 
 /**
  * Share of consumption covered without the grid, from meter readings, over
- * the chosen period: today, or the completed days of the last 7 / 30 / 3
+ * the chosen period: today, or the completed days of the last 7 / 30 / 3 / 1
  * (never the days ahead). A sum only covers days with both meters (DA-04).
  */
 export function autarkyTile(data: DemoData, period: Period = 'day'): TileProps {
@@ -413,7 +413,8 @@ export function autarkyTile(data: DemoData, period: Period = 'day'): TileProps {
     value: '–',
   };
   const n = period === 'week' ? 7 : period === 'month' ? 30 : period === 'span' ? 3 : 1;
-  const days = n === 1 ? weekDays(data, 1) : weekDays(data, n, -1);
+  // today, or the completed days before it (±1 day: yesterday)
+  const days = period === 'day' ? weekDays(data, 1) : weekDays(data, n, -1);
   const both = sumComplete(perDay(data, 'load_energy', days), perDay(data, 'import_energy', days));
   // a "today" value must be today's: right after midnight there is none yet (DA-06)
   if (!both || both.sums[0]! <= 0) return withoutValue(base, 'state.noData');
@@ -425,7 +426,12 @@ export function autarkyTile(data: DemoData, period: Period = 'day'): TileProps {
       day: '2-digit',
       month: '2-digit',
     }).format(ms + 12 * 3_600_000);
-  const span = n === 1 ? '' : `${dm(days[0]!.start)}–${dm(days.at(-1)!.start)}`;
+  const span =
+    period === 'day'
+      ? ''
+      : n === 1
+        ? dm(days[0]!.start)
+        : `${dm(days[0]!.start)}–${dm(days.at(-1)!.start)}`;
   return {
     ...base,
     value: num(share * 100),

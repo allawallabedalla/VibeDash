@@ -246,8 +246,11 @@ export function sourcesAt(
   return { sun, battery, grid, total: load };
 }
 
-/** day: today · week/month: last 7/30 days · span: three days back to three days ahead, hourly */
-export type Period = 'day' | 'week' | 'month' | 'span';
+/**
+ * day: today · week/month: last 7/30 days · span1/span: one or three days
+ * back to one or three days ahead, hourly
+ */
+export type Period = 'day' | 'week' | 'month' | 'span1' | 'span';
 
 export interface PvSeries {
   /**
@@ -350,7 +353,8 @@ export function pvTimeSeries(data: DemoData, period: Period): PvSeries {
     };
   }
 
-  if (period === 'span') return pvSpan(data, todayStart, forecasts);
+  if (period === 'span') return pvSpan(data, todayStart, forecasts, 3);
+  if (period === 'span1') return pvSpan(data, todayStart, forecasts, 1);
 
   const count = period === 'week' ? 7 : 30;
   const byDay = new Map(completeDays(data, 'pv_energy').map((d) => [d.day, d.value]));
@@ -383,9 +387,10 @@ function pvSpan(
   data: DemoData,
   todayStart: number,
   forecasts: ReturnType<typeof dayAheadForecasts>,
+  days: number,
 ): PvSeries {
-  const from = addDays(todayStart, -3, data.timeZone);
-  const to = addDays(todayStart, 4, data.timeZone);
+  const from = addDays(todayStart, -days, data.timeZone);
+  const to = addDays(todayStart, days + 1, data.timeZone);
   const x: number[] = [];
   for (let t = from; t < to; t += HOUR) x.push(t);
   const kw = (v: number | null | undefined) => (v === null || v === undefined ? null : v / 1000);

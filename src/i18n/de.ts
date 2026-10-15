@@ -416,6 +416,7 @@ export const de = {
   'week.flowNoteMeter': 'Aus Zählern, auch Akku und Sonne direkt.',
   'week.flowNotePower': 'Zähler; Akku ≈ aus der Leistung summiert (kein Akku-Zähler zugeordnet).',
   'sub.daysOf': '{n} von {of} Tagen',
+  'ts.span1': '±1 Tag',
   'ts.span': '±3 Tage',
   'page.period': 'Zeitraum',
   'year.title': 'Im Jahr',
