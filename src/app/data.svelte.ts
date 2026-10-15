@@ -6,6 +6,7 @@
  * Every request has a timeout; the UI never waits forever.
  */
 import { ENTITIES, generateDemo, type DemoData, type DemoIssue } from '../demo';
+import { explainedBy, type Note } from '../model/notes';
 import { counterResets, findGaps } from '../model/series';
 import type { Entity, Series } from '../model/types';
 
@@ -56,17 +57,21 @@ function detectIssues(
   series: Record<string, Series>,
   entities: Entity[],
   now: number,
+  notes: Note[] = [],
 ): DemoIssue[] {
   const out: DemoIssue[] = [];
   const counters = new Set(entities.filter((e) => e.kind === 'energy_counter').map((e) => e.id));
   for (const s of Object.values(series)) {
     for (const g of findGaps(s)) {
-      if (g.to > now - RECENT_MS) out.push({ kind: 'gap', entityIds: [s.entityId], ...g });
+      // a gap inside a known event (e.g. a server move) is no question
+      if (g.to > now - RECENT_MS && !explainedBy(notes, g.from, g.to)) {
+        out.push({ kind: 'gap', entityIds: [s.entityId], ...g });
+      }
     }
     // Only meters can be reset; power or temperature going down is normal.
     if (!counters.has(s.entityId)) continue;
     for (const r of counterResets(s.samples)) {
-      if (r.t > now - RECENT_MS) {
+      if (r.t > now - RECENT_MS && !explainedBy(notes, r.t, r.t)) {
         out.push({ kind: 'artifact', entityIds: [s.entityId], from: r.t, to: r.t });
       }
     }
@@ -109,11 +114,20 @@ async function loadLive(
   );
 
   const entities = wanted.map((id) => byId.get(id) ?? ENTITIES.find((e) => e.id === id)!);
+  const nb = await getJson('/api/notes');
+  const notes = nb?.status === 200 ? ((nb.body as { notes?: Note[] }).notes ?? []) : [];
   return {
     status: 'ready',
     source: 'live',
     backends,
-    data: { now, timeZone, entities, series, issues: detectIssues(series, entities, now) },
+    data: {
+      now,
+      timeZone,
+      entities,
+      series,
+      notes,
+      issues: detectIssues(series, entities, now, notes),
+    },
     missing: missing.sort((a, b) => a.id.localeCompare(b.id)),
   };
 }

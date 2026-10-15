@@ -429,4 +429,8 @@ export const en: Record<MessageKey, string> = {
   'gallery.room.office': 'Office',
   'gallery.room.bath': 'Bath',
   'gallery.room.bedroom': 'Bedroom',
+  'notes.title': 'Known events',
+  'notes.item': '{when}: {text}',
+  'notes.gap': 'Gap {when}: {text}',
+  'review.known': '{text}, meters complete',
 };

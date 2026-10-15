@@ -73,8 +73,16 @@ export interface PlanMapping {
   vehicle: { capacityKwh: number; phases: 1 | 3; minA: number; maxA: number };
 }
 
+/** A known event (e.g. a server move): its gaps are not asked about, charts name it. */
+export interface Note {
+  from: number;
+  to: number;
+  text: string;
+}
+
 export interface Mapping {
   timeZone: string;
+  notes?: Note[];
   series: Record<string, SeriesMapping>;
   forecasts: Record<string, ForecastMapping>;
   pv?: PvMapping;
@@ -132,7 +140,7 @@ export function validateMapping(
   if (!isObj(raw)) return { ok: false, errors: ['mapping: must be a JSON object'] };
 
   for (const key of Object.keys(raw)) {
-    if (!['timeZone', 'series', 'forecasts', 'pv', 'plan', '$comment'].includes(key)) {
+    if (!['timeZone', 'series', 'forecasts', 'pv', 'plan', 'notes', '$comment'].includes(key)) {
       errors.push(`mapping.${key}: unknown key`);
     }
   }
@@ -497,11 +505,28 @@ export function validateMapping(
     }
   }
 
+  const notes: Note[] = [];
+  if (raw.notes !== undefined) {
+    if (!Array.isArray(raw.notes)) errors.push('mapping.notes: list of { from, to, text }');
+    else
+      raw.notes.forEach((n: unknown, i: number) => {
+        const at = `mapping.notes[${i}]`;
+        const from = isObj(n) ? Date.parse(String(n.from)) : NaN;
+        const to = isObj(n) ? Date.parse(String(n.to)) : NaN;
+        if (!isObj(n) || !Number.isFinite(from) || !Number.isFinite(to) || to < from) {
+          errors.push(`${at}: from and to as ISO times with zone, from ≤ to`);
+        } else if (!isText(n.text, 120)) {
+          errors.push(`${at}.text: 1–120 characters`);
+        } else notes.push({ from, to, text: String(n.text).trim() });
+      });
+  }
+
   if (errors.length > 0) return { ok: false, errors };
   return {
     ok: true,
     mapping: {
       timeZone: raw.timeZone as string,
+      ...(notes.length ? { notes } : {}),
       series,
       forecasts,
       ...(pv ? { pv } : {}),

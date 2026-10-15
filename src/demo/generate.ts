@@ -34,6 +34,8 @@ export interface DemoData {
   entities: Entity[];
   series: Record<string, Series>;
   issues: DemoIssue[];
+  /** Known events the person told us about (e.g. a server move). */
+  notes?: { from: number; to: number; text: string }[];
 }
 
 /** Demo entities are synthetic and count as confirmed. */

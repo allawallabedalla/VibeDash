@@ -215,6 +215,10 @@ export async function handleApi(
     return json(r.status, r.body);
   }
 
+  if (path === '/api/notes') {
+    return json(200, { notes: deps.mapping.notes ?? [] });
+  }
+
   if (path === '/api/entities') {
     return json(200, {
       timeZone: deps.mapping.timeZone,

@@ -25,6 +25,7 @@
   import Tile from '../components/Tile.svelte';
   import TileRow from '../components/TileRow.svelte';
   import { hourlyPvForecast, pvTimeSeries, sourcesAt, type Period } from '../demo';
+  import { notesIn } from '../model/notes';
   import { localMidnight } from '../model/time';
   import { i18n, num, t } from '../i18n/index.svelte';
   import PageHead from './PageHead.svelte';
@@ -123,6 +124,33 @@
   ]);
 
   const tsData = $derived(pvTimeSeries(house, period));
+  // known events (mapping notes): named under the chart they show up in, and listed
+  const span = (n: { from: number; to: number }) => {
+    const f = new Intl.DateTimeFormat(locale, {
+      timeZone: tz,
+      day: 'numeric',
+      month: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const tf = new Intl.DateTimeFormat(locale, {
+      timeZone: tz,
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    return `${f.format(n.from)}–${tf.format(n.to)}`;
+  };
+  const chartNote = $derived(
+    notesIn(house.notes, tsData.x[0] ?? 0, (tsData.x.at(-1) ?? 0) + 86_400_000)
+      .map((n) => t('notes.gap', { when: span(n), text: n.text }))
+      .join(' · ') || undefined,
+  );
+  const known = $derived(
+    notesIn(house.notes, house.now - 14 * 86_400_000, house.now).map((n) => ({
+      from: n.from,
+      label: t('notes.item', { when: span(n), text: n.text }),
+    })),
+  );
 
   const src = sourcesAt(house, house.now - 60_000);
 
@@ -169,7 +197,7 @@
 
   <h2>{period === 'day' ? t('page.today') : t('page.period')}</h2>
   <div class="cards wide-left">
-    <Card title={t('ts.title')} icon="sun" color="var(--sun)">
+    <Card title={t('ts.title')} icon="sun" color="var(--sun)" note={chartNote}>
       <!-- the chart library loads after the first paint (first page < 200 KB JS) -->
       {#await import('../components/SoftTimeSeries.svelte') then { default: SoftTimeSeries }}
         <SoftTimeSeries
@@ -225,6 +253,17 @@
     {/snippet}
     <DataTable {columns} {rows} caption={t('review.title')} />
   </Card>
+
+  {#if known.length > 0}
+    <h2>{t('notes.title')}</h2>
+    <Card title={t('notes.title')} icon="clock" color="var(--muted)">
+      <ul class="questions">
+        {#each known as n (n.from)}
+          <li><span class="qicon"><Icon name="okCircle" size={18} /></span>{n.label}</li>
+        {/each}
+      </ul>
+    </Card>
+  {/if}
 
   {#if qs.length > 0}
     <h2>{t('q.title')}</h2>

@@ -433,6 +433,10 @@ export const de = {
   'gallery.room.office': 'Büro',
   'gallery.room.bath': 'Bad',
   'gallery.room.bedroom': 'Schlafen',
+  'notes.title': 'Bekannte Ereignisse',
+  'notes.item': '{when}: {text}',
+  'notes.gap': 'Lücke {when}: {text}',
+  'review.known': '{text}, Zähler vollständig',
 } as const;
 
 export type MessageKey = keyof typeof de;

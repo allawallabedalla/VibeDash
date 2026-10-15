@@ -315,3 +315,27 @@ describe('host check and the one write (Audit01 S-01, S-02)', () => {
     expect(saved).toBe(1);
   });
 });
+
+describe('mapping notes', () => {
+  it('accepts known events with zone and serves them', async () => {
+    const raw = JSON.parse(JSON.stringify(example));
+    raw.notes = [
+      { from: '2026-10-13T15:42:00+02:00', to: '2026-10-13T16:15:00+02:00', text: 'Umzug' },
+    ];
+    const r = validateMapping(raw);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const res = await handleApi('GET', new URL('http://x/api/notes'), deps({ mapping: r.mapping }));
+    expect(res.body).toEqual({
+      notes: [
+        {
+          from: Date.parse('2026-10-13T13:42:00Z'),
+          to: Date.parse('2026-10-13T14:15:00Z'),
+          text: 'Umzug',
+        },
+      ],
+    });
+    raw.notes = [{ from: 'gestern', to: 'heute', text: '' }];
+    expect(validateMapping(raw).ok).toBe(false);
+  });
+});
