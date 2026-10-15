@@ -3,7 +3,8 @@
  * context ($derived) so texts follow the language switch.
  */
 import type { TileProps } from '../components/Tile.svelte';
-import { daily, dayAheadForecasts, last24h, latest, type DemoData } from '../demo';
+import { daily, dayAheadForecasts, last24h, latest, type DemoData, type Period } from '../demo';
+import { perDay, sumComplete, weekDays } from './week';
 import { sunToday, type SunForecast } from './sun-forecast';
 
 export { demoSunForecast, type SunForecast } from './sun-forecast';
@@ -382,25 +383,43 @@ export function tomorrowTile(data: DemoData): TileProps {
   };
 }
 
-/** Share of today's consumption covered without the grid, from meter readings. */
-export function autarkyTile(data: DemoData): TileProps {
-  const load = daily(data, 'load_energy').at(-1)?.value;
-  const imp = daily(data, 'import_energy').at(-1)?.value;
+/**
+ * Share of consumption covered without the grid, from meter readings, over
+ * the chosen period: today, or the completed days of the last 7 / 30 / 3
+ * (never the days ahead). A sum only covers days with both meters (DA-04).
+ */
+export function autarkyTile(data: DemoData, period: Period = 'day'): TileProps {
   const base: TileProps = {
     label: t('tile.autarky'),
     icon: 'target',
     color: 'var(--battery)',
     value: '–',
   };
-  if (load === undefined || imp === undefined) return withoutValue(base, 'state.noData');
-  const share = load > 0 ? Math.max(0, 1 - imp / load) : 0;
+  const n = period === 'week' ? 7 : period === 'month' ? 30 : period === 'span' ? 3 : 1;
+  const days = n === 1 ? weekDays(data, 1) : weekDays(data, n, -1);
+  const both = sumComplete(perDay(data, 'load_energy', days), perDay(data, 'import_energy', days));
+  // a "today" value must be today's: right after midnight there is none yet (DA-06)
+  if (!both || both.sums[0]! <= 0) return withoutValue(base, 'state.noData');
+  const [load, imp] = both.sums as [number, number];
+  const share = Math.max(0, 1 - imp / load);
+  const dm = (ms: number) =>
+    new Intl.DateTimeFormat(i18n.locale === 'de' ? 'de-DE' : 'en-GB', {
+      timeZone: data.timeZone,
+      day: '2-digit',
+      month: '2-digit',
+    }).format(ms + 12 * 3_600_000);
+  const span = n === 1 ? '' : `${dm(days[0]!.start)}–${dm(days.at(-1)!.start)}`;
   return {
-    label: t('tile.autarky'),
-    icon: 'target',
-    color: 'var(--battery)',
+    ...base,
     value: num(share * 100),
     unit: '%',
-    sub: t('sub.autarky', { load: num(load, 1), import: num(imp, 1) }),
+    sub: [
+      t('sub.autarky', { load: num(load, load < 100 ? 1 : 0), import: num(imp, 1) }),
+      span,
+      both.n < n ? t('sub.daysOf', { n: both.n, of: n }) : '',
+    ]
+      .filter(Boolean)
+      .join(' · '),
     graphic: { kind: 'ring', value: share },
     info: { what: t('info.autarky.what'), source: t('info.autarky.source') },
   };

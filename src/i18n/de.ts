@@ -409,6 +409,10 @@ export const de = {
   'week.days': '{n} von 7 Tagen',
   'week.flowNoteMeter': 'Aus Zählern, auch Akku und Sonne direkt.',
   'week.flowNotePower': 'Zähler; Akku ≈ aus der Leistung summiert (kein Akku-Zähler zugeordnet).',
+  'sub.daysOf': '{n} von {of} Tagen',
+  'ts.span': '±3 Tage',
+  'page.period': 'Zeitraum',
+  'ts.forecastSpan': 'Prognose (Vorabend, voraus neuester Lauf)',
 } as const;
 
 export type MessageKey = keyof typeof de;

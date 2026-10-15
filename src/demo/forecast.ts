@@ -234,7 +234,8 @@ export function sourcesAt(
   return { sun, battery, grid, total: load };
 }
 
-export type Period = 'day' | 'week' | 'month';
+/** day: today · week/month: last 7/30 days · span: three days back to three days ahead, hourly */
+export type Period = 'day' | 'week' | 'month' | 'span';
 
 export interface PvSeries {
   x: number[];
@@ -255,6 +256,7 @@ export interface PvSeries {
 export function hourlyPvForecast(
   data: DemoData,
   x: number[],
+  id = 'pv_forecast',
 ): { value: (number | null)[]; low: (number | null)[]; high: (number | null)[] } | null {
   const toKw = (id: string) => {
     const unit = data.entities.find((e) => e.id === id)?.unit;
@@ -280,10 +282,10 @@ export function hourlyPvForecast(
       return a.v + ((b.v - a.v) * (t - a.t)) / (b.t - a.t);
     });
   };
-  const value = curve('pv_forecast');
+  const value = curve(id);
   if (!value || value.every((v) => v === null)) return null;
-  const low = curve('pv_forecast_low') ?? x.map(() => null);
-  const high = curve('pv_forecast_high') ?? x.map(() => null);
+  const low = curve(`${id}_low`) ?? x.map(() => null);
+  const high = curve(`${id}_high`) ?? x.map(() => null);
   return { value, low, high };
 }
 
@@ -328,6 +330,8 @@ export function pvTimeSeries(data: DemoData, period: Period): PvSeries {
     };
   }
 
+  if (period === 'span') return pvSpan(data, todayStart, forecasts);
+
   const count = period === 'week' ? 7 : 30;
   const byDay = new Map(completeDays(data, 'pv_energy').map((d) => [d.day, d.value]));
   const x: number[] = [];
@@ -346,4 +350,46 @@ export function pvTimeSeries(data: DemoData, period: Period): PvSeries {
     high.push(f ? f.energy.high : null);
   }
   return { x, actual, forecast, low, high, unit: 'kWh' };
+}
+
+/**
+ * Three days back to three days ahead, hourly: actual power until now; the
+ * forecast made the evening before for each hour where the house has it
+ * (`pv_forecast`), else its newest run (`pv_forecast_latest`) – so the days
+ * ahead show the freshest forecast. Without house forecasts: the built-in
+ * daily forecast spread over its days.
+ */
+function pvSpan(
+  data: DemoData,
+  todayStart: number,
+  forecasts: ReturnType<typeof dayAheadForecasts>,
+): PvSeries {
+  const from = addDays(todayStart, -3, data.timeZone);
+  const to = addDays(todayStart, 4, data.timeZone);
+  const x: number[] = [];
+  for (let t = from; t < to; t += HOUR) x.push(t);
+  const kw = (v: number | null | undefined) => (v === null || v === undefined ? null : v / 1000);
+  const actual = toGrid(data.series.pv_power!.samples, from, to, HOUR).map((v, i) =>
+    x[i]! + HOUR <= data.now ? kw(v) : null,
+  );
+  // house values are means of the hour: read them at the hour middle, like the actual grid
+  const mid = x.map((t) => t + HOUR / 2);
+  const evening = hourlyPvForecast(data, mid);
+  const latest = hourlyPvForecast(data, mid, 'pv_forecast_latest');
+  if (evening || latest) {
+    const pick = (k: 'value' | 'low' | 'high') =>
+      x.map((_, i) => evening?.[k][i] ?? latest?.[k][i] ?? null);
+    return { x, actual, forecast: pick('value'), low: pick('low'), high: pick('high'), unit: 'kW' };
+  }
+  const fc = new Map(
+    forecasts.flatMap((f) => powerCurve(f, data.timeZone, HOUR)).map((f) => [f.at, f]),
+  );
+  return {
+    x,
+    actual,
+    forecast: x.map((t) => kw(fc.get(t)?.value)),
+    low: x.map((t) => kw(fc.get(t)?.low)),
+    high: x.map((t) => kw(fc.get(t)?.high)),
+    unit: 'kW',
+  };
 }

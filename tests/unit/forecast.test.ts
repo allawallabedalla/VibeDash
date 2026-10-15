@@ -6,6 +6,7 @@ import {
   dayAheadForecasts,
   generateDemo,
   hourlyPvForecast,
+  pvTimeSeries,
   mulberry32,
   outlook,
   powerCurve,
@@ -164,5 +165,19 @@ describe('hourly PV forecast of the house', () => {
 
   it('is absent without such a series', () => {
     expect(hourlyPvForecast(generateDemo(), [0, 1])).toBeNull();
+  });
+});
+
+describe('three days back to three days ahead (span)', () => {
+  it('is hourly over seven days and has actual values only for past hours', () => {
+    const demo = generateDemo();
+    const s = pvTimeSeries(demo, 'span');
+    expect(s.unit).toBe('kW');
+    expect(s.x.length).toBeGreaterThanOrEqual(7 * 24 - 1);
+    expect(s.x.length).toBeLessThanOrEqual(7 * 24 + 1);
+    s.x.forEach((t, i) => {
+      if (t + 3_600_000 > demo.now) expect(s.actual[i]).toBeNull();
+    });
+    expect(s.forecast.some((v) => v !== null)).toBe(true);
   });
 });

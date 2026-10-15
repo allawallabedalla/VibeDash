@@ -108,6 +108,8 @@
       // no forecast line – the tile still shows the measured values
     }
   });
+  // one period for the page: the sun curve and the autarky follow it
+  let period = $state<Period>('day');
   const row1 = $derived([
     sunTile(house, sunFc),
     loadTile(house),
@@ -117,11 +119,10 @@
   const row2 = $derived([
     yieldTodayTile(house),
     tomorrowTile(house),
-    autarkyTile(house),
+    autarkyTile(house, period),
     tempTile(house),
   ]);
 
-  let period = $state<Period>('day');
   const tsData = $derived(pvTimeSeries(house, period));
 
   const src = sourcesAt(house, house.now - 60_000);
@@ -143,6 +144,19 @@
 
   <div class="status"><StatusBar label={t('status.label')} items={status} /></div>
 
+  <div class="period">
+    <Segmented
+      options={[
+        { id: 'day', label: t('ts.day') },
+        { id: 'week', label: t('ts.week') },
+        { id: 'month', label: t('ts.month') },
+        { id: 'span', label: t('ts.span') },
+      ]}
+      bind:value={() => period, (v) => (period = v as Period)}
+      label={t('page.period')}
+    />
+  </div>
+
   <WeatherDaysCard {house} />
   <div class="row-gap"></div>
 
@@ -154,20 +168,16 @@
     {#each row2 as tile (tile.label)}<Tile {...tile} />{/each}
   </TileRow>
 
-  <h2>{t('page.today')}</h2>
+  <h2>{period === 'day' ? t('page.today') : t('page.period')}</h2>
   <div class="cards wide-left">
     <Card title={t('ts.title')} icon="sun" color="var(--sun)">
       <SoftTimeSeries
         data={tsData}
-        periods={[
-          { id: 'day', label: t('ts.day') },
-          { id: 'week', label: t('ts.week') },
-          { id: 'month', label: t('ts.month') },
-        ]}
-        bind:period={() => period, (v) => (period = v as Period)}
+        periods={[{ id: period, label: '' }]}
+        {period}
         labels={{
           actual: t('ts.actual'),
-          forecast: t('ts.forecast'),
+          forecast: period === 'span' ? t('ts.forecastSpan') : t('ts.forecast'),
           band: t('ts.band'),
           periods: t('ts.periods'),
           empty: t('state.noData'),
@@ -238,6 +248,9 @@
 <style>
   .status {
     margin: 16px 0 16px;
+  }
+  .period {
+    margin: 0 0 16px;
   }
   .qgroup + .qgroup {
     border-top: 1px solid var(--line);
