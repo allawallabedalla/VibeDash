@@ -218,6 +218,7 @@
           labels={{
             actual: t('ts.actual'),
             forecast: t(`ts.fc.${tsData.kind}`),
+            recomputed: t('ts.fc.recomputed'),
             band: t('ts.band'),
             periods: t('ts.periods'),
             empty: t('state.noData'),

@@ -15,13 +15,22 @@
     forecast?: (number | null)[];
     low?: (number | null)[];
     high?: (number | null)[];
+    /** Forecast computed afterwards (weather of back then), drawn dashed and named as such. */
+    recomputed?: (number | null)[];
   }
 
   interface Props {
     data: SeriesData;
     periods: { id: string; label: string }[];
     period: string;
-    labels: { actual: string; forecast: string; band: string; periods: string; empty?: string };
+    labels: {
+      actual: string;
+      forecast: string;
+      band: string;
+      periods: string;
+      empty?: string;
+      recomputed?: string;
+    };
     color?: string;
     forecastColor?: string;
     unit: string;
@@ -93,13 +102,16 @@
       font: '13px -apple-system, system-ui, sans-serif',
     };
     const spline = uPlot.paths.spline!();
-    const hasFc = !!data.forecast;
+    const hasRe = !!data.recomputed?.some((v) => v !== null);
+    const hasFc = !!data.forecast || hasRe;
+    const hasBand = !!data.low?.some((v) => v !== null);
     const few = data.x.length <= 31;
 
     const opts: uPlot.Options = {
       width: box.clientWidth,
       height,
-      padding: [8, 4, 0, 0],
+      // room on the right so the last date label is not cut off
+      padding: [8, 22, 0, 0],
       legend: { show: false },
       cursor: { show: false },
       tzDate: (ts) => uPlot.tzDate(new Date(ts * 1e3), timeZone),
@@ -164,13 +176,26 @@
             ]
           : []),
       ],
-      bands: hasFc ? [{ series: [3, 2], fill: alpha(fc, 0.07) }] : [],
+      bands: hasFc && hasBand ? [{ series: [3, 2], fill: alpha(fc, 0.07) }] : [],
     };
+    if (hasRe) {
+      opts.series.push({
+        label: labels.recomputed ?? '',
+        stroke: alpha(fc, 0.6),
+        width: 1.5,
+        dash: [5, 5],
+        paths: spline,
+        spanGaps: false,
+        points: { show: false },
+      });
+    }
 
     const xs = data.x.map((t) => t / 1e3);
+    const none = data.x.map(() => null);
     const rows: uPlot.AlignedData = hasFc
-      ? [xs, data.actual, data.low ?? [], data.high ?? [], data.forecast ?? []]
+      ? [xs, data.actual, data.low ?? none, data.high ?? none, data.forecast ?? none]
       : [xs, data.actual];
+    if (hasRe) (rows as unknown as (number | null)[][]).push(data.recomputed!);
     plot = new uPlot(opts, rows, box);
   }
 
@@ -205,8 +230,15 @@
       {#if data.actual.some((v) => v !== null)}
         <span><i class="l" style:background="var({color})"></i>{labels.actual}</span>
       {/if}
-      {#if data.forecast}
+      {#if data.forecast?.some((v) => v !== null)}
         <span><i class="l thin" style:background="var({forecastColor})"></i>{labels.forecast}</span>
+      {/if}
+      {#if data.recomputed?.some((v) => v !== null) && labels.recomputed}
+        <span
+          ><i class="l thin dashed" style:color="var({forecastColor})"></i>{labels.recomputed}</span
+        >
+      {/if}
+      {#if data.low?.some((v) => v !== null)}
         <span><i class="b" style:background="var({forecastColor})"></i>{labels.band}</span>
       {/if}
     </div>
@@ -265,6 +297,14 @@
   }
   .l.thin {
     height: 2px;
+    opacity: 0.75;
+  }
+  .l.dashed {
+    background: repeating-linear-gradient(
+      90deg,
+      currentColor 0 5px,
+      transparent 5px 9px
+    ) !important;
     opacity: 0.75;
   }
   .b {

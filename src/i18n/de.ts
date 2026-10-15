@@ -354,6 +354,8 @@ export const de = {
   'ts.fc.rule': 'Faustregel (Median 7 Tage)',
   'ts.fc.house': 'Prognose vom Vorabend',
   'ts.fc.houseSpan': 'Prognose: Vorabend, voraus neuester Lauf',
+  'ts.fc.houseDays': 'Prognose vom Vorabend',
+  'ts.fc.recomputed': 'nachgerechnet (Wetter von damals)',
   'ts.fc.latest': 'Prognose (neuester Lauf)',
   'model.sunRule': 'Faustregel Sonne (Median 7 Tage)',
   'model.sun': 'Sonnenprognose',
