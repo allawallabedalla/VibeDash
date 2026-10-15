@@ -141,3 +141,73 @@ describe('board floor plan', () => {
     expect(p.link).toBeUndefined();
   });
 });
+
+describe('board floor plan in 3D', () => {
+  it('keeps walls, roof, stairs and blocks within limits, drops broken parts', () => {
+    const square = [
+      [0, 0],
+      [4, 0],
+      [4, 4],
+      [0, 4],
+    ];
+    const b = sanitizeBoard({
+      sections: [
+        {
+          type: 'plan',
+          floors: [
+            {
+              id: 'g',
+              name: 'G',
+              box: [0, 0, 4, 4],
+              rooms: [{ id: 'a', polygon: square, label: [2, 2] }],
+            },
+          ],
+          model3d: {
+            floors: [
+              {
+                id: 'g',
+                base: 0,
+                height: 2.75,
+                walls: [
+                  {
+                    outer: square,
+                    holes: [
+                      [
+                        [1, 1],
+                        [2, 1],
+                        [2, 2],
+                      ],
+                      [[1, 1]],
+                    ],
+                  },
+                ],
+              },
+              { id: 'empty', walls: [] },
+            ],
+            roof: [
+              [
+                [0, 0, 3],
+                [4, 0, 3],
+                [2, 2, 5],
+              ],
+              [[0, 0]],
+            ],
+            stairs: [
+              { x0: 1, x1: 2, y0: 0, y1: 3, steps: 999, height: 3 },
+              { x0: 2, x1: 1 },
+            ],
+            blocks: [{ base: 0, height: 500, walls: [{ outer: square }] }],
+          },
+        },
+      ],
+    })!;
+    const p = b.sections[0]!;
+    if (p.type !== 'plan') throw new Error();
+    const m = p.model3d!;
+    expect(m.floors.map((f) => f.id)).toEqual(['g']);
+    expect(m.floors[0]!.walls[0]!.holes).toHaveLength(1);
+    expect(m.roof).toHaveLength(1);
+    expect(m.stairs).toEqual([{ x0: 1, x1: 2, y0: 0, y1: 3, base: 0, height: 3, steps: 40 }]);
+    expect(m.blocks[0]!.height).toBe(3);
+  });
+});

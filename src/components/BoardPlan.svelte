@@ -7,7 +7,8 @@
    * from the house service – nothing of the house is in this code.
    */
   import { onMount } from 'svelte';
-  import type { BoardPlan, PlanViewKind } from '../model/board';
+  import type { BoardPlan } from '../model/board';
+  import { colour, SCALES } from '../model/planColors';
   import { num, t, time } from '../i18n/index.svelte';
   import Segmented from './Segmented.svelte';
 
@@ -19,46 +20,10 @@
   });
   const view = $derived(plan.views.find((v) => v.id === viewId) ?? plan.views[0]);
   let selected = $state<string | null>(null);
+  // 2D plan or 3D model (three.js is loaded only when 3D is chosen)
+  let mode = $state<'2d' | '3d'>('2d');
 
-  // ── colour scales ────────────────────────────────────────────────────────────
-  type Stop = [number, string];
-  const SCALES: Partial<Record<PlanViewKind, Stop[]>> = {
-    temp: [
-      [16, '#4a7fd4'],
-      [19, '#4fb3d9'],
-      [21, '#34c77b'],
-      [23, '#f5b041'],
-      [25, '#e8553a'],
-      [27, '#b0302a'],
-    ],
-    humidity: [
-      [30, '#e0a100'],
-      [40, '#a8c66c'],
-      [50, '#34c77b'],
-      [60, '#4fb3d9'],
-      [70, '#5e5ce6'],
-      [80, '#af52de'],
-    ],
-  };
-  const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-  const mix = (a: string, b: string, f: number) => {
-    const [x, y] = [hex(a), hex(b)];
-    return `rgb(${x.map((v, i) => Math.round(v + (y[i]! - v) * f)).join(',')})`;
-  };
-  function colour(kind: PlanViewKind, v: number | null): string | null {
-    if (v === null) return null;
-    const s = SCALES[kind];
-    if (s) {
-      if (v <= s[0]![0]) return s[0]![1];
-      for (let i = 1; i < s.length; i++) {
-        if (v <= s[i]![0])
-          return mix(s[i - 1]![1], s[i]![1], (v - s[i - 1]![0]) / (s[i]![0] - s[i - 1]![0]));
-      }
-      return s.at(-1)![1];
-    }
-    if (kind === 'valve') return v > 0 ? `rgba(255,122,69,${Math.min(0.9, 0.15 + v / 120)})` : null;
-    return null;
-  }
+  // colour scales: shared with the 3D model (src/model/planColors.ts)
 
   // ── replay of today ──────────────────────────────────────────────────────────
   const tl = $derived(plan.timeline);
@@ -142,6 +107,16 @@
         />
       </div>
     {/if}
+    {#if plan.model3d}
+      <Segmented
+        options={[
+          { id: '2d', label: '2D' },
+          { id: '3d', label: '3D' },
+        ]}
+        bind:value={() => mode, (v) => (mode = v as '2d' | '3d')}
+        label={t('fp.mode')}
+      />
+    {/if}
     {#if plan.link}
       <a class="link" href={plan.link.url} target="_blank" rel="noopener noreferrer"
         >{plan.link.label}</a
@@ -192,76 +167,97 @@
     </div>
   {/if}
 
-  <div class="floors" class:two={plan.floors.length > 1}>
-    {#each plan.floors as f (f.id)}
-      {@const [x0, y0, x1, y1] = f.box}
-      <figure class="floor">
-        <figcaption>{f.name}</figcaption>
-        <div class="canvas" style:aspect-ratio="{x1 - x0} / {y1 - y0}">
-          <svg viewBox="{x0} {y0} {x1 - x0} {y1 - y0}" aria-hidden="true">
-            <defs>
-              <radialGradient id="glow-{f.id}" cx="50%" cy="50%" r="65%">
-                <stop offset="0%" stop-color="#fff3c4" />
-                <stop offset="55%" stop-color="#ffcf6b" />
-                <stop offset="100%" stop-color="#ff9f2e" />
-              </radialGradient>
-              <filter id="blur-{f.id}" x="-30%" y="-30%" width="160%" height="160%">
-                <feGaussianBlur stdDeviation="0.35" />
-              </filter>
-            </defs>
-            {#each f.rooms as r (r.id)}
-              {@const v = valueOf(r.id)}
-              {@const lit = view?.kind === 'light' && v === 1}
-              {@const fill = view ? colour(view.kind, v) : null}
-              {#if lit}
-                <path class="halo" d={path(r.polygon)} filter="url(#blur-{f.id})" fill="#ffc35a" />
-              {/if}
-              <path
-                class="room k-{r.kind}"
-                class:lit
-                class:sel={selected === r.id}
-                d={path(r.polygon)}
-                style:fill={lit ? `url(#glow-${f.id})` : (fill ?? undefined)}
-                role="button"
-                tabindex="0"
-                aria-label={roomName(r.id)}
-                onclick={() => (selected = selected === r.id ? null : r.id)}
-                onkeydown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    selected = selected === r.id ? null : r.id;
-                  }
-                }}
-              />
-              {#if view?.kind === 'presence' && v !== null && v <= 15}
-                <circle
-                  class="pulse"
-                  cx={r.label[0]}
-                  cy={r.label[1]}
-                  r="0.55"
-                  style:opacity={Math.max(0.35, 1 - v / 15)}
+  {#if mode === '3d' && plan.model3d}
+    {#await import('./Plan3D.svelte')}
+      <p class="muted-note" role="status">{t('state.loading')}</p>
+    {:then { default: Plan3D }}
+      <Plan3D
+        plan={{ ...plan, model3d: plan.model3d }}
+        kind={view?.kind}
+        {valueOf}
+        {textOf}
+        tick={[viewId, step, plan]}
+        {selected}
+        onselect={(id) => (selected = id)}
+      />
+    {/await}
+  {:else}
+    <div class="floors" class:two={plan.floors.length > 1}>
+      {#each plan.floors as f (f.id)}
+        {@const [x0, y0, x1, y1] = f.box}
+        <figure class="floor">
+          <figcaption>{f.name}</figcaption>
+          <div class="canvas" style:aspect-ratio="{x1 - x0} / {y1 - y0}">
+            <svg viewBox="{x0} {y0} {x1 - x0} {y1 - y0}" aria-hidden="true">
+              <defs>
+                <radialGradient id="glow-{f.id}" cx="50%" cy="50%" r="65%">
+                  <stop offset="0%" stop-color="#fff3c4" />
+                  <stop offset="55%" stop-color="#ffcf6b" />
+                  <stop offset="100%" stop-color="#ff9f2e" />
+                </radialGradient>
+                <filter id="blur-{f.id}" x="-30%" y="-30%" width="160%" height="160%">
+                  <feGaussianBlur stdDeviation="0.35" />
+                </filter>
+              </defs>
+              {#each f.rooms as r (r.id)}
+                {@const v = valueOf(r.id)}
+                {@const lit = view?.kind === 'light' && v === 1}
+                {@const fill = view ? colour(view.kind, v) : null}
+                {#if lit}
+                  <path
+                    class="halo"
+                    d={path(r.polygon)}
+                    filter="url(#blur-{f.id})"
+                    fill="#ffc35a"
+                  />
+                {/if}
+                <path
+                  class="room k-{r.kind}"
+                  class:lit
+                  class:sel={selected === r.id}
+                  d={path(r.polygon)}
+                  style:fill={lit ? `url(#glow-${f.id})` : (fill ?? undefined)}
+                  role="button"
+                  tabindex="0"
+                  aria-label={roomName(r.id)}
+                  onclick={() => (selected = selected === r.id ? null : r.id)}
+                  onkeydown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      selected = selected === r.id ? null : r.id;
+                    }
+                  }}
                 />
-              {/if}
+                {#if view?.kind === 'presence' && v !== null && v <= 15}
+                  <circle
+                    class="pulse"
+                    cx={r.label[0]}
+                    cy={r.label[1]}
+                    r="0.55"
+                    style:opacity={Math.max(0.35, 1 - v / 15)}
+                  />
+                {/if}
+              {/each}
+              {#each f.walls as w, i (i)}
+                <path class="wall" d={line(w)} />
+              {/each}
+            </svg>
+            {#each f.rooms.filter((r) => r.kind !== 'void') as r (r.id)}
+              {@const txt = textOf(r.id)}
+              <div
+                class="lbl"
+                style:left="{pct(r.label[0], x0, x1)}%"
+                style:top="{pct(r.label[1], y0, y1)}%"
+              >
+                <span class="name">{r.name}</span>
+                {#if txt}<b>{txt}</b>{/if}
+              </div>
             {/each}
-            {#each f.walls as w, i (i)}
-              <path class="wall" d={line(w)} />
-            {/each}
-          </svg>
-          {#each f.rooms.filter((r) => r.kind !== 'void') as r (r.id)}
-            {@const txt = textOf(r.id)}
-            <div
-              class="lbl"
-              style:left="{pct(r.label[0], x0, x1)}%"
-              style:top="{pct(r.label[1], y0, y1)}%"
-            >
-              <span class="name">{r.name}</span>
-              {#if txt}<b>{txt}</b>{/if}
-            </div>
-          {/each}
-        </div>
-      </figure>
-    {/each}
-  </div>
+          </div>
+        </figure>
+      {/each}
+    </div>
+  {/if}
 
   {#if selected}
     <section class="detail" aria-live="polite">
