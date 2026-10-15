@@ -53,6 +53,8 @@ function reasonOf(r: { status: number; body: unknown } | null): Reason {
   return code === 'timeout' ? 'timeout' : 'upstream';
 }
 
+const QUESTION_GAP = { steadyMs: 30 * 60_000, heldMs: 12 * 3_600_000 };
+
 /** Gaps and meter resets from real data become issues → questions to the person. */
 function detectIssues(
   series: Record<string, Series>,
@@ -63,7 +65,9 @@ function detectIssues(
   const out: DemoIssue[] = [];
   const counters = new Set(entities.filter((e) => e.kind === 'energy_counter').map((e) => e.id));
   for (const s of Object.values(series)) {
-    for (const g of findGaps(s)) {
+    // a question only after a real silence: steady series ~30 min, sensors
+    // that report on change only after ~12 h (answer to Audit02)
+    for (const g of findGaps(s, 2.5, QUESTION_GAP)) {
       // a gap inside a known event (e.g. a server move) is no question
       if (g.to > now - RECENT_MS && !explainedBy(notes, g.from, g.to)) {
         out.push({ kind: 'gap', entityIds: [s.entityId], ...g });

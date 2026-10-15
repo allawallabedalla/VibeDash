@@ -18,6 +18,20 @@ describe('held values (N-02/N-03)', () => {
     expect(findGaps(held)).toEqual([{ from: 10 * MIN, to: 200 * MIN }]);
   });
 
+  it('asks only after the minimum silence', () => {
+    expect(findGaps(held, 2.5, { heldMs: 12 * 60 * MIN })).toEqual([]);
+    const steady: Series = {
+      entityId: 'demo_power',
+      source: 'test',
+      stepMs: 10_000,
+      samples: [0, 10, 20 * 60, 20 * 60 + 10, 80 * 60].map((s) => ({ t: s * 1000, v: 1 })),
+    };
+    expect(findGaps(steady)).toHaveLength(2);
+    expect(findGaps(steady, 2.5, { steadyMs: 30 * MIN })).toEqual([
+      { from: (20 * 60 + 10) * 1000, to: 80 * 60 * 1000 },
+    ]);
+  });
+
   it('knows the last real report', () => {
     expect(lastReport(held, 150 * MIN)).toBe(10 * MIN);
     expect(lastReport(held)).toBe(200 * MIN);
