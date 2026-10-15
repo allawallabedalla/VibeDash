@@ -118,7 +118,15 @@ const COMMON_KEYS = [
   'helper',
   'aheadMs',
 ];
-const INFLUX_KEYS = [...COMMON_KEYS, 'measurement', 'field', 'tags', 'maxHoldMs', 'history'];
+const INFLUX_KEYS = [
+  ...COMMON_KEYS,
+  'measurement',
+  'field',
+  'tags',
+  'onlyWhere',
+  'maxHoldMs',
+  'history',
+];
 const HA_KEYS = [...COMMON_KEYS, 'entityId', 'maxHoldMs', 'longTerm'];
 const DERIVED_KEYS = [...COMMON_KEYS, 'terms'];
 
@@ -263,6 +271,7 @@ export function validateMapping(
         measurement: entry.measurement as string,
         field: entry.field as string,
         ...(entry.tags ? { tags: entry.tags as Record<string, string> } : {}),
+        ...(isObj(entry.onlyWhere) ? { onlyWhere: entry.onlyWhere as Record<string, number> } : {}),
         ...(typeof entry.maxHoldMs === 'number' ? { maxHoldMs: entry.maxHoldMs } : {}),
         ...(isObj(entry.history)
           ? {
@@ -277,6 +286,13 @@ export function validateMapping(
             }
           : {}),
       };
+      if (
+        entry.onlyWhere !== undefined &&
+        (!isObj(entry.onlyWhere) ||
+          !Object.values(entry.onlyWhere).every((v) => typeof v === 'number' && Number.isFinite(v)))
+      ) {
+        errors.push(`${at}.onlyWhere: object of field = number, e.g. { "nachgerechnet": 0 }`);
+      }
       if (entry.history !== undefined) {
         const h = entry.history;
         if (

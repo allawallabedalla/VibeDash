@@ -112,8 +112,20 @@
   {#if !serviceActive}
     <h2>{t('page.models')}</h2>
     <div class="cards">
-      <AccuracyCard label={t('model.sun')} pct={sun.pct} n={sun.n} history={sun.history} />
-      <AccuracyCard label={t('model.load')} pct={load.pct} n={load.n} history={load.history} />
+      <AccuracyCard
+        label={t('model.sunRule')}
+        pct={sun.pct}
+        n={sun.n}
+        interval={sun.interval}
+        history={sun.history}
+      />
+      <AccuracyCard
+        label={t('model.load')}
+        pct={load.pct}
+        n={load.n}
+        interval={load.interval}
+        history={load.history}
+      />
       {#if showOutlook}<PlanAccuracyCard demo />{/if}
     </div>
     <p class="muted-note">{t('page.method')}</p>
@@ -131,7 +143,7 @@
       bind:period={() => period, (v) => (period = v as Period)}
       labels={{
         actual: t('ts.actual'),
-        forecast: t('ts.forecast'),
+        forecast: t(`ts.fc.${tsData.kind}`),
         band: t('ts.band'),
         periods: t('ts.periods'),
         empty: t('state.noData'),

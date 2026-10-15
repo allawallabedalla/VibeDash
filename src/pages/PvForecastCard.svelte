@@ -152,7 +152,7 @@
           bind:period={() => String(pick), (v) => (pick = Number(v))}
           labels={{
             actual: t('ts.actual'),
-            forecast: t('ts.forecast'),
+            forecast: t('ts.fc.latest'),
             band: t('ts.band'),
             periods: t('ts.periods'),
             empty: t('state.noData'),

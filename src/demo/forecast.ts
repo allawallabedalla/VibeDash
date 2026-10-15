@@ -12,6 +12,7 @@ import type { Estimate, Forecast } from '../model/types';
 import { addDays, dayStart, localDateKey, localHour, localMidnight } from '../model/time';
 import { CLEAR_SKY_DAY_KWH, clearSkyPower, type DemoData } from './generate';
 import { completeDays } from './views';
+import { MIN_JUDGED_DAYS, wilson } from '../model/accuracy';
 
 const HOUR = 3_600_000;
 /** Days of history the model looks at. */
@@ -160,16 +161,27 @@ export function dayAheadLoad(data: DemoData): DailyForecast[] {
 }
 
 /** Share of correct days (0–100) overall and as a rolling 7-day trend; null while n < 7. */
+/** Below this many checked days a share "correct" is no verdict yet (Audit02 P-06). */
+export { MIN_JUDGED_DAYS, wilson } from '../model/accuracy';
+
 export function accuracy(checks: DayCheck[]): {
   pct: number | null;
   n: number;
   history: (number | null)[];
+  /** 95 % interval of the share correct, also while still open */
+  interval: { low: number; high: number } | null;
 } {
   const pct = (c: DayCheck[]) => (c.filter((x) => x.correct).length / c.length) * 100;
   const history = checks.map((_, i) =>
     i + 1 >= WINDOW ? pct(checks.slice(i + 1 - WINDOW, i + 1)) : null,
   );
-  return { pct: checks.length >= WINDOW ? pct(checks) : null, n: checks.length, history };
+  const k = checks.filter((x) => x.correct).length;
+  return {
+    pct: checks.length >= MIN_JUDGED_DAYS ? pct(checks) : null,
+    n: checks.length,
+    history,
+    interval: checks.length ? wilson(k, checks.length) : null,
+  };
 }
 
 /** Ratio actual / forecast over past days, as a range for new forecasts. */
@@ -238,6 +250,12 @@ export function sourcesAt(
 export type Period = 'day' | 'week' | 'month' | 'span';
 
 export interface PvSeries {
+  /**
+   * What the forecast line is: the built-in rule of thumb (median of the last
+   * seven days), the house's own forecast made the evening before, or that
+   * and – ahead – the house's newest run.
+   */
+  kind: 'rule' | 'house' | 'houseSpan';
   x: number[];
   actual: (number | null)[];
   forecast: (number | null)[];
@@ -312,6 +330,7 @@ export function pvTimeSeries(data: DemoData, period: Period): PvSeries {
     const hourly = hourlyPvForecast(data, x);
     if (hourly) {
       return {
+        kind: 'house',
         x,
         actual: actualW.map((v, i) => (x[i]! < data.now ? kw(v) : null)),
         forecast: hourly.value,
@@ -321,6 +340,7 @@ export function pvTimeSeries(data: DemoData, period: Period): PvSeries {
       };
     }
     return {
+      kind: 'rule',
       x,
       actual: actualW.map((v, i) => (x[i]! < data.now ? kw(v) : null)),
       forecast: x.map((t) => kw(fc.get(t)?.value)),
@@ -349,7 +369,7 @@ export function pvTimeSeries(data: DemoData, period: Period): PvSeries {
     low.push(f ? f.energy.low : null);
     high.push(f ? f.energy.high : null);
   }
-  return { x, actual, forecast, low, high, unit: 'kWh' };
+  return { kind: 'rule', x, actual, forecast, low, high, unit: 'kWh' };
 }
 
 /**
@@ -377,14 +397,24 @@ function pvSpan(
   const evening = hourlyPvForecast(data, mid);
   const latest = hourlyPvForecast(data, mid, 'pv_forecast_latest');
   if (evening || latest) {
+    // past hours: only a forecast really made the evening before (never a later run)
     const pick = (k: 'value' | 'low' | 'high') =>
-      x.map((_, i) => evening?.[k][i] ?? latest?.[k][i] ?? null);
-    return { x, actual, forecast: pick('value'), low: pick('low'), high: pick('high'), unit: 'kW' };
+      x.map((t, i) => evening?.[k][i] ?? (t + HOUR > data.now ? (latest?.[k][i] ?? null) : null));
+    return {
+      kind: 'houseSpan',
+      x,
+      actual,
+      forecast: pick('value'),
+      low: pick('low'),
+      high: pick('high'),
+      unit: 'kW',
+    };
   }
   const fc = new Map(
     forecasts.flatMap((f) => powerCurve(f, data.timeZone, HOUR)).map((f) => [f.at, f]),
   );
   return {
+    kind: 'rule',
     x,
     actual,
     forecast: x.map((t) => kw(fc.get(t)?.value)),

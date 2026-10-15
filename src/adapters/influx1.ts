@@ -26,6 +26,8 @@ export interface InfluxMapping {
   measurement: string;
   field: string;
   tags?: Record<string, string>;
+  /** Only rows whose fields have these numbers, e.g. { nachgerechnet: 0 } (forecasts made in time). */
+  onlyWhere?: Record<string, number>;
   /** Multiply raw values, e.g. 0.001 for Wh → kWh. */
   scale?: number;
   /** Nominal sampling step in ms, used to detect gaps. */
@@ -57,11 +59,17 @@ function from(m: InfluxMapping, rp?: string): string {
 }
 
 /** Raw samples of one field in [fromMs, toMs). */
+const onlyWhere = (m: InfluxMapping) =>
+  Object.entries(m.onlyWhere ?? {})
+    .filter(([, v]) => Number.isFinite(v))
+    .map(([k, v]) => `${ident(k)} = ${Number(v)}`);
+
 export function rawQuery(m: InfluxMapping, fromMs: number, toMs: number, rp?: string): string {
   const where = [
     `time >= ${Math.floor(fromMs)}ms`,
     `time < ${Math.floor(toMs)}ms`,
     ...Object.entries(m.tags ?? {}).map(([k, v]) => `${ident(k)} = ${literal(v)}`),
+    ...onlyWhere(m),
   ];
   return `SELECT ${ident(m.field)} FROM ${from(m, rp)} WHERE ${where.join(' AND ')}`;
 }
@@ -88,6 +96,7 @@ export function lastQuery(m: InfluxMapping, atMs: number, rp?: string): string {
   const where = [
     `time <= ${Math.floor(atMs)}ms`,
     ...Object.entries(m.tags ?? {}).map(([k, v]) => `${ident(k)} = ${literal(v)}`),
+    ...onlyWhere(m),
   ];
   return `SELECT LAST(${ident(m.field)}) FROM ${from(m, rp)} WHERE ${where.join(' AND ')}`;
 }

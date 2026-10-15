@@ -206,7 +206,7 @@
           {period}
           labels={{
             actual: t('ts.actual'),
-            forecast: period === 'span' ? t('ts.forecastSpan') : t('ts.forecast'),
+            forecast: t(`ts.fc.${tsData.kind}`),
             band: t('ts.band'),
             periods: t('ts.periods'),
             empty: t('state.noData'),

@@ -236,7 +236,7 @@
       period="week"
       labels={{
         actual: t('ts.actual'),
-        forecast: t('ts.forecast'),
+        forecast: t(`ts.fc.${tsData.kind}`),
         band: t('ts.band'),
         periods: t('ts.periods'),
         empty: t('state.noData'),
