@@ -5,6 +5,7 @@ import {
   dropCounterGlitches,
   estimate,
   findGaps,
+  holdForward,
   meanAbsPctError,
   quantile,
   thinBefore,
@@ -207,5 +208,29 @@ describe('thinBefore', () => {
   it('changes nothing when every sample is after the cut', () => {
     const s = at([100, 110], () => 3);
     expect(thinBefore(s, 50_000, 60_000, 'mean')).toEqual(s);
+  });
+});
+
+describe('holdForward (sensors that report on change)', () => {
+  const H = 3_600_000;
+  it('keeps the last value up to the hold time, then leaves a real gap', () => {
+    const s = [
+      { t: 0, v: 21 },
+      { t: 3 * H, v: 22 },
+    ];
+    const out = holdForward(s, H, 12 * H, 0, 20 * H);
+    expect(out.map((x) => x.t / H)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+    expect(out.at(-1)!.v).toBe(22);
+    expect(findGaps({ entityId: 'x', source: 't', stepMs: H, samples: out })).toEqual([]);
+  });
+
+  it('knows the value at the start from a report before it', () => {
+    const out = holdForward([{ t: -2 * H, v: 20 }], H, 12 * H, 0, 3 * H);
+    expect(out.map((x) => [x.t / H, x.v])).toEqual([
+      [0, 20],
+      [1, 20],
+      [2, 20],
+      [3, 20],
+    ]);
   });
 });

@@ -107,7 +107,7 @@ const COMMON_KEYS = [
   'helper',
   'aheadMs',
 ];
-const INFLUX_KEYS = [...COMMON_KEYS, 'measurement', 'field', 'tags'];
+const INFLUX_KEYS = [...COMMON_KEYS, 'measurement', 'field', 'tags', 'maxHoldMs'];
 const HA_KEYS = [...COMMON_KEYS, 'entityId', 'maxHoldMs', 'longTerm'];
 const DERIVED_KEYS = [...COMMON_KEYS, 'terms'];
 
@@ -248,7 +248,16 @@ export function validateMapping(
         measurement: entry.measurement as string,
         field: entry.field as string,
         ...(entry.tags ? { tags: entry.tags as Record<string, string> } : {}),
+        ...(typeof entry.maxHoldMs === 'number' ? { maxHoldMs: entry.maxHoldMs } : {}),
       };
+      if (
+        entry.maxHoldMs !== undefined &&
+        (typeof entry.maxHoldMs !== 'number' ||
+          !Number.isInteger(entry.maxHoldMs) ||
+          entry.maxHoldMs < 60_000)
+      ) {
+        errors.push(`${at}.maxHoldMs: integer ≥ 60000`);
+      }
     } else if (source === 'derived') {
       if (entry.kind !== 'energy_counter' || entry.unit !== 'kWh') {
         errors.push(`${at}: a derived series is an energy_counter in kWh`);

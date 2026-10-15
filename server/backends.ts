@@ -2,6 +2,7 @@
 import { haClient } from '../src/adapters/homeassistant';
 import { influxClient, type FetchLike } from '../src/adapters/influx1';
 import { deriveCounter } from '../src/model/derive';
+import { holdForward } from '../src/model/series';
 import type { Series } from '../src/model/types';
 import type { ServerConfig } from './config';
 import { ENERGY_TO_KWH, POWER_TO_KW, sourcesOf, type Mapping, type SeriesMapping } from './mapping';
@@ -30,8 +31,13 @@ export function createBackends(
     ? haClient(config.homeassistant, fetchFn, config.timeoutMs)
     : null;
 
-  const measured = (m: SeriesMapping, from: number, to: number): Promise<Series> => {
-    if (m.source === 'influx') return influx!.series(m, from, to);
+  const measured = async (m: SeriesMapping, from: number, to: number): Promise<Series> => {
+    if (m.source === 'influx') {
+      if (!m.maxHoldMs) return influx!.series(m, from, to);
+      // reports on change only: look back far enough to know the value at `from`
+      const s = await influx!.series(m, from - m.maxHoldMs, to);
+      return { ...s, samples: holdForward(s.samples, m.stepMs, m.maxHoldMs, from, to) };
+    }
     if (m.source === 'homeassistant') return ha!.series(m, from, to);
     throw new Error('derived series inside a derived series');
   };

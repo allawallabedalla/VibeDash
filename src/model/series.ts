@@ -240,3 +240,29 @@ export function thinBefore(
   for (; i < samples.length; i++) out.push(samples[i]!);
   return out;
 }
+
+/**
+ * For sensors that report only on change: the last value stays valid for
+ * `holdMs` and is written forward every `stepMs` up to the next report (or
+ * `to`). After `holdMs` without a report the series stops – a real gap.
+ * Only samples from `from` on are returned.
+ */
+export function holdForward(
+  samples: readonly Sample[],
+  stepMs: number,
+  holdMs: number,
+  from: number,
+  to: number,
+): Sample[] {
+  const out: Sample[] = [];
+  for (let i = 0; i < samples.length; i++) {
+    const cur = samples[i]!;
+    if (cur.t >= from) out.push(cur);
+    const next = samples[i + 1]?.t ?? to + 1;
+    const until = Math.min(next, cur.t + holdMs, to + 1);
+    for (let t = cur.t + stepMs; t < until; t += stepMs) {
+      if (t >= from) out.push({ t, v: cur.v });
+    }
+  }
+  return out;
+}

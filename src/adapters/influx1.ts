@@ -30,6 +30,11 @@ export interface InfluxMapping {
   scale?: number;
   /** Nominal sampling step in ms, used to detect gaps. */
   stepMs: number;
+  /**
+   * The sensor only reports on change: its last value stays valid this long
+   * (written forward in steps); only after that it counts as a gap.
+   */
+  maxHoldMs?: number;
 }
 
 /** Quote an identifier for InfluxQL ("name", with " and \ escaped). */
