@@ -7,7 +7,7 @@
  * - All forecasts share the same lead time, so the evaluation is fair.
  * - The forecast is checked against the meter reading, never against itself.
  */
-import { estimate, quantile, toGrid, valueAt } from '../model/series';
+import { estimate, freshFor, quantile, toGrid, valueAt } from '../model/series';
 import type { Estimate, Forecast } from '../model/types';
 import { addDays, dayStart, localDateKey, localHour, localMidnight } from '../model/time';
 import { CLEAR_SKY_DAY_KWH, clearSkyPower, type DemoData } from './generate';
@@ -234,7 +234,7 @@ export function sourcesAt(
   const at = (id: string): number | null => {
     const series = data.series[id]!;
     const s = valueAt(series.samples, t);
-    return s && t - s.t <= series.stepMs * 2.5 ? s.v : null;
+    return s && t - s.t <= freshFor(series.stepMs) ? s.v : null;
   };
   const load = at('load_power');
   const pv = at('pv_power');
