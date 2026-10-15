@@ -9,6 +9,8 @@ import { createServer } from 'node:http';
 import { handleApi, type ApiDeps } from './api';
 import { createBackends } from './backends';
 import { encodeBody } from './compress';
+import { chargeSessions, fetchPlan } from './charging';
+import type { InfluxResponse } from '../src/adapters/influx1';
 import { allowedHosts, hostOf } from './hosts';
 import { evccClient } from '../src/adapters/evcc';
 import { forecastBridge } from './forecast-bridge';
@@ -28,6 +30,7 @@ const { config, errors } = readConfig(process.env);
 if (errors.length) fail(errors);
 
 let deps: ApiDeps = { mode: 'demo', now: Date.now, log };
+let backendsQuery: ((q: string) => Promise<InfluxResponse>) | null = null;
 
 if (existsSync(config.mappingPath)) {
   let raw: unknown;
@@ -48,11 +51,87 @@ if (existsSync(config.mappingPath)) {
     now: Date.now,
     log,
   };
+  backendsQuery = backends.query;
   log(
     `live mode (${sourcesOf(result.mapping).join(' + ')}): ${Object.keys(result.mapping.series).length} named series from ${config.mappingPath}`,
   );
 } else {
   log(`no ${config.mappingPath}: demo mode (synthetic data in the browser)`);
+}
+
+// Car charging from the house's own records (read-only), when mapped and Influx is there.
+if (deps.mapping?.charging && backendsQuery) {
+  const c = deps.mapping.charging;
+  const q = backendsQuery;
+  const fieldOf = (id: string | undefined) => {
+    const m = id ? deps.mapping!.series[id] : undefined;
+    return m && m.source === 'influx' ? m : null;
+  };
+  const meter = fieldOf(c.gridMeter);
+  const readAt = async (t: number) => {
+    if (!meter) return null;
+    const tags = Object.entries(meter.tags ?? {})
+      .map(([k, v]) => ` AND "${k}" = '${v.replace(/'/g, "\\'")}'`)
+      .join('');
+    const r = await q(
+      `SELECT LAST("${meter.field}") FROM "${meter.measurement}" WHERE time <= ${Math.floor(t)}ms AND time > ${Math.floor(t) - 3_600_000}ms${tags}`,
+    );
+    const v = r.results?.[0]?.series?.[0]?.values?.[0]?.[1];
+    return typeof v === 'number' ? v * (meter.scale ?? 1) : null;
+  };
+  deps.charging = {
+    now: async () => {
+      const t = Date.now();
+      const list = await chargeSessions(q, c, t - 2 * 86_400_000, t + 60_000);
+      const last = list.at(-1);
+      const running = !!last && last.end === null;
+      let powerW: number | null = null;
+      let powerAt: number | null = null;
+      let kwhSoFar: number | null = null;
+      const pm = c.power ? deps.mapping!.series[c.power] : undefined;
+      if (pm && deps.series) {
+        const from = running ? Math.min(last!.start, t - 10 * 60_000) : t - 10 * 60_000;
+        const s = await deps.series(pm, from, t);
+        const p = s.samples.at(-1);
+        if (p && t - p.t < 3 * 60_000) {
+          powerW = p.v;
+          powerAt = p.t;
+        }
+        if (running) {
+          // the meter reading of the charge comes only at its end: sum up the power meanwhile (≈)
+          let wh = 0;
+          const own = s.samples.filter((x) => x.t >= last!.start);
+          for (let i = 1; i < own.length; i++) {
+            const dt = own[i]!.t - own[i - 1]!.t;
+            if (dt <= 10 * 60_000) wh += ((own[i]!.v + own[i - 1]!.v) / 2) * (dt / 3_600_000);
+          }
+          kwhSoFar = Math.round(wh / 10) / 100;
+        }
+      }
+      return {
+        running,
+        since: running ? last!.start : null,
+        source: running ? last!.source : null,
+        powerW,
+        powerAt,
+        kwhSoFar,
+      };
+    },
+    sessions: async (days) => {
+      const t = Date.now();
+      const list = (await chargeSessions(q, c, t - days * 86_400_000, t + 60_000)).filter(
+        (x) => x.end !== null,
+      );
+      // grid import during each charge (house included): an upper bound for grid energy into the car
+      for (const s of list) {
+        const [a, b] = await Promise.all([readAt(s.start), readAt(s.end!)]);
+        s.gridKwh = a !== null && b !== null && b >= a ? Math.round((b - a) * 100) / 100 : null;
+      }
+      return list;
+    },
+    plan: async () => (c.plan ? fetchPlan(fetch, c.plan, config.timeoutMs) : null),
+  };
+  log('charging: from the house records (read-only)');
 }
 
 // evcc (optional): values for "now" and the charging sessions evcc stores itself.

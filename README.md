@@ -126,6 +126,42 @@ API (read-only, `GET` only): `/api/health`, `/api/entities`,
 `/api/series/<name>?range=1h|24h|7d|31d`, `/api/plan`, `/api/plan/guete`. Every Influx request times out after 10 s; the
 page then shows "keine Daten" with the reason and a retry button, never endless loading.
 
+## Charging from the house's own records (`mapping.charging`)
+
+Without evcc, the **Charging** tab can read the house's own charge records from InfluxDB
+(read-only, it switches nothing). Everything house-specific is in the mapping, none in the code:
+
+```json
+"charging": {
+  "power": "car_power",
+  "maxKw": 11,
+  "gridMeter": "import_energy",
+  "sessions": { "measurement": "charges", "energy": "kwh", "running": "active",
+                "duration": "minutes", "source": "started_by", "id": "transaction_id" },
+  "sources": { "planner": "auto", "app": "app", "rfid": "card" },
+  "plan": {
+    "summaryUrl": "http://127.0.0.1:9000/plan",
+    "blocksUrl": "http://127.0.0.1:9000/plan?blocks",
+    "span": "quantiles",
+    "fields": {
+      "text": "text", "madeAt": "madeAt", "soc": "soc", "socMin": "socMin",
+      "days": [{ "kwh": "todayKwh", "low": "todayLow", "high": "todayHigh" },
+               { "kwh": "tomorrowKwh", "low": "tomorrowLow", "high": "tomorrowHigh" }],
+      "blocks": { "start": "start", "end": "end", "amps": "amps", "kwh": "kwh", "reason": "reason" }
+    }
+  }
+}
+```
+
+- `sessions`: one row per start (`running` true) and one per end (`running` false, energy in
+  kWh), grouped by `id`. A repeated end row without energy never wipes the first one.
+- `sources`: raw value of `source` → who started it (`auto`, `app`, `card`); others show as unknown.
+- `maxKw`: end of the power scale (e.g. 11 for 3 × 16 A); without it no scale is drawn.
+- `gridMeter`: import meter; grid energy during each charge (house included) is an upper bound.
+- `plan.fields`: JSON keys of the planner's summary and blocks (times in ms); left out = the
+  generic names above. `plan.span` says what `low`/`high` are: `"quantiles"` = a 10–90 % range,
+  `"cautious-good"` = the cautious plan and what good weather allows on top.
+
 ## evcc (charging)
 
 Set `EVCC_URL` in `.env`. A **Charging** tab appears with the wallbox right now and the

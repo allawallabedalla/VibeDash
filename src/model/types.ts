@@ -59,6 +59,13 @@ export interface Series {
   /** Nominal sampling step; used to detect gaps. */
   stepMs: number;
   samples: Sample[];
+  /**
+   * Sensors that report only on change: their last value is written forward
+   * (see holdForward). `reports` are the times of the real reports (oldest
+   * first, including the last one before the window) and `holdMs` how long a
+   * value is held. Gaps, "missing since" and coverage use the reports only.
+   */
+  held?: { reports: number[]; holdMs: number };
 }
 
 export interface Forecast {

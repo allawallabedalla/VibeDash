@@ -278,7 +278,7 @@
       bind:period={() => period, (v) => (period = v as Period)}
       labels={{
         actual: t('ts.actual'),
-        forecast: t('ts.forecast'),
+        forecast: t(`ts.fc.${tsData.kind}`),
         band: t('ts.band'),
         periods: t('ts.periods'),
         empty: t('state.noData'),
@@ -302,7 +302,7 @@
   <h2>{t('acc.title')}</h2>
   <div class="cards">
     <AccuracyCard
-      label={t('model.sun')}
+      label={t('model.sunRule')}
       pct={sunAccuracy.pct}
       n={sunAccuracy.n}
       history={sunAccuracy.history}

@@ -11,6 +11,7 @@ import {
   type Location,
   type WeatherDay,
 } from '../src/adapters/openmeteo';
+import type { ChargeSession, ChargingNow, PlanSummary } from './charging';
 import type { ResolvedLocation } from './location';
 import { thinBefore } from '../src/model/series';
 import type { Series } from '../src/model/types';
@@ -37,6 +38,12 @@ export interface ApiDeps {
   mode: 'live' | 'demo';
   mapping?: Mapping;
   series?: (m: SeriesMapping, fromMs: number, toMs: number) => Promise<Series>;
+  /** Car charging from the house's records (read-only). */
+  charging?: {
+    now: () => Promise<ChargingNow>;
+    sessions: (days: number) => Promise<ChargeSession[]>;
+    plan: () => Promise<PlanSummary | null>;
+  };
   /** Daily energy of a meter, [local day start, kWh or null]. */
   daily?: (m: SeriesMapping, fromMs: number, toMs: number) => Promise<[number, number | null][]>;
   now: () => number;
@@ -182,6 +189,7 @@ export async function handleApi(
       source: deps.mode,
       backends: deps.mapping ? sourcesOf(deps.mapping) : [],
       evcc: Boolean(deps.evcc),
+      charging: Boolean(deps.charging),
       pv: Boolean(deps.pv),
       plan: Boolean(deps.plan),
       timeZone: deps.mapping?.timeZone ?? null,
@@ -213,6 +221,36 @@ export async function handleApi(
     if (!deps.forecast) return json(404, { error: 'no_forecast_service' });
     const r = await deps.forecast.read(fc[1]!, fc[2] as 'status' | 'guete' | 'prognose');
     return json(r.status, r.body);
+  }
+
+  if (path === '/api/charging') {
+    if (!deps.charging) return json(404, { error: 'no_charging' });
+    const days = Number(url.searchParams.get('days') ?? '31');
+    if (!Number.isInteger(days) || days < 1 || days > 400) return json(400, { error: 'bad_days' });
+    try {
+      const [now, sessions, plan] = await Promise.all([
+        deps.charging.now(),
+        deps.charging.sessions(days),
+        deps.charging.plan().catch((e: Error) => {
+          deps.log(`charging plan: ${e.message}`);
+          return null;
+        }),
+      ]);
+      const c = deps.mapping.charging;
+      return json(200, {
+        now,
+        sessions,
+        plan,
+        maxKw: c?.maxKw ?? null,
+        span: c?.plan?.span ?? null,
+      });
+    } catch (err) {
+      const e = err as Error;
+      if (e.name === 'TimeoutError' || e.name === 'AbortError')
+        return json(504, { error: 'timeout' });
+      deps.log(`charging: ${e instanceof InfluxError ? e.message : e.name}`);
+      return json(502, { error: 'upstream' });
+    }
   }
 
   if (path === '/api/notes') {
@@ -278,6 +316,7 @@ export async function handleApi(
         from,
         to,
         samples: samples.map((x) => [x.t, x.v]),
+        ...(s.held ? { held: s.held } : {}),
       });
     } catch (err) {
       const e = err as Error;

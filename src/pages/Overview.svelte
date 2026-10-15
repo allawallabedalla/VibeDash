@@ -177,6 +177,7 @@
         { id: 'day', label: t('ts.day') },
         { id: 'week', label: t('ts.week') },
         { id: 'month', label: t('ts.month') },
+        { id: 'span1', label: t('ts.span1') },
         { id: 'span', label: t('ts.span') },
       ]}
       bind:value={() => period, (v) => (period = v as Period)}
@@ -206,7 +207,7 @@
           {period}
           labels={{
             actual: t('ts.actual'),
-            forecast: period === 'span' ? t('ts.forecastSpan') : t('ts.forecast'),
+            forecast: t(`ts.fc.${tsData.kind}`),
             band: t('ts.band'),
             periods: t('ts.periods'),
             empty: t('state.noData'),

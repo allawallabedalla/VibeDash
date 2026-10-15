@@ -35,6 +35,14 @@ describe('InfluxQL building', () => {
     );
   });
 
+  it('keeps only rows with the given field numbers (onlyWhere)', () => {
+    const m = { ...mapping, tags: {}, onlyWhere: { recomputed: 0, bad: Number.NaN } };
+    expect(rawQuery(m, 1000, 2000)).toBe(
+      'SELECT "value" FROM "demo_power" WHERE time >= 1000ms AND time < 2000ms AND "recomputed" = 0',
+    );
+    expect(lastQuery(m, 5000)).toContain('AND "recomputed" = 0');
+  });
+
   it('supports a retention policy and LAST()', () => {
     expect(lastQuery({ ...mapping, tags: {} }, 5000, 'autogen')).toBe(
       'SELECT LAST("value") FROM "autogen"."demo_power" WHERE time <= 5000ms',

@@ -1,6 +1,6 @@
 /** Wire the mapped series to their back-ends (InfluxDB, Home Assistant). */
 import { haClient } from '../src/adapters/homeassistant';
-import { influxClient, type FetchLike } from '../src/adapters/influx1';
+import { influxClient, type FetchLike, type InfluxResponse } from '../src/adapters/influx1';
 import { deriveCounter } from '../src/model/derive';
 import { holdForward } from '../src/model/series';
 import type { Series } from '../src/model/types';
@@ -16,6 +16,8 @@ export function createBackends(
       ok: true;
       series: (m: SeriesMapping, from: number, to: number) => Promise<Series>;
       daily: (m: SeriesMapping, from: number, to: number) => Promise<[number, number | null][]>;
+      /** raw InfluxQL for read-only helpers (charging records); null without Influx */
+      query: ((q: string) => Promise<InfluxResponse>) | null;
     }
   | { ok: false; errors: string[] } {
   const needed = sourcesOf(mapping);
@@ -40,7 +42,11 @@ export function createBackends(
       if (!m.maxHoldMs) return influx!.series(m, from, to);
       // reports on change only: look back far enough to know the value at `from`
       const s = await influx!.series(m, from - m.maxHoldMs, to);
-      return { ...s, samples: holdForward(s.samples, m.stepMs, m.maxHoldMs, from, to) };
+      return {
+        ...s,
+        samples: holdForward(s.samples, m.stepMs, m.maxHoldMs, from, to),
+        held: { reports: s.samples.map((x) => x.t), holdMs: m.maxHoldMs },
+      };
     }
     if (m.source === 'homeassistant') return ha!.series(m, from, to);
     throw new Error('derived series inside a derived series');
@@ -76,7 +82,8 @@ export function createBackends(
    * Daily energy of a meter over long ranges, cheaply: the last reading per
    * local day from InfluxDB (older days from `history`), each day the
    * difference to the day before. A drop or a day above maxPerDay is a gap
-   * (null), never a negative or a giant day.
+   * (null), never a negative or a giant day; a single reading below both
+   * neighbours (a dip) is dropped, so it makes neither a gap nor a giant day.
    */
   const dailyOf = async (
     m: SeriesMapping,
@@ -94,7 +101,11 @@ export function createBackends(
           (x) => x.t < first,
         )
       : [];
-    const readings = [...older, ...main];
+    const all = [...older, ...main];
+    const readings = all.filter(
+      (r, i) =>
+        !(i > 0 && i < all.length - 1 && r.v < all[i - 1]!.v && all[i + 1]!.v >= all[i - 1]!.v),
+    );
     const max = m.entity.maxPerDay ?? Infinity;
     const out: [number, number | null][] = [];
     for (let i = 1; i < readings.length; i++) {
@@ -114,5 +125,6 @@ export function createBackends(
     series: (m, from, to) =>
       m.source === 'derived' ? derived(m, from, to) : measured(m, from, to),
     daily: dailyOf,
+    query: influx ? influx.query : null,
   };
 }

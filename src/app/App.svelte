@@ -19,7 +19,10 @@
     { id: 'week', label: t('page.week'), icon: 'calendar' as const },
     { id: 'now', label: t('page.now'), icon: 'bolt' as const },
     { id: 'forecasts', label: t('page.forecasts'), icon: 'forecast' as const },
-    ...(store.evcc || store.plan || (store.state.status === 'ready' && currentSource() === 'demo')
+    ...(store.evcc ||
+    store.plan ||
+    store.charging ||
+    (store.state.status === 'ready' && currentSource() === 'demo')
       ? [{ id: 'charging', label: t('page.charging'), icon: 'plugCar' as const }]
       : []),
   ]);
@@ -31,6 +34,7 @@
       (!root.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
     root.dataset.theme = dark ? 'light' : 'dark';
   }
+  const demoOnly = $derived(store.state.status === 'ready' && currentSource() === 'demo');
 </script>
 
 <header class="top">
@@ -58,7 +62,8 @@
 </div>
 
 <main>
-  {#if router.route === 'gallery'}
+  <!-- The gallery shows made-up demo data: only without a house (demo mode), never next to real values. -->
+  {#if router.route === 'gallery' && demoOnly}
     <!-- Loaded on demand: not part of the first page budget. -->
     {#await import('../gallery/Gallery.svelte') then { default: Gallery }}
       <Gallery />
@@ -108,9 +113,15 @@
           />{/await}
       {:else if router.route === 'charging'}
         <!-- Loaded on demand: only homes with evcc need it. -->
-        {#await import('../pages/Charging.svelte') then { default: Charging }}
-          <Charging />
-        {/await}
+        {#if store.charging && !store.evcc && !store.plan}
+          {#await import('../pages/HouseCharging.svelte') then { default: HouseCharging }}
+            <HouseCharging />
+          {/await}
+        {:else}
+          {#await import('../pages/Charging.svelte') then { default: Charging }}
+            <Charging />
+          {/await}
+        {/if}
       {:else}
         <Overview />
       {/if}
@@ -118,9 +129,11 @@
   {/if}
 </main>
 
-<footer>
-  <a href="#/gallery">{t('nav.gallery')}</a>
-</footer>
+{#if demoOnly}
+  <footer>
+    <a href="#/gallery">{t('nav.gallery')}</a>
+  </footer>
+{/if}
 
 <style>
   .top,

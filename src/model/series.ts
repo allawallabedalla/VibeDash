@@ -1,8 +1,20 @@
 import type { Estimate, Gap, Sample, Series } from './types';
 
-/** Gaps are stretches where the sensor stayed silent for more than `factor` nominal steps. */
+/**
+ * Gaps are stretches where the sensor stayed silent for more than `factor`
+ * nominal steps. A sensor that reports on change (held) is silent only when
+ * no real report came for longer than its hold time; the gap starts at the
+ * last real report, not where the held value ran out.
+ */
 export function findGaps(series: Series, factor = 2.5): Gap[] {
   const gaps: Gap[] = [];
+  if (series.held) {
+    const r = series.held.reports;
+    for (let i = 1; i < r.length; i++) {
+      if (r[i]! - r[i - 1]! > series.held.holdMs) gaps.push({ from: r[i - 1]!, to: r[i]! });
+    }
+    return gaps;
+  }
   const s = series.samples;
   for (let i = 1; i < s.length; i++) {
     const prev = s[i - 1]!;
@@ -10,6 +22,22 @@ export function findGaps(series: Series, factor = 2.5): Gap[] {
     if (cur.t - prev.t > series.stepMs * factor) gaps.push({ from: prev.t, to: cur.t });
   }
   return gaps;
+}
+
+/** Time of the last real report at or before `at` (held sensors), else of the last sample. */
+export function lastReport(series: Series | undefined, at = Infinity): number | null {
+  if (!series) return null;
+  const times = series.held ? series.held.reports : series.samples.map((x) => x.t);
+  for (let i = times.length - 1; i >= 0; i--) if (times[i]! <= at) return times[i]!;
+  return null;
+}
+
+/** Only the samples that are real reports (held sensors); else all. */
+export function reportedSamples(series: Series | undefined): Sample[] {
+  if (!series) return [];
+  if (!series.held) return series.samples;
+  const real = new Set(series.held.reports);
+  return series.samples.filter((x) => real.has(x.t));
 }
 
 /**

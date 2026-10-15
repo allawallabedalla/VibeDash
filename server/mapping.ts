@@ -8,6 +8,7 @@ import { isHaEntityId, type HaMapping } from '../src/adapters/homeassistant';
 import type { InfluxMapping } from '../src/adapters/influx1';
 import type { RoofPlane } from '../src/adapters/openmeteo';
 import type { EntityKind } from '../src/model/types';
+import { PLAN_FIELDS, type ChargingMapping, type PlanFields, type Starter } from './charging';
 
 /** One part of a derived counter: power to integrate or a meter to add/subtract. */
 export interface DerivedTerm {
@@ -83,6 +84,8 @@ export interface Note {
 export interface Mapping {
   timeZone: string;
   notes?: Note[];
+  /** Car charging from the house's own records (read-only), see server/charging.ts. */
+  charging?: ChargingMapping;
   series: Record<string, SeriesMapping>;
   forecasts: Record<string, ForecastMapping>;
   pv?: PvMapping;
@@ -115,7 +118,15 @@ const COMMON_KEYS = [
   'helper',
   'aheadMs',
 ];
-const INFLUX_KEYS = [...COMMON_KEYS, 'measurement', 'field', 'tags', 'maxHoldMs', 'history'];
+const INFLUX_KEYS = [
+  ...COMMON_KEYS,
+  'measurement',
+  'field',
+  'tags',
+  'onlyWhere',
+  'maxHoldMs',
+  'history',
+];
 const HA_KEYS = [...COMMON_KEYS, 'entityId', 'maxHoldMs', 'longTerm'];
 const DERIVED_KEYS = [...COMMON_KEYS, 'terms'];
 
@@ -140,7 +151,11 @@ export function validateMapping(
   if (!isObj(raw)) return { ok: false, errors: ['mapping: must be a JSON object'] };
 
   for (const key of Object.keys(raw)) {
-    if (!['timeZone', 'series', 'forecasts', 'pv', 'plan', 'notes', '$comment'].includes(key)) {
+    if (
+      !['timeZone', 'series', 'forecasts', 'pv', 'plan', 'notes', 'charging', '$comment'].includes(
+        key,
+      )
+    ) {
       errors.push(`mapping.${key}: unknown key`);
     }
   }
@@ -256,6 +271,7 @@ export function validateMapping(
         measurement: entry.measurement as string,
         field: entry.field as string,
         ...(entry.tags ? { tags: entry.tags as Record<string, string> } : {}),
+        ...(isObj(entry.onlyWhere) ? { onlyWhere: entry.onlyWhere as Record<string, number> } : {}),
         ...(typeof entry.maxHoldMs === 'number' ? { maxHoldMs: entry.maxHoldMs } : {}),
         ...(isObj(entry.history)
           ? {
@@ -266,10 +282,20 @@ export function validateMapping(
                   ? { tags: entry.history.tags as Record<string, string> }
                   : {}),
                 ...(typeof entry.history.scale === 'number' ? { scale: entry.history.scale } : {}),
+                ...(typeof entry.history.validBelow === 'number'
+                  ? { validBelow: entry.history.validBelow }
+                  : {}),
               },
             }
           : {}),
       };
+      if (
+        entry.onlyWhere !== undefined &&
+        (!isObj(entry.onlyWhere) ||
+          !Object.values(entry.onlyWhere).every((v) => typeof v === 'number' && Number.isFinite(v)))
+      ) {
+        errors.push(`${at}.onlyWhere: object of field = number, e.g. { "nachgerechnet": 0 }`);
+      }
       if (entry.history !== undefined) {
         const h = entry.history;
         if (
@@ -277,9 +303,12 @@ export function validateMapping(
           !isText(h.measurement) ||
           !isText(h.field) ||
           (h.tags !== undefined &&
-            (!isObj(h.tags) || !Object.values(h.tags).every((v) => isText(v))))
+            (!isObj(h.tags) || !Object.values(h.tags).every((v) => isText(v)))) ||
+          (h.validBelow !== undefined && !(typeof h.validBelow === 'number' && h.validBelow > 0))
         ) {
-          errors.push(`${at}.history: { measurement, field, tags? } of an older measurement`);
+          errors.push(
+            `${at}.history: { measurement, field, tags?, validBelow? } of an older measurement`,
+          );
         }
         if (entry.kind !== 'energy_counter') errors.push(`${at}.history: only for energy_counter`);
       }
@@ -521,12 +550,113 @@ export function validateMapping(
       });
   }
 
+  let charging: ChargingMapping | undefined;
+  if (raw.charging !== undefined) {
+    const c = raw.charging;
+    const at = 'mapping.charging';
+    const sess = isObj(c) ? c.sessions : undefined;
+    if (
+      !isObj(c) ||
+      !isObj(sess) ||
+      !isText(sess.measurement) ||
+      !isText(sess.energy) ||
+      !isText(sess.running)
+    ) {
+      errors.push(
+        `${at}: { sessions: { measurement, energy, running, … }, power?, gridMeter?, plan? }`,
+      );
+    } else {
+      for (const k of ['power', 'gridMeter'] as const) {
+        if (c[k] !== undefined && !(typeof c[k] === 'string' && Object.hasOwn(series, c[k]))) {
+          errors.push(`${at}.${k}: name of a series in mapping.series`);
+        }
+      }
+      const plan = c.plan;
+      const url = (u: unknown) => typeof u === 'string' && /^https?:\/\/[^\s]+$/.test(u);
+      if (
+        plan !== undefined &&
+        (!isObj(plan) ||
+          !url(plan.summaryUrl) ||
+          (plan.blocksUrl !== undefined && !url(plan.blocksUrl)))
+      ) {
+        errors.push(`${at}.plan: { summaryUrl, blocksUrl? } as http(s) URLs`);
+      }
+      if (
+        c.maxKw !== undefined &&
+        !(typeof c.maxKw === 'number' && c.maxKw > 0 && c.maxKw <= 400)
+      ) {
+        errors.push(`${at}.maxKw: number of kW, e.g. 11`);
+      }
+      const starters = ['auto', 'app', 'card'];
+      if (
+        c.sources !== undefined &&
+        (!isObj(c.sources) ||
+          !Object.values(c.sources).every((v) => typeof v === 'string' && starters.includes(v)))
+      ) {
+        errors.push(`${at}.sources: { "<raw value>": "auto" | "app" | "card" }`);
+      }
+      // plan.fields: same shape as PLAN_FIELDS, every key a text
+      let fields: PlanFields | undefined;
+      if (isObj(plan) && plan.fields !== undefined) {
+        const pf = plan.fields;
+        const texts = (o: unknown, keys: string[]) => isObj(o) && keys.every((k) => isText(o[k]));
+        const ok =
+          isObj(pf) &&
+          texts(pf, ['text', 'madeAt', 'soc', 'socMin']) &&
+          Array.isArray(pf.days) &&
+          pf.days.length > 0 &&
+          pf.days.length <= 7 &&
+          pf.days.every((d) => texts(d, ['kwh', 'low', 'high'])) &&
+          texts(pf.blocks, ['start', 'end', 'amps', 'kwh', 'reason']);
+        if (ok) fields = pf as unknown as PlanFields;
+        else
+          errors.push(
+            `${at}.plan.fields: { text, madeAt, soc, socMin, days: [{ kwh, low, high }], blocks: { start, end, amps, kwh, reason } }`,
+          );
+      }
+      if (
+        isObj(plan) &&
+        plan.span !== undefined &&
+        plan.span !== 'quantiles' &&
+        plan.span !== 'cautious-good'
+      ) {
+        errors.push(`${at}.plan.span: "quantiles" or "cautious-good"`);
+      }
+      const opt = (k: string) => (isText(sess[k]) ? { [k]: String(sess[k]) } : {});
+      charging = {
+        sessions: {
+          measurement: String(sess.measurement),
+          energy: String(sess.energy),
+          running: String(sess.running),
+          ...opt('duration'),
+          ...opt('source'),
+          ...opt('id'),
+        },
+        ...(typeof c.power === 'string' ? { power: c.power } : {}),
+        ...(typeof c.maxKw === 'number' ? { maxKw: c.maxKw } : {}),
+        ...(isObj(c.sources) ? { sources: c.sources as Record<string, Starter> } : {}),
+        ...(typeof c.gridMeter === 'string' ? { gridMeter: c.gridMeter } : {}),
+        ...(isObj(plan)
+          ? {
+              plan: {
+                summaryUrl: String(plan.summaryUrl),
+                ...(plan.blocksUrl ? { blocksUrl: String(plan.blocksUrl) } : {}),
+                fields: fields ?? PLAN_FIELDS,
+                span: plan.span === 'cautious-good' ? 'cautious-good' : 'quantiles',
+              },
+            }
+          : {}),
+      };
+    }
+  }
+
   if (errors.length > 0) return { ok: false, errors };
   return {
     ok: true,
     mapping: {
       timeZone: raw.timeZone as string,
       ...(notes.length ? { notes } : {}),
+      ...(charging ? { charging } : {}),
       series,
       forecasts,
       ...(pv ? { pv } : {}),

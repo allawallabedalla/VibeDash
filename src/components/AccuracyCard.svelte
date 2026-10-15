@@ -4,13 +4,17 @@
    * level (good / fair / poor / open). Shows accuracy, never "learning progress".
    */
   import { num, t } from '../i18n/index.svelte';
+  import { MIN_JUDGED_DAYS, wilson } from '../model/accuracy';
   import Icon from './Icon.svelte';
   import Sparkline from './Sparkline.svelte';
 
   interface Props {
     label: string;
+    /** Share correct in %; below MIN_JUDGED_DAYS days it is shown as "open". */
     pct: number | null;
     n: number;
+    /** 95 % range of the share correct, in %; derived from pct and n if left out. */
+    interval?: { low: number; high: number } | null;
     /** Accuracy over time (e.g. weekly), oldest first; null = not assessable then. */
     history: (number | null)[];
     openFrom?: string;
@@ -22,7 +26,13 @@
     /** Extra fact, e.g. "beats the rule of thumb by 12 %" or "from backtest". */
     note?: string;
   }
-  let { label, pct, n, history, openFrom, collecting, note }: Props = $props();
+  let { label, pct: given, n, interval, history, openFrom, collecting, note }: Props = $props();
+
+  // a verdict only from enough days (P-06); below that "open · n" with its range
+  const pct = $derived(n >= MIN_JUDGED_DAYS ? given : null);
+  const range = $derived(
+    interval ?? (given !== null && n > 0 ? wilson(Math.round((given / 100) * n), n) : null),
+  );
 
   type Level = 'good' | 'fair' | 'poor' | 'open';
   const level = $derived<Level>(
@@ -122,7 +132,12 @@
         when: collecting.from,
       })}
     {:else if pct === null}
-      n = {n}{#if openFrom}&nbsp;· {t('progress.from', { when: openFrom })}{/if}
+      n = {n}{#if range && n > 0}&nbsp;· {t('acc.range', {
+          low: num(range.low),
+          high: num(range.high),
+        })}{/if}{#if openFrom}&nbsp;· {t('progress.from', { when: openFrom })}{/if}
+    {:else if range}
+      {t('acc.range', { low: num(range.low), high: num(range.high) })}
     {/if}
     {#if note}<span class="note">{note}</span>{/if}
   </div>

@@ -9,6 +9,10 @@
     sunHours: number | null;
     pv: { value: number; low?: number; high?: number; approx: boolean } | null;
     pvSoFar?: number | null;
+    /** past days: the sky read from the PV curve */
+    sky?: 'clear' | 'clouds' | 'hazy' | 'overcast';
+    /** past days: what is measured and what comes from a model */
+    source?: { temp: 'sensor' | 'model'; sun: 'pv' | 'model'; rain: 'model' };
   }
 </script>
 
@@ -23,18 +27,21 @@
 
   let { days }: { days: WeatherCardDay[] } = $props();
 
+  const SKY_ICON = { clear: 'sun', clouds: 'cloudSun', hazy: 'haze', overcast: 'cloud' } as const;
   const sky = (d: WeatherCardDay): IconName =>
-    d.rainMm !== null && d.rainMm >= 2 && (d.sunHours === null || d.sunHours < 4)
-      ? 'rain'
-      : d.rainMm !== null && d.rainMm >= 0.5
+    d.sky
+      ? SKY_ICON[d.sky]
+      : d.rainMm !== null && d.rainMm >= 2 && (d.sunHours === null || d.sunHours < 4)
         ? 'rain'
-        : d.sunHours === null
-          ? 'cloud'
-          : d.sunHours >= 6
-            ? 'sun'
-            : d.sunHours >= 2
-              ? 'cloudSun'
-              : 'cloud';
+        : d.rainMm !== null && d.rainMm >= 0.5
+          ? 'rain'
+          : d.sunHours === null
+            ? 'cloud'
+            : d.sunHours >= 6
+              ? 'sun'
+              : d.sunHours >= 2
+                ? 'cloudSun'
+                : 'cloud';
   const deg = (v: number | null) => (v === null ? '–' : `${num(v)}°`);
 </script>
 
@@ -43,16 +50,28 @@
     <article class="day {d.when}">
       <header>
         <b>{d.label}</b>
-        <span class="kind">{d.when === 'past' ? t('wd.measured') : t('wd.forecast')}</span>
+        <span class="kind"
+          >{d.when !== 'past'
+            ? t('wd.forecast')
+            : d.source?.temp === 'model'
+              ? t('wd.model')
+              : t('wd.measured')}</span
+        >
       </header>
       <div class="middle">
         <span class="sky" class:sunny={sky(d) === 'sun'}><Icon name={sky(d)} size={24} /></span>
         <span class="temp"><b>{deg(d.tempHigh)}</b><small>{deg(d.tempLow)}</small></span>
       </div>
+      {#if d.sky}<div class="skyword">{t(`wd.sky.${d.sky}`)}</div>{/if}
       <div class="line">
-        {d.sunHours === null ? '–' : num(d.sunHours)} h {t('wd.sun')} · {d.rainMm === null
-          ? '–'
-          : num(d.rainMm, 1)} mm
+        {d.source?.sun === 'pv' ? '≈ ' : ''}{d.sunHours === null ? '–' : num(d.sunHours)} h {t(
+          'wd.sun',
+        )}
+      </div>
+      <div class="line">
+        {d.rainMm === null ? '–' : num(d.rainMm, 1)} mm{d.source?.rain === 'model'
+          ? ` ${t('wd.rainModel')}`
+          : ` ${t('wd.rain')}`}
       </div>
       <div class="pv">
         <Icon name="sun" size={14} />
@@ -134,6 +153,16 @@
     display: block;
     font-size: var(--small);
     color: var(--muted);
+  }
+  .skyword {
+    margin-top: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-2);
+  }
+  .skyword + .line,
+  .line + .line {
+    margin-top: 2px;
   }
   .line {
     margin-top: 6px;

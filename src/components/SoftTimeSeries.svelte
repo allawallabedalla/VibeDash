@@ -74,6 +74,14 @@
     });
     const fmtDay = new Intl.DateTimeFormat(locale, { timeZone, day: 'numeric', month: 'short' });
     const spanDays = (data.x.at(-1)! - data.x[0]!) / 86_400_000;
+    const fmtHour = new Intl.DateTimeFormat('en-GB', {
+      timeZone,
+      hour: 'numeric',
+      hourCycle: 'h23',
+    });
+    const hourOf = (ms: number) => Number(fmtHour.format(ms));
+    const stepMs = data.x.length > 1 ? data.x[1]! - data.x[0]! : 0;
+    const hourly = spanDays > 1.5 && spanDays < 10 && stepMs > 0 && stepMs <= 3_600_000;
     const axis = {
       stroke: muted,
       grid: { stroke: line, width: 1 },
@@ -97,8 +105,22 @@
           ...axis,
           grid: { show: false },
           space: 72,
+          // hourly over a few days: one tick per local midnight (and noon when
+          // there is room), so a date is not repeated along the axis
+          ...(hourly
+            ? {
+                splits: () =>
+                  data.x
+                    .filter((t) => [0, ...(spanDays < 4 ? [12] : [])].includes(hourOf(t)))
+                    .map((t) => t / 1e3),
+              }
+            : {}),
           values: (_u, splits) =>
-            splits.map((s) => (spanDays > 1.5 ? fmtDay.format(s * 1e3) : fmtTime.format(s * 1e3))),
+            splits.map((s) =>
+              spanDays > 1.5 && (!hourly || hourOf(s * 1e3) === 0)
+                ? fmtDay.format(s * 1e3)
+                : fmtTime.format(s * 1e3),
+            ),
         },
         {
           ...axis,
