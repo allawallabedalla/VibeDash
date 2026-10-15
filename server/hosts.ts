@@ -5,9 +5,21 @@
  */
 import { hostname, networkInterfaces } from 'node:os';
 
-/** Host names without port, lower case: localhost, this machine's names and addresses, plus ALLOWED_HOSTS. */
+/**
+ * Host names without port, lower case: localhost, this machine's names and
+ * addresses, plus ALLOWED_HOSTS. With ALLOWED_HOSTS_EXACT=on only localhost
+ * and ALLOWED_HOSTS – no names or addresses found on the machine (Audit02 B-02).
+ */
 export function allowedHosts(env: Record<string, string | undefined>): Set<string> {
   const out = new Set(['localhost', '127.0.0.1', '::1']);
+  const extra = (env.ALLOWED_HOSTS ?? '')
+    .split(',')
+    .map((h) => h.trim().toLowerCase())
+    .filter(Boolean);
+  if (env.ALLOWED_HOSTS_EXACT === 'on') {
+    for (const v of extra) out.add(v);
+    return out;
+  }
   const name = hostname().toLowerCase();
   out.add(name);
   out.add(`${name}.local`);
@@ -19,10 +31,7 @@ export function allowedHosts(env: Record<string, string | undefined>): Set<strin
     // a sandbox without netlink: name, localhost and ALLOWED_HOSTS still apply
   }
   if (env.HOST && env.HOST !== '0.0.0.0' && env.HOST !== '::') out.add(env.HOST.toLowerCase());
-  for (const h of (env.ALLOWED_HOSTS ?? '').split(',')) {
-    const v = h.trim().toLowerCase();
-    if (v) out.add(v);
-  }
+  for (const v of extra) out.add(v);
   return out;
 }
 

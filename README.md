@@ -103,9 +103,10 @@ writable only `local/`; it stops after 5 failed starts in 5 min.
 (`HOST=127.0.0.1`) unless `.env` says `HOST=0.0.0.0`. It answers only Host
 names it knows (this machine's name and addresses, `localhost`, plus
 `ALLOWED_HOSTS`) – a page on a foreign domain cannot reach it by DNS
-rebinding. The one write (`POST /api/location`) needs the page itself
-(`Sec-Fetch-Site: same-origin`) and can be switched off with
-`LOCATION_WRITE=off`.
+rebinding. `ALLOWED_HOSTS_EXACT=on` answers only `localhost` and the names in
+`ALLOWED_HOSTS` (Audit02 B-02). The one write (`POST /api/location`) needs the
+page itself (matching `Origin`) and can be switched off with
+`LOCATION_WRITE=off`; then the location comes from `LATITUDE`/`LONGITUDE`.
 
 Optional keys per series: `device` groups the questions (e.g. "inverter"), `maxPerDay`
 leaves out implausible days of a meter, `helper: true` makes a series only an input for

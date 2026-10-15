@@ -284,6 +284,14 @@ describe('host check and the one write (Audit01 S-01, S-02)', () => {
     expect(hostOf('localhost')).toBe('localhost');
   });
 
+  it('with ALLOWED_HOSTS_EXACT=on: only localhost and the list (Audit02 B-02)', async () => {
+    const { allowedHosts } = await import('../../server/hosts');
+    const { hostname } = await import('node:os');
+    const h = allowedHosts({ ALLOWED_HOSTS: 'dash.home, 10.0.0.5', ALLOWED_HOSTS_EXACT: 'on' });
+    expect([...h].sort()).toEqual(['10.0.0.5', '127.0.0.1', '::1', 'dash.home', 'localhost']);
+    expect(h.has(hostname().toLowerCase())).toBe(false);
+  });
+
   it('binds to this machine only unless HOST says otherwise', () => {
     expect(readConfig({}).config.host).toBe('127.0.0.1');
     expect(readConfig({ HOST: '0.0.0.0' }).config.host).toBe('0.0.0.0');
