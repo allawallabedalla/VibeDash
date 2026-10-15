@@ -3,20 +3,56 @@
  * evcc: the current charge, past charges and – optionally – the plan of an
  * external charge planner.
  *
- * mapping.charging:
+ * mapping.charging (all house specifics live there, none in the code):
  *   power:    series id of the car's charging power (W)
+ *   maxKw:    end of the power scale, e.g. 11 for 3 × 16 A (no scale without it)
  *   sessions: { measurement, energy, running, duration?, source?, id? } – one
  *             row per start (running = true) and one per end (running =
  *             false, with energy in kWh), both stamped at the start
+ *   sources:  { "<raw value>": "auto" | "app" | "card" } – who started a charge
  *   gridMeter: series id of the grid import meter (kWh) – grid energy during
  *             each charge, an upper bound for what the car took from the grid
- *   plan:     { summaryUrl, blocksUrl } – an external planner's summary and
- *             blocks (see README); fetched with the usual timeout
+ *   plan:     { summaryUrl, blocksUrl?, fields?, span? } – an external planner's
+ *             summary and blocks; `fields` names its JSON keys (defaults in
+ *             PLAN_FIELDS), `span` says what its two day numbers mean (README)
  */
 import type { FetchLike } from '../src/adapters/influx1';
 
+export type Starter = 'auto' | 'app' | 'card';
+
+/** JSON keys of the planner's answer. */
+export interface PlanFields {
+  text: string;
+  madeAt: string;
+  soc: string;
+  socMin: string;
+  /** Today, tomorrow …: planned kWh and the two span numbers. */
+  days: { kwh: string; low: string; high: string }[];
+  blocks: { start: string; end: string; amps: string; kwh: string; reason: string };
+}
+
+export const PLAN_FIELDS: PlanFields = {
+  text: 'text',
+  madeAt: 'madeAt',
+  soc: 'soc',
+  socMin: 'socMin',
+  days: [
+    { kwh: 'todayKwh', low: 'todayLow', high: 'todayHigh' },
+    { kwh: 'tomorrowKwh', low: 'tomorrowLow', high: 'tomorrowHigh' },
+  ],
+  blocks: { start: 'start', end: 'end', amps: 'amps', kwh: 'kwh', reason: 'reason' },
+};
+
+/**
+ * What the two day numbers are: "quantiles" = a 10–90 % range,
+ * "cautious-good" = cautious plan (low) and what good weather allows (high).
+ */
+export type PlanSpan = 'quantiles' | 'cautious-good';
+
 export interface ChargingMapping {
   power?: string;
+  maxKw?: number;
+  sources?: Record<string, Starter>;
   gridMeter?: string;
   sessions: {
     measurement: string;
@@ -26,14 +62,15 @@ export interface ChargingMapping {
     source?: string;
     id?: string;
   };
-  plan?: { summaryUrl: string; blocksUrl?: string };
+  plan?: { summaryUrl: string; blocksUrl?: string; fields?: PlanFields; span?: PlanSpan };
 }
 
 export interface ChargeSession {
   start: number;
   end: number | null;
   kwh: number | null;
-  source: string | null;
+  /** who started it, from mapping.charging.sources; null = unknown */
+  source: Starter | null;
   /** grid import during the charge (house included), kWh */
   gridKwh: number | null;
 }
@@ -41,7 +78,7 @@ export interface ChargeSession {
 export interface ChargingNow {
   running: boolean;
   since: number | null;
-  source: string | null;
+  source: Starter | null;
   powerW: number | null;
   powerAt: number | null;
   /** energy of the running charge so far, summed up from power (≈) */
@@ -96,9 +133,15 @@ export async function chargeSessions(
     const key = f.id && r[f.id] != null ? String(r[f.id]) : String(t);
     const s = byStart.get(key) ?? { start: t, end: null, kwh: null, source: null, gridKwh: null };
     s.start = Math.min(s.start, t);
-    // the first known source wins; a later "unknown" never overwrites it
-    if (f.source && typeof r[f.source] === 'string' && s.source === null) {
-      s.source = r[f.source] as string;
+    // the first known source wins; a later unknown one never overwrites it
+    const raw = f.source ? r[f.source] : undefined;
+    if (
+      typeof raw === 'string' &&
+      s.source === null &&
+      m.sources &&
+      Object.hasOwn(m.sources, raw)
+    ) {
+      s.source = m.sources[raw]!;
     }
     if (r[f.running] === false) {
       // a second end row of the same charge (e.g. a repeated stop) without
@@ -116,30 +159,31 @@ export async function chargeSessions(
 }
 
 /** Validate the external planner's answers into one plain shape. */
-export function parsePlan(summary: unknown, blocks: unknown): PlanSummary | null {
+export function parsePlan(
+  summary: unknown,
+  blocks: unknown,
+  f: PlanFields = PLAN_FIELDS,
+): PlanSummary | null {
   const z = Array.isArray(summary) ? summary[0] : summary;
   if (!z || typeof z !== 'object') return null;
   const o = z as Record<string, unknown>;
-  const day = (k: string) => ({
-    kwh: num(o[`${k}_kwh`]),
-    low: num(o[`${k}_p10`]),
-    high: num(o[`${k}_p90`]),
-  });
+  const text = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max) : null);
   const bl = Array.isArray(blocks) ? blocks : [];
+  const k = f.blocks;
   return {
-    text: typeof o.kurz === 'string' ? o.kurz.slice(0, 200) : null,
-    madeAt: num(o.stand),
-    days: [day('heute'), day('morgen')],
-    socNow: num(o.soc),
-    socMin: num(o.soc_mindest),
+    text: text(o[f.text], 200),
+    madeAt: num(o[f.madeAt]),
+    days: f.days.map((d) => ({ kwh: num(o[d.kwh]), low: num(o[d.low]), high: num(o[d.high]) })),
+    socNow: num(o[f.soc]),
+    socMin: num(o[f.socMin]),
     blocks: bl
       .filter((b): b is Record<string, unknown> => !!b && typeof b === 'object')
       .map((b) => ({
-        start: Number(b.start),
-        end: Number(b.ende),
-        amps: num(b.a),
-        kwh: num(b.kwh),
-        reason: typeof b.grund === 'string' ? b.grund.slice(0, 40) : null,
+        start: Number(b[k.start]),
+        end: Number(b[k.end]),
+        amps: num(b[k.amps]),
+        kwh: num(b[k.kwh]),
+        reason: text(b[k.reason], 40),
       }))
       .filter((b) => Number.isFinite(b.start) && Number.isFinite(b.end) && b.end > b.start),
   };
@@ -159,5 +203,5 @@ export async function fetchPlan(
     get(plan.summaryUrl),
     plan.blocksUrl ? get(plan.blocksUrl).catch(() => []) : Promise.resolve([]),
   ]);
-  return parsePlan(s, b);
+  return parsePlan(s, b, plan.fields);
 }

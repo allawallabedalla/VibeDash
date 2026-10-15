@@ -19,7 +19,7 @@
     start: number;
     end: number | null;
     kwh: number | null;
-    source: string | null;
+    source: 'auto' | 'app' | 'card' | null;
     gridKwh: number | null;
   }
   interface Plan {
@@ -40,12 +40,16 @@
     now: {
       running: boolean;
       since: number | null;
-      source: string | null;
+      source: Session['source'];
       powerW: number | null;
       kwhSoFar: number | null;
     };
     sessions: Session[];
     plan: Plan | null;
+    /** end of the power scale (mapping.charging.maxKw); null = no scale */
+    maxKw: number | null;
+    /** what the plan's two day numbers mean (mapping.charging.plan.span) */
+    span: 'quantiles' | 'cautious-good' | null;
   }
 
   const house = currentData();
@@ -64,12 +68,12 @@
     }
   });
 
-  const who = (s: string | null) =>
-    s === 'pi'
+  const who = (s: Session['source']) =>
+    s === 'auto'
       ? t('hc.src.auto')
       : s === 'app'
         ? t('hc.src.app')
-        : s === 'rfid'
+        : s === 'card'
           ? t('hc.src.rfid')
           : t('hc.src.unknown');
 
@@ -82,16 +86,18 @@
           d + 12 * 3_600_000,
         );
 
-  // The planner's span is no 10–90 % band (P-30): the lower number is the
-  // cautious plan (worst weather case), the upper what good weather allows.
-  const range = (d: Plan['days'][number] | undefined) =>
-    d && d.low !== null && d.high !== null && d.high > d.low
-      ? t('hc.span', { high: num(d.high) })
+  // What the two day numbers mean comes from the mapping (P-30): a 10–90 %
+  // range, or the cautious plan and what good weather allows.
+  const spanOf = (d: Plan['days'][number] | undefined) =>
+    d && d.low !== null && d.high !== null && d.high > d.low && view.s === 'ready'
+      ? view.a.span === 'cautious-good'
+        ? t('hc.span', { high: num(d.high) })
+        : t('hc.range', { low: num(d.low), high: num(d.high) })
       : undefined;
 
   const tiles = $derived.by<TileProps[]>(() => {
     if (view.s !== 'ready') return [];
-    const { now, sessions, plan } = view.a;
+    const { now, sessions, plan, span, maxKw } = view.a;
     const doneToday = sessions
       .filter((s) => localDateKey(s.start, tz) === localDateKey(house.now, tz))
       .reduce((a, s) => a + (s.kwh ?? 0), 0);
@@ -105,8 +111,11 @@
         approx: d?.kwh !== null && d?.kwh !== undefined,
         value: d?.kwh !== null && d?.kwh !== undefined ? num(d.kwh) : '–',
         unit: d?.kwh !== null && d?.kwh !== undefined ? 'kWh' : undefined,
-        sub: range(d) ?? (plan ? t('hc.noCharge') : t('hc.noPlan')),
-        info: { what: t('hc.span.what'), source: t('hc.span.source') },
+        sub: spanOf(d) ?? (plan ? t('hc.noCharge') : t('hc.noPlan')),
+        info: {
+          what: span === 'cautious-good' ? t('hc.span.what') : t('hc.range.what'),
+          source: t('hc.span.source'),
+        },
         ...(d && d.kwh !== null && d.high !== null
           ? {
               graphic: {
@@ -130,14 +139,18 @@
         sub: now.running
           ? t('hc.since', { time: time(now.since!, tz), who: who(now.source) })
           : t('hc.notCharging'),
-        graphic: {
-          kind: 'scale',
-          value: kw ?? 0,
-          min: 0,
-          max: 11,
-          color: 'var(--battery)',
-          ends: ['0', '11 kW'],
-        },
+        ...(maxKw
+          ? {
+              graphic: {
+                kind: 'scale' as const,
+                value: kw ?? 0,
+                min: 0,
+                max: maxKw,
+                color: 'var(--battery)',
+                ends: ['0', `${num(maxKw)} kW`] as [string, string],
+              },
+            }
+          : {}),
       },
       {
         label: t('hc.today'),

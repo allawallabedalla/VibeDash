@@ -470,6 +470,8 @@ export const de = {
   'hc.span.what':
     'Die Zahl ist der vorsichtige Plan: so viel lädt das Auto auch bei schlechtem Wetter. Die zweite Zahl ist, was gutes Wetter zusätzlich erlaubt. Keine 10–90-%-Spanne.',
   'hc.span.source': 'Ladeplaner des Hauses.',
+  'hc.range': '{low}–{high} kWh (10–90 %)',
+  'hc.range.what': 'Geplante Lademenge; die Spanne reicht vom 10-%- bis zum 90-%-Wetterfall.',
   'hc.noCharge': 'keine Ladung geplant',
   'hc.noPlan': 'kein Plan',
   'hc.tomorrow': 'Morgen',

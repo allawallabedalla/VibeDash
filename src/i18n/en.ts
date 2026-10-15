@@ -466,6 +466,8 @@ export const en: Record<MessageKey, string> = {
   'hc.span.what':
     'The number is the cautious plan: the car gets this much even with bad weather. The second number is what good weather allows on top. Not a 10–90 % range.',
   'hc.span.source': "The house's charge planner.",
+  'hc.range': '{low}–{high} kWh (10–90 %)',
+  'hc.range.what': 'Planned charge; the range runs from the 10 % to the 90 % weather case.',
   'hc.noCharge': 'no charge planned',
   'hc.noPlan': 'no plan',
   'hc.tomorrow': 'Tomorrow',

@@ -236,7 +236,14 @@ export async function handleApi(
           return null;
         }),
       ]);
-      return json(200, { now, sessions, plan });
+      const c = deps.mapping.charging;
+      return json(200, {
+        now,
+        sessions,
+        plan,
+        maxKw: c?.maxKw ?? null,
+        span: c?.plan?.span ?? null,
+      });
     } catch (err) {
       const e = err as Error;
       if (e.name === 'TimeoutError' || e.name === 'AbortError')

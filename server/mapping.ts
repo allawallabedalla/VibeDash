@@ -8,7 +8,7 @@ import { isHaEntityId, type HaMapping } from '../src/adapters/homeassistant';
 import type { InfluxMapping } from '../src/adapters/influx1';
 import type { RoofPlane } from '../src/adapters/openmeteo';
 import type { EntityKind } from '../src/model/types';
-import type { ChargingMapping } from './charging';
+import { PLAN_FIELDS, type ChargingMapping, type PlanFields, type Starter } from './charging';
 
 /** One part of a derived counter: power to integrate or a meter to add/subtract. */
 export interface DerivedTerm {
@@ -581,6 +581,47 @@ export function validateMapping(
       ) {
         errors.push(`${at}.plan: { summaryUrl, blocksUrl? } as http(s) URLs`);
       }
+      if (
+        c.maxKw !== undefined &&
+        !(typeof c.maxKw === 'number' && c.maxKw > 0 && c.maxKw <= 400)
+      ) {
+        errors.push(`${at}.maxKw: number of kW, e.g. 11`);
+      }
+      const starters = ['auto', 'app', 'card'];
+      if (
+        c.sources !== undefined &&
+        (!isObj(c.sources) ||
+          !Object.values(c.sources).every((v) => typeof v === 'string' && starters.includes(v)))
+      ) {
+        errors.push(`${at}.sources: { "<raw value>": "auto" | "app" | "card" }`);
+      }
+      // plan.fields: same shape as PLAN_FIELDS, every key a text
+      let fields: PlanFields | undefined;
+      if (isObj(plan) && plan.fields !== undefined) {
+        const pf = plan.fields;
+        const texts = (o: unknown, keys: string[]) => isObj(o) && keys.every((k) => isText(o[k]));
+        const ok =
+          isObj(pf) &&
+          texts(pf, ['text', 'madeAt', 'soc', 'socMin']) &&
+          Array.isArray(pf.days) &&
+          pf.days.length > 0 &&
+          pf.days.length <= 7 &&
+          pf.days.every((d) => texts(d, ['kwh', 'low', 'high'])) &&
+          texts(pf.blocks, ['start', 'end', 'amps', 'kwh', 'reason']);
+        if (ok) fields = pf as unknown as PlanFields;
+        else
+          errors.push(
+            `${at}.plan.fields: { text, madeAt, soc, socMin, days: [{ kwh, low, high }], blocks: { start, end, amps, kwh, reason } }`,
+          );
+      }
+      if (
+        isObj(plan) &&
+        plan.span !== undefined &&
+        plan.span !== 'quantiles' &&
+        plan.span !== 'cautious-good'
+      ) {
+        errors.push(`${at}.plan.span: "quantiles" or "cautious-good"`);
+      }
       const opt = (k: string) => (isText(sess[k]) ? { [k]: String(sess[k]) } : {});
       charging = {
         sessions: {
@@ -592,12 +633,16 @@ export function validateMapping(
           ...opt('id'),
         },
         ...(typeof c.power === 'string' ? { power: c.power } : {}),
+        ...(typeof c.maxKw === 'number' ? { maxKw: c.maxKw } : {}),
+        ...(isObj(c.sources) ? { sources: c.sources as Record<string, Starter> } : {}),
         ...(typeof c.gridMeter === 'string' ? { gridMeter: c.gridMeter } : {}),
         ...(isObj(plan)
           ? {
               plan: {
                 summaryUrl: String(plan.summaryUrl),
                 ...(plan.blocksUrl ? { blocksUrl: String(plan.blocksUrl) } : {}),
+                fields: fields ?? PLAN_FIELDS,
+                span: plan.span === 'cautious-good' ? 'cautious-good' : 'quantiles',
               },
             }
           : {}),
