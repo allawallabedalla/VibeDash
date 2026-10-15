@@ -386,7 +386,6 @@ export const en: Record<MessageKey, string> = {
   'week.fromSun': 'sun directly',
   'week.fromBattery': 'from the battery',
   'week.fromGrid': 'from the grid',
-  'week.flowNote': 'Meters; battery ≈ summed up from power (no battery meter).',
   'week.todayUntil': 'today until {time}',
   'week.todayApart':
     'Completed days; {until} apart, not in the sums: sun {pv} · consumption {load} · grid {imp} kWh.',
@@ -403,4 +402,7 @@ export const en: Record<MessageKey, string> = {
   'info.gapNote': 'Silent {from}–{to} – the gap stays visible.',
   'info.outlier': 'At {time} a single odd value came in. Was the sensor briefly disturbed?',
   'info.outlierNote': 'The single value is flagged, not deleted.',
+  'week.days': '{n} of 7 days',
+  'week.flowNoteMeter': 'From meters, battery and direct use too.',
+  'week.flowNotePower': 'Meters; battery ≈ summed up from power (no battery meter mapped).',
 };

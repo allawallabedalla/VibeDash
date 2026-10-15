@@ -116,6 +116,30 @@ describe('dropCounterGlitches', () => {
     expect(counterResets(samples)).toEqual([{ t: M, from: 3000, to: 0.1 }]);
   });
 
+  it('drops a long run of zeros that ends back at the level (logger outage, DA-05)', () => {
+    const H = 60 * M;
+    const samples = [
+      { t: 0, v: 1000 },
+      { t: M, v: 0 },
+      { t: 30 * M, v: 0 },
+      { t: 5 * H, v: 1003 },
+    ];
+    expect(dropCounterGlitches(samples).map((s) => s.v)).toEqual([1000, 1003]);
+    expect(counterResets(samples)).toEqual([]);
+    const day = (t: number) => (t < 24 * H ? 'd1' : 'd2');
+    expect(dailyFromCounter([{ t: -M, v: 999 }, ...samples], day)).toEqual([]);
+  });
+
+  it('keeps a real reset to 0 that grows from there', () => {
+    const samples = [
+      { t: 0, v: 1000 },
+      { t: M, v: 0 },
+      { t: 30 * M, v: 0.5 },
+      { t: 60 * M, v: 1.2 },
+    ];
+    expect(counterResets(samples)).toEqual([{ t: M, from: 1000, to: 0 }]);
+  });
+
   it('drops a glitch of several samples within the window', () => {
     const samples = [
       { t: 0, v: 50 },

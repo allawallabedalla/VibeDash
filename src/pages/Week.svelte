@@ -58,6 +58,14 @@
   ]);
 
   const kwh = (v: number | null) => (v === null ? '–' : num(v, v < 100 ? 1 : 0));
+  // "Woche davor 460 kWh", and how many days the sum covers when not all seven
+  const subOf = (n: number | undefined, before: number | undefined) =>
+    [
+      n !== undefined && n < 7 ? t('week.days', { n }) : '',
+      before === undefined ? '' : t('week.before', { v: kwh(before) }),
+    ]
+      .filter(Boolean)
+      .join(' · ') || undefined;
   const known = (v: (number | null)[]) => v.filter((x): x is number => x !== null);
   const socs = w.soc.filter((x) => x !== null);
   const socLow = socs.length ? Math.min(...socs.map((x) => x.low)) : null;
@@ -70,30 +78,35 @@
       label: t('week.sun'),
       icon: 'sun',
       color: 'var(--sun)',
-      value: kwh(w.total.pv),
+      value: kwh(w.total.pv?.value ?? null),
       unit: 'kWh',
-      sub: w.before.pv === null ? undefined : t('week.before', { v: kwh(w.before.pv) }),
+      sub: subOf(w.total.pv?.n, w.before.pv?.value),
       graphic: { kind: 'spark', values: w.pv, min: 0 },
     },
     {
       label: t('week.own'),
       icon: 'target',
       color: 'var(--battery)',
-      value: w.autarky === null ? '–' : num(w.autarky * 100),
+      value: w.autarky === null ? '–' : num(w.autarky.share * 100),
       unit: w.autarky === null ? undefined : '%',
       sub:
-        w.total.imp === null || w.total.load === null
+        w.autarky === null
           ? undefined
-          : t('week.ownSub', { imp: kwh(w.total.imp), load: kwh(w.total.load) }),
-      graphic: w.autarky === null ? undefined : { kind: 'ring', value: w.autarky },
+          : [
+              t('week.ownSub', { imp: kwh(w.autarky.imp), load: kwh(w.autarky.load) }),
+              w.autarky.n < 7 ? t('week.days', { n: w.autarky.n }) : '',
+            ]
+              .filter(Boolean)
+              .join(' · '),
+      graphic: w.autarky === null ? undefined : { kind: 'ring', value: w.autarky.share },
     },
     {
       label: t('week.import'),
       icon: 'grid',
       color: 'var(--import)',
-      value: kwh(w.total.imp),
+      value: kwh(w.total.imp?.value ?? null),
       unit: 'kWh',
-      sub: w.before.imp === null ? undefined : t('week.before', { v: kwh(w.before.imp) }),
+      sub: subOf(w.total.imp?.n, w.before.imp?.value),
       graphic: { kind: 'spark', values: w.imp, min: 0 },
     },
     {
@@ -126,22 +139,31 @@
   ]);
 
   // Where the solar power went and where the house power came from (week sums).
-  const charged = w.battery?.charged ?? null;
-  const discharged = w.battery?.discharged ?? null;
-  const direct =
-    w.total.pv === null || w.total.feed === null
-      ? null
-      : Math.max(0, w.total.pv - w.total.feed - (charged ?? 0));
+  const f = w.flows;
+  const est = f?.source === 'power';
   const whereTo = $derived([
-    { label: t('week.toHouse'), value: direct, color: 'var(--sun-soft)', approx: charged !== null },
-    { label: t('week.toBattery'), value: charged, color: 'var(--battery)', approx: true },
-    { label: t('week.toGrid'), value: w.total.feed, color: 'var(--feed)' },
+    { label: t('week.toHouse'), value: f?.direct ?? null, color: 'var(--sun-soft)', approx: est },
+    { label: t('week.toBattery'), value: f?.charged ?? null, color: 'var(--battery)', approx: est },
+    { label: t('week.toGrid'), value: f?.feed ?? null, color: 'var(--feed)' },
   ]);
   const whereFrom = $derived([
-    { label: t('week.fromSun'), value: direct, color: 'var(--sun-soft)', approx: charged !== null },
-    { label: t('week.fromBattery'), value: discharged, color: 'var(--battery)', approx: true },
-    { label: t('week.fromGrid'), value: w.total.imp, color: 'var(--import)' },
+    { label: t('week.fromSun'), value: f?.direct ?? null, color: 'var(--sun-soft)', approx: est },
+    {
+      label: t('week.fromBattery'),
+      value: f?.discharged ?? null,
+      color: 'var(--battery)',
+      approx: est,
+    },
+    { label: t('week.fromGrid'), value: f?.imp ?? null, color: 'var(--import)' },
   ]);
+  const flowNote = $derived(
+    [
+      f?.source === 'power' ? t('week.flowNotePower') : t('week.flowNoteMeter'),
+      f && f.n < 7 ? t('week.days', { n: f.n }) : '',
+    ]
+      .filter(Boolean)
+      .join(' '),
+  );
 
   const tsData = pvTimeSeries(house, 'week');
   // The made-up weather only exists for the demo household.
@@ -227,5 +249,5 @@
       <FlowBars flows={whereFrom} />
     </Card>
   </div>
-  <p class="muted-note">{t('week.flowNote')}</p>
+  <p class="muted-note">{flowNote}</p>
 </div>

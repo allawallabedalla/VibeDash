@@ -390,7 +390,6 @@ export const de = {
   'week.fromSun': 'Sonne direkt',
   'week.fromBattery': 'aus dem Akku',
   'week.fromGrid': 'aus dem Netz',
-  'week.flowNote': 'Zähler, Akku ≈ aus der Leistung summiert (kein Akku-Zähler).',
   'week.todayUntil': 'heute bis {time}',
   'week.todayApart':
     'Abgeschlossene Tage; {until} getrennt, nicht in den Summen: Sonne {pv} · Verbrauch {load} · Netz {imp} kWh.',
@@ -407,6 +406,9 @@ export const de = {
   'info.gapNote': '{from}–{to} ohne Meldung – die Lücke bleibt sichtbar.',
   'info.outlier': 'Um {time} kam ein auffälliger Einzelwert. War der Sensor kurz gestört?',
   'info.outlierNote': 'Der Einzelwert ist markiert, nicht gelöscht.',
+  'week.days': '{n} von 7 Tagen',
+  'week.flowNoteMeter': 'Aus Zählern, auch Akku und Sonne direkt.',
+  'week.flowNotePower': 'Zähler; Akku ≈ aus der Leistung summiert (kein Akku-Zähler zugeordnet).',
 } as const;
 
 export type MessageKey = keyof typeof de;

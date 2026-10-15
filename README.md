@@ -99,7 +99,9 @@ rebinding. The one write (`POST /api/location`) needs the page itself
 
 Optional keys per series: `device` groups the questions (e.g. "inverter"), `maxPerDay`
 leaves out implausible days of a meter, `helper: true` makes a series only an input for
-others, `aheadMs` also reads values stored ahead of time (forecasts, at most 7 days).
+others (a meter that a page shows, e.g. `battery_charge_energy`,
+`battery_discharge_energy` or `direct_energy` for the week's energy flows,
+must not be a helper), `aheadMs` also reads values stored ahead of time (forecasts, at most 7 days).
 A house that keeps its own hourly PV forecast maps it as `pv_forecast` (kind `power`,
 mean power of the hour starting at the timestamp), optionally `pv_forecast_low` /
 `pv_forecast_high` for the 10–90 % span; the "today" curve then uses it instead of the
