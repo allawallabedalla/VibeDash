@@ -282,6 +282,9 @@ export function validateMapping(
                   ? { tags: entry.history.tags as Record<string, string> }
                   : {}),
                 ...(typeof entry.history.scale === 'number' ? { scale: entry.history.scale } : {}),
+                ...(typeof entry.history.validBelow === 'number'
+                  ? { validBelow: entry.history.validBelow }
+                  : {}),
               },
             }
           : {}),
@@ -300,9 +303,12 @@ export function validateMapping(
           !isText(h.measurement) ||
           !isText(h.field) ||
           (h.tags !== undefined &&
-            (!isObj(h.tags) || !Object.values(h.tags).every((v) => isText(v))))
+            (!isObj(h.tags) || !Object.values(h.tags).every((v) => isText(v)))) ||
+          (h.validBelow !== undefined && !(typeof h.validBelow === 'number' && h.validBelow > 0))
         ) {
-          errors.push(`${at}.history: { measurement, field, tags? } of an older measurement`);
+          errors.push(
+            `${at}.history: { measurement, field, tags?, validBelow? } of an older measurement`,
+          );
         }
         if (entry.kind !== 'energy_counter') errors.push(`${at}.history: only for energy_counter`);
       }

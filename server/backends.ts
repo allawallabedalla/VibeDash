@@ -82,7 +82,8 @@ export function createBackends(
    * Daily energy of a meter over long ranges, cheaply: the last reading per
    * local day from InfluxDB (older days from `history`), each day the
    * difference to the day before. A drop or a day above maxPerDay is a gap
-   * (null), never a negative or a giant day.
+   * (null), never a negative or a giant day; a single reading below both
+   * neighbours (a dip) is dropped, so it makes neither a gap nor a giant day.
    */
   const dailyOf = async (
     m: SeriesMapping,
@@ -100,7 +101,11 @@ export function createBackends(
           (x) => x.t < first,
         )
       : [];
-    const readings = [...older, ...main];
+    const all = [...older, ...main];
+    const readings = all.filter(
+      (r, i) =>
+        !(i > 0 && i < all.length - 1 && r.v < all[i - 1]!.v && all[i + 1]!.v >= all[i - 1]!.v),
+    );
     const max = m.entity.maxPerDay ?? Infinity;
     const out: [number, number | null][] = [];
     for (let i = 1; i < readings.length; i++) {

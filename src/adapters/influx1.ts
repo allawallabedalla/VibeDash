@@ -41,7 +41,17 @@ export interface InfluxMapping {
    * Meters only: an older measurement of the same meter, used for daily
    * values on days before this one has any (e.g. a replaced logger).
    */
-  history?: { measurement: string; field: string; tags?: Record<string, string>; scale?: number };
+  /**
+   * Older measurement of the same meter. Only readings above 0 and below
+   * `validBelow` count (e.g. 6553.5 for a 16-bit counter that sticks or wraps).
+   */
+  history?: {
+    measurement: string;
+    field: string;
+    tags?: Record<string, string>;
+    scale?: number;
+    validBelow?: number;
+  };
 }
 
 /** Quote an identifier for InfluxQL ("name", with " and \ escaped). */
@@ -76,7 +86,7 @@ export function rawQuery(m: InfluxMapping, fromMs: number, toMs: number, rp?: st
 
 /** Last reading per local day in [fromMs, toMs) – cheap daily meter values for long ranges. */
 export function dailyLastQuery(
-  m: { measurement: string; field: string; tags?: Record<string, string> },
+  m: { measurement: string; field: string; tags?: Record<string, string>; validBelow?: number },
   fromMs: number,
   toMs: number,
   timeZone: string,
@@ -86,6 +96,9 @@ export function dailyLastQuery(
     `time >= ${Math.floor(fromMs)}ms`,
     `time < ${Math.floor(toMs)}ms`,
     ...Object.entries(m.tags ?? {}).map(([k, v]) => `${ident(k)} = ${literal(v)}`),
+    ...(m.validBelow !== undefined
+      ? [`${ident(m.field)} > 0`, `${ident(m.field)} < ${Number(m.validBelow)}`]
+      : []),
   ];
   const src = rp ? `${ident(rp)}.${ident(m.measurement)}` : ident(m.measurement);
   return `SELECT LAST(${ident(m.field)}) FROM ${src} WHERE ${where.join(' AND ')} GROUP BY time(1d) tz(${literal(timeZone)})`;
@@ -203,7 +216,13 @@ export function influxClient(config: InfluxConfig, fetchFn: FetchLike, timeoutMs
     },
     /** Last reading per local day (time = local midnight), nulls dropped. */
     async dailyLast(
-      m: { measurement: string; field: string; tags?: Record<string, string>; scale?: number },
+      m: {
+        measurement: string;
+        field: string;
+        tags?: Record<string, string>;
+        scale?: number;
+        validBelow?: number;
+      },
       fromMs: number,
       toMs: number,
       timeZone: string,

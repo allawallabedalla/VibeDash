@@ -418,7 +418,9 @@ export const en: Record<MessageKey, string> = {
   'year.sun': 'Solar',
   'year.import': 'Grid import',
   'year.feed': 'Feed-in',
-  'year.caption': 'daily values, 7-day mean · since 1 Jan {sum} kWh',
+  'year.caption': 'Daily values, 7-day mean',
+  'year.since': 'since {from}: {sum} kWh on {n} days',
+  'year.missing': '{n} days missing (not counted as 0)',
   'year.info.what':
     'Year curve per day from meter readings; pale line = previous year once there is data for it.',
   'year.info.source':

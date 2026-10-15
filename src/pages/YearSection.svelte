@@ -9,7 +9,7 @@
   import YearCard from '../components/YearCard.svelte';
   import { demoDaily, type DemoData, type YearKind } from '../demo';
   import { i18n, num, t } from '../i18n/index.svelte';
-  import { localDateKey } from '../model/time';
+  import { localDateKey, localMidnight } from '../model/time';
   import { yearLines } from '../model/year';
   import type { IconName } from '../components/Icon.svelte';
 
@@ -97,14 +97,30 @@
         const r = rows[tp.id]!.filter(([t0]) => localDateKey(t0 + 12 * 3_600_000, tz) !== today);
         const last = [...r].reverse().find(([, v]) => v !== null);
         const year = new Date(house.now).getUTCFullYear();
-        const sinceJan = r
-          .filter(([t0]) => localDateKey(t0 + 12 * 3_600_000, tz).startsWith(String(year)))
-          .reduce((s, [, v]) => s + (v ?? 0), 0);
+        // this year: only days with a value count, a missing day is not 0 (N-01)
+        const thisYear = r.filter(([t0]) =>
+          localDateKey(t0 + 12 * 3_600_000, tz).startsWith(String(year)),
+        );
+        const known = thisYear.filter(([, v]) => v !== null);
+        const sum = known.reduce((s, [, v]) => s + v!, 0);
+        const fromDay = known[0]?.[0];
+        // calendar days from the first known day to yesterday without a value
+        // (also days the server has no row for at all)
+        const span = known.length
+          ? Math.round((localMidnight(house.now, tz) - localMidnight(fromDay!, tz)) / 86_400_000)
+          : 0;
+        const missing = Math.max(0, span - known.length);
+        const sums = known.length
+          ? t('year.since', { from: dm(fromDay!), sum: num(sum), n: known.length }) +
+            (missing ? ` · ${t('year.missing', { n: missing })}` : '')
+          : '';
         return {
           ...tp,
           value: last ? num(last[1]!, last[1]! < 10 ? 1 : 0) : '–',
           lines: yearLines(r, tz),
-          caption: (demo ? `${t('year.demo')} · ` : '') + t('year.caption', { sum: num(sinceJan) }),
+          caption: [demo ? t('year.demo') : '', t('year.caption'), sums]
+            .filter(Boolean)
+            .join(' · '),
           endLabel: last ? dm(last[0]) : '',
         };
       }),

@@ -422,7 +422,9 @@ export const de = {
   'year.sun': 'Sonnenstrom',
   'year.import': 'Netzbezug',
   'year.feed': 'Einspeisung',
-  'year.caption': 'Tageswerte, Mittel über 7 Tage · seit 1.1. {sum} kWh',
+  'year.caption': 'Tageswerte, Mittel über 7 Tage',
+  'year.since': 'seit {from}: {sum} kWh an {n} Tagen',
+  'year.missing': '{n} Tage fehlen (nicht als 0 gezählt)',
   'year.info.what':
     'Jahreskurve je Tag aus Zählerständen; blasse Linie = Vorjahr, sobald es Daten dafür gibt.',
   'year.info.source':
