@@ -60,6 +60,8 @@ export interface ApiDeps {
   weather?: {
     /** false when WEATHER=off: no external request at all */
     enabled: boolean;
+    /** false when LOCATION_WRITE=off: the location can only be set in .env */
+    writable?: boolean;
     location: () => Promise<ResolvedLocation | null>;
     setLocation: (l: Location & { name?: string }) => Promise<ResolvedLocation>;
     geocode: (place: string, language: string) => Promise<(Location & { name: string }) | null>;
@@ -73,6 +75,8 @@ export interface RequestInfo {
   contentType?: string;
   origin?: string;
   host?: string;
+  /** Sec-Fetch-Site from the browser: "same-origin" for the page itself. */
+  fetchSite?: string;
 }
 
 function timeoutOr(e: Error, log: (m: string) => void, what: string): ApiResult {
@@ -90,9 +94,14 @@ async function handleLocation(method: string, deps: ApiDeps, req: RequestInfo): 
   if (method === 'GET') {
     return json(200, { enabled: w.enabled, location: w.enabled ? await w.location() : null });
   }
-  // The only write: same origin, JSON, tiny body.
+  // The only write: switchable, same origin, JSON, tiny body.
   if (!w.enabled) return json(409, { error: 'weather_off' });
+  if (w.writable === false) return json(403, { error: 'location_write_off' });
   if (req.origin && req.host && new URL(req.origin).host !== req.host) {
+    return json(403, { error: 'cross_origin' });
+  }
+  // a browser says where the request comes from; only the page itself may write
+  if (req.fetchSite && req.fetchSite !== 'same-origin') {
     return json(403, { error: 'cross_origin' });
   }
   if (!(req.contentType ?? '').includes('application/json')) {

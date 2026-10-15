@@ -271,3 +271,47 @@ describe('series stored ahead of time', () => {
     expect(validateMapping(raw).ok).toBe(false);
   });
 });
+
+describe('host check and the one write (Audit01 S-01, S-02)', () => {
+  it('knows localhost and the names given, nothing else', async () => {
+    const { allowedHosts, hostOf } = await import('../../server/hosts');
+    const h = allowedHosts({ ALLOWED_HOSTS: 'dashboard.home, 10.0.0.5' });
+    expect(h.has('localhost') && h.has('127.0.0.1') && h.has('dashboard.home')).toBe(true);
+    expect(h.has('10.0.0.5')).toBe(true);
+    expect(h.has('evil.example')).toBe(false);
+    expect(hostOf('Evil.Example:8095')).toBe('evil.example');
+    expect(hostOf('[::1]:8095')).toBe('::1');
+    expect(hostOf('localhost')).toBe('localhost');
+  });
+
+  it('binds to this machine only unless HOST says otherwise', () => {
+    expect(readConfig({}).config.host).toBe('127.0.0.1');
+    expect(readConfig({ HOST: '0.0.0.0' }).config.host).toBe('0.0.0.0');
+  });
+
+  it('refuses a location write from another site or when switched off', async () => {
+    let saved = 0;
+    const weather = {
+      enabled: true,
+      location: async () => null,
+      setLocation: async (l: { lat: number; lon: number }) => {
+        saved++;
+        return { ...l, source: 'settings' as const };
+      },
+      geocode: async () => null,
+      forecast: async () => [],
+    };
+    const post = (w: object, fetchSite?: string) =>
+      handleApi('POST', new URL('http://x/api/location'), deps({ weather: w as never }), {
+        body: '{"lat":50,"lon":8}',
+        contentType: 'application/json',
+        host: 'x',
+        fetchSite,
+      });
+    expect((await post(weather, 'cross-site')).status).toBe(403);
+    expect((await post({ ...weather, writable: false }, 'same-origin')).status).toBe(403);
+    expect(saved).toBe(0);
+    expect((await post(weather, 'same-origin')).status).toBe(200);
+    expect(saved).toBe(1);
+  });
+});

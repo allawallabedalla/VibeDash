@@ -89,6 +89,14 @@ step (`scripts/release.sh rollback` goes back). Config (`.env`,
 `local/mapping.json`) lives in `~/.config/vibedash`. `deploy/vibedash.service`
 is a hardened user unit (no privilege gain, read-only system and home).
 
+**Network** (Audit01 S-01/S-02): the server listens on this machine only
+(`HOST=127.0.0.1`) unless `.env` says `HOST=0.0.0.0`. It answers only Host
+names it knows (this machine's name and addresses, `localhost`, plus
+`ALLOWED_HOSTS`) – a page on a foreign domain cannot reach it by DNS
+rebinding. The one write (`POST /api/location`) needs the page itself
+(`Sec-Fetch-Site: same-origin`) and can be switched off with
+`LOCATION_WRITE=off`.
+
 Optional keys per series: `device` groups the questions (e.g. "inverter"), `maxPerDay`
 leaves out implausible days of a meter, `helper: true` makes a series only an input for
 others, `aheadMs` also reads values stored ahead of time (forecasts, at most 7 days).

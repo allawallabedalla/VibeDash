@@ -66,7 +66,8 @@ export function readConfig(env: Record<string, string | undefined>): {
 
   return {
     config: {
-      host: env.HOST ?? '0.0.0.0',
+      // only this machine unless HOST says otherwise (Audit01 S-02)
+      host: env.HOST ?? '127.0.0.1',
       port,
       mappingPath: env.MAPPING_PATH ?? 'local/mapping.json',
       distDir: env.DIST_DIR ?? 'dist',
