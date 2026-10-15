@@ -106,7 +106,15 @@ async function handleLocation(method: string, deps: ApiDeps, req: RequestInfo): 
   // The only write: switchable, same origin, JSON, tiny body.
   if (!w.enabled) return json(409, { error: 'weather_off' });
   if (w.writable === false) return json(403, { error: 'location_write_off' });
-  if (req.origin && req.host && new URL(req.origin).host !== req.host) {
+  // every browser sends Origin on a POST; without it (curl, scripts) no write (Audit02 B-04)
+  const originHost = (() => {
+    try {
+      return req.origin ? new URL(req.origin).host : null;
+    } catch {
+      return null;
+    }
+  })();
+  if (!originHost || !req.host || originHost !== req.host) {
     return json(403, { error: 'cross_origin' });
   }
   // a browser says where the request comes from; only the page itself may write

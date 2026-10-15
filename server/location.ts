@@ -4,7 +4,7 @@
  * person) → Home Assistant's own location (/api/config). Always rounded to
  * about 1 km. Stored only locally.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { FetchLike } from '../src/adapters/influx1';
 import { roundLocation, validLocation, type Location } from '../src/adapters/openmeteo';
@@ -51,7 +51,10 @@ export function writeSettings(path: string, l: Location & { name?: string }): Re
   const name = l.name ? String(l.name).slice(0, 80) : undefined;
   current.location = { ...r, ...(name ? { name } : {}) };
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, JSON.stringify(current, null, 2) + '\n');
+  // atomic: a crash mid-write never leaves half a file (Audit02 B-04)
+  const tmp = `${path}.${process.pid}.tmp`;
+  writeFileSync(tmp, JSON.stringify(current, null, 2) + '\n', { mode: 0o600 });
+  renameSync(tmp, path);
   return { ...r, source: 'settings', ...(name ? { name } : {}) };
 }
 

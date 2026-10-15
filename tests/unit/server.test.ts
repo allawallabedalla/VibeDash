@@ -301,14 +301,18 @@ describe('host check and the one write (Audit01 S-01, S-02)', () => {
       geocode: async () => null,
       forecast: async () => [],
     };
-    const post = (w: object, fetchSite?: string) =>
+    const post = (w: object, fetchSite?: string, origin: string | null = 'http://x') =>
       handleApi('POST', new URL('http://x/api/location'), deps({ weather: w as never }), {
         body: '{"lat":50,"lon":8}',
         contentType: 'application/json',
         host: 'x',
         fetchSite,
+        ...(origin ? { origin } : {}),
       });
     expect((await post(weather, 'cross-site')).status).toBe(403);
+    // no Origin (curl, a script) or a foreign one: no write (Audit02 B-04)
+    expect((await post(weather, undefined, null)).status).toBe(403);
+    expect((await post(weather, 'same-origin', 'http://evil.example')).status).toBe(403);
     expect((await post({ ...weather, writable: false }, 'same-origin')).status).toBe(403);
     expect(saved).toBe(0);
     expect((await post(weather, 'same-origin')).status).toBe(200);
