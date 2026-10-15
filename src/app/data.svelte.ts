@@ -33,6 +33,13 @@ let state = $state<State>({ status: 'loading' });
 let version = $state(0);
 let evcc = $state(false);
 let charging = $state(false);
+/** Extra pages from house services (mapping.boards): tab id, title, icon name. */
+export interface BoardTab {
+  id: string;
+  title: string;
+  icon: string;
+}
+let boards = $state<BoardTab[]>([]);
 let pv = $state(false);
 let plan = $state(false);
 
@@ -159,6 +166,18 @@ export async function load(): Promise<void> {
     | undefined;
   evcc = body?.evcc === true;
   charging = (body as { charging?: boolean } | undefined)?.charging === true;
+  const bs = (body as { boards?: unknown } | undefined)?.boards;
+  boards = Array.isArray(bs)
+    ? bs
+        .filter(
+          (b): b is BoardTab => !!b && typeof b.id === 'string' && typeof b.title === 'string',
+        )
+        .map((b) => ({
+          id: b.id,
+          title: b.title,
+          icon: typeof b.icon === 'string' ? b.icon : 'info',
+        }))
+    : [];
   pv = body?.pv === true;
   plan = body?.plan === true;
   if (health?.status === 200 && body?.source === 'live' && body.timeZone) {
@@ -198,6 +217,10 @@ export const store = {
   /** charging from the house's own records (read-only), without evcc */
   get charging(): boolean {
     return charging;
+  },
+  /** Boards (extra pages from house services), in mapping order. */
+  get boards(): BoardTab[] {
+    return boards;
   },
   /** Changes on every (re)load; pages are keyed on it. */
   get version(): number {

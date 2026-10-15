@@ -108,7 +108,8 @@
       // no forecast line – the tile still shows the measured values
     }
   });
-  // one period for the page: the sun curve and the autarky follow it
+  // the period switch sits at the curve it filters; the autarky tile above is
+  // always today, the autarky of the chosen period stands under the curve
   let period = $state<Period>('day');
   const row1 = $derived([
     sunTile(house, sunFc),
@@ -119,7 +120,7 @@
   const row2 = $derived([
     yieldTodayTile(house),
     tomorrowTile(house),
-    autarkyTile(house, period),
+    autarkyTile(house, 'day'),
     tempTile(house),
   ]);
 
@@ -140,9 +141,19 @@
     });
     return `${f.format(n.from)}–${tf.format(n.to)}`;
   };
+  const periodAutarky = $derived.by(() => {
+    if (period === 'day') return '';
+    const a = autarkyTile(house, period);
+    return a.value === '–' ? '' : t('ts.autarky', { pct: a.value, sub: a.sub ?? '' });
+  });
   const chartNote = $derived(
-    notesIn(house.notes, tsData.x[0] ?? 0, (tsData.x.at(-1) ?? 0) + 86_400_000)
-      .map((n) => t('notes.gap', { when: span(n), text: n.text }))
+    [
+      periodAutarky,
+      ...notesIn(house.notes, tsData.x[0] ?? 0, (tsData.x.at(-1) ?? 0) + 86_400_000).map((n) =>
+        t('notes.gap', { when: span(n), text: n.text }),
+      ),
+    ]
+      .filter(Boolean)
       .join(' · ') || undefined,
   );
   const known = $derived(
@@ -169,20 +180,6 @@
 
   <div class="status"><StatusBar label={t('status.label')} items={status} /></div>
 
-  <div class="period">
-    <Segmented
-      options={[
-        { id: 'day', label: t('ts.day') },
-        { id: 'week', label: t('ts.week') },
-        { id: 'month', label: t('ts.month') },
-        { id: 'span1', label: t('ts.span1') },
-        { id: 'span', label: t('ts.span') },
-      ]}
-      bind:value={() => period, (v) => (period = v as Period)}
-      label={t('page.period')}
-    />
-  </div>
-
   <WeatherDaysCard {house} />
   <div class="row-gap"></div>
 
@@ -194,7 +191,22 @@
     {#each row2 as tile (tile.label)}<Tile {...tile} />{/each}
   </TileRow>
 
-  <h2>{period === 'day' ? t('page.today') : t('page.period')}</h2>
+  <div class="period-head">
+    <h2>{period === 'day' ? t('page.today') : t('page.period')}</h2>
+    <div class="period">
+      <Segmented
+        options={[
+          { id: 'day', label: t('ts.day') },
+          { id: 'week', label: t('ts.week') },
+          { id: 'month', label: t('ts.month') },
+          { id: 'span1', label: t('ts.span1') },
+          { id: 'span', label: t('ts.span') },
+        ]}
+        bind:value={() => period, (v) => (period = v as Period)}
+        label={t('page.period')}
+      />
+    </div>
+  </div>
   <div class="cards wide-left">
     <Card title={t('ts.title')} icon="sun" color="var(--sun)" note={chartNote}>
       <!-- the chart library loads after the first paint (first page < 200 KB JS) -->
@@ -206,6 +218,7 @@
           labels={{
             actual: t('ts.actual'),
             forecast: t(`ts.fc.${tsData.kind}`),
+            recomputed: t('ts.fc.recomputed'),
             band: t('ts.band'),
             periods: t('ts.periods'),
             empty: t('state.noData'),
@@ -280,8 +293,16 @@
   .status {
     margin: 16px 0 16px;
   }
-  .period {
-    margin: 0 0 16px;
+  /* heading, then the switch on the left, right above the curve it filters */
+  .period-head {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0 0 12px;
+  }
+  .period-head h2 {
+    margin: 0;
   }
   .qgroup + .qgroup {
     border-top: 1px solid var(--line);

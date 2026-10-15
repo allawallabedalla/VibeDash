@@ -81,11 +81,23 @@ export interface Note {
   text: string;
 }
 
+export interface BoardMapping {
+  id: string;
+  title: string;
+  icon: string;
+  url: string;
+}
+
 export interface Mapping {
   timeZone: string;
   notes?: Note[];
   /** Car charging from the house's own records (read-only), see server/charging.ts. */
   charging?: ChargingMapping;
+  /**
+   * Extra pages whose content a house service supplies (src/model/board.ts):
+   * id in the address (#/b/<id>), title and icon of the tab, url the server asks.
+   */
+  boards?: BoardMapping[];
   series: Record<string, SeriesMapping>;
   forecasts: Record<string, ForecastMapping>;
   pv?: PvMapping;
@@ -152,9 +164,17 @@ export function validateMapping(
 
   for (const key of Object.keys(raw)) {
     if (
-      !['timeZone', 'series', 'forecasts', 'pv', 'plan', 'notes', 'charging', '$comment'].includes(
-        key,
-      )
+      ![
+        'timeZone',
+        'series',
+        'forecasts',
+        'pv',
+        'plan',
+        'notes',
+        'charging',
+        'boards',
+        '$comment',
+      ].includes(key)
     ) {
       errors.push(`mapping.${key}: unknown key`);
     }
@@ -650,12 +670,40 @@ export function validateMapping(
     }
   }
 
+  const boards: BoardMapping[] = [];
+  if (raw.boards !== undefined) {
+    const url = (u: unknown) => typeof u === 'string' && /^https?:\/\/[^\s]+$/.test(u);
+    if (!Array.isArray(raw.boards)) errors.push('mapping.boards: list of { id, title, icon, url }');
+    else
+      raw.boards.forEach((b, i) => {
+        const at = `mapping.boards[${i}]`;
+        if (
+          !isObj(b) ||
+          typeof b.id !== 'string' ||
+          !/^[a-z][a-z0-9_-]{0,31}$/.test(b.id) ||
+          !isText(b.title) ||
+          !url(b.url)
+        ) {
+          errors.push(`${at}: { id (a-z0-9_-), title, icon?, url (http/https) }`);
+          return;
+        }
+        if (boards.some((x) => x.id === b.id)) errors.push(`${at}.id: twice`);
+        boards.push({
+          id: b.id,
+          title: String(b.title).slice(0, 30),
+          icon: typeof b.icon === 'string' ? b.icon.slice(0, 20) : 'info',
+          url: String(b.url),
+        });
+      });
+  }
+
   if (errors.length > 0) return { ok: false, errors };
   return {
     ok: true,
     mapping: {
       timeZone: raw.timeZone as string,
       ...(notes.length ? { notes } : {}),
+      ...(boards.length ? { boards } : {}),
       ...(charging ? { charging } : {}),
       series,
       forecasts,

@@ -22,6 +22,7 @@ import type { ResolvedLocation } from './location';
 import { readConfig } from './config';
 import { sourcesOf, validateMapping } from './mapping';
 import { staticFile } from './static';
+import { sanitizeBoard } from '../src/model/board';
 
 const log = (msg: string) => console.log(`[vibedash] ${msg}`);
 
@@ -65,6 +66,16 @@ if (existsSync(config.mappingPath)) {
 if (process.argv.includes('--check')) {
   log('check ok');
   process.exit(0);
+}
+
+// Boards: extra pages whose content a house service supplies; checked and trimmed here.
+if (deps.mapping?.boards?.length) {
+  deps.board = async (b) => {
+    const r = await fetch(b.url, { signal: AbortSignal.timeout(config.timeoutMs) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return sanitizeBoard(await r.json());
+  };
+  log(`boards: ${deps.mapping.boards.map((b) => b.id).join(', ')}`);
 }
 
 // Car charging from the house's own records (read-only), when mapped and Influx is there.

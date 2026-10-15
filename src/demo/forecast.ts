@@ -7,7 +7,7 @@
  * - All forecasts share the same lead time, so the evaluation is fair.
  * - The forecast is checked against the meter reading, never against itself.
  */
-import { estimate, quantile, toGrid, valueAt } from '../model/series';
+import { estimate, freshFor, quantile, toGrid, valueAt } from '../model/series';
 import type { Estimate, Forecast } from '../model/types';
 import { addDays, dayStart, localDateKey, localHour, localMidnight } from '../model/time';
 import { CLEAR_SKY_DAY_KWH, clearSkyPower, type DemoData } from './generate';
@@ -234,7 +234,7 @@ export function sourcesAt(
   const at = (id: string): number | null => {
     const series = data.series[id]!;
     const s = valueAt(series.samples, t);
-    return s && t - s.t <= series.stepMs * 2.5 ? s.v : null;
+    return s && t - s.t <= freshFor(series.stepMs) ? s.v : null;
   };
   const load = at('load_power');
   const pv = at('pv_power');
@@ -252,18 +252,60 @@ export function sourcesAt(
  */
 export type Period = 'day' | 'week' | 'month' | 'span1' | 'span';
 
+/**
+ * Daily kWh of an hourly forecast series (kW per hour, stored at the hour's
+ * start) on one local day; null when fewer than 20 hours are there.
+ */
+function dayKwh(data: DemoData, id: string, start: number): number | null {
+  const s = data.series[id];
+  if (!s?.samples.length) return null;
+  const end = addDays(start, 1, data.timeZone);
+  const unit = data.entities.find((e) => e.id === id)?.unit;
+  const f = unit === 'W' ? 0.001 : 1;
+  let sum = 0;
+  let n = 0;
+  for (const p of s.samples) {
+    if (p.t < start || p.t >= end) continue;
+    sum += p.v * f;
+    n++;
+  }
+  return n >= 20 ? sum : null;
+}
+
+function houseDays(data: DemoData, todayStart: number, count: number): PvSeries | null {
+  if (!data.series.pv_forecast?.samples.length) return null;
+  const byDay = new Map(completeDays(data, 'pv_energy').map((d) => [d.day, d.value]));
+  const x: number[] = [];
+  const actual: (number | null)[] = [];
+  const forecast: (number | null)[] = [];
+  const recomputed: (number | null)[] = [];
+  for (let k = count - 1; k >= 0; k--) {
+    const start = addDays(todayStart, -k, data.timeZone);
+    x.push(start + 12 * HOUR);
+    actual.push(k === 0 ? null : (byDay.get(localDateKey(start, data.timeZone)) ?? null));
+    const real = dayKwh(data, 'pv_forecast', start);
+    forecast.push(real);
+    recomputed.push(real === null ? dayKwh(data, 'pv_forecast_recomputed', start) : null);
+  }
+  if (forecast.every((v) => v === null) && recomputed.every((v) => v === null)) return null;
+  const none = x.map(() => null);
+  return { kind: 'houseDays', x, actual, forecast, recomputed, low: none, high: none, unit: 'kWh' };
+}
+
 export interface PvSeries {
   /**
    * What the forecast line is: the built-in rule of thumb (median of the last
    * seven days), the house's own forecast made the evening before, or that
    * and – ahead – the house's newest run.
    */
-  kind: 'rule' | 'house' | 'houseSpan';
+  kind: 'rule' | 'house' | 'houseSpan' | 'houseDays';
   x: number[];
   actual: (number | null)[];
   forecast: (number | null)[];
   low: (number | null)[];
   high: (number | null)[];
+  /** houseDays: days whose forecast was computed afterwards (weather of back then) */
+  recomputed?: (number | null)[];
   unit: 'kW' | 'kWh';
 }
 
@@ -357,6 +399,12 @@ export function pvTimeSeries(data: DemoData, period: Period): PvSeries {
   if (period === 'span1') return pvSpan(data, todayStart, forecasts, 1);
 
   const count = period === 'week' ? 7 : 30;
+
+  // Days: the house's own forecast where it exists (evening before; days
+  // computed afterwards on their own dashed line), else the rule of thumb.
+  const house = houseDays(data, todayStart, count);
+  if (house) return house;
+
   const byDay = new Map(completeDays(data, 'pv_energy').map((d) => [d.day, d.value]));
   const x: number[] = [];
   const actual: (number | null)[] = [];

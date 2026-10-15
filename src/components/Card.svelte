@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import Explanation from './Explanation.svelte';
+  import { flip } from './flip';
   import Icon, { type IconName } from './Icon.svelte';
   import InfoButton from './InfoButton.svelte';
 
@@ -18,18 +19,22 @@
 
   const uid = $props.id();
   let open = $state(false);
+  let el = $state<HTMLElement>();
+  const toggle = () => flip(el, !open, () => (open = !open));
 </script>
 
-<section class="card">
+<section class="card" class:back={open} bind:this={el}>
   <header>
     {#if icon}<span class="icon" style:color><Icon name={icon} /></span>{/if}
     <h3>{title}</h3>
     <span class="spacer"></span>
     {#if actions}<div class="actions">{@render actions()}</div>{/if}
-    {#if info}<InfoButton bind:open controls="{uid}-info" />{/if}
+    {#if info}<InfoButton {open} ontoggle={toggle} controls="{uid}-info" />{/if}
   </header>
   {#if open && info}
-    <div id="{uid}-info"><Explanation what={info.what} source={info.source} /></div>
+    <div id="{uid}-info" class="flip-back">
+      <Explanation what={info.what} source={info.source} />
+    </div>
   {:else}
     {@render children()}
     {#if note}<p class="note">{note}</p>{/if}
@@ -65,6 +70,14 @@
   }
   .actions {
     margin: -6px 0;
+  }
+  .flip-back {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    /* a long explanation scrolls; the soft edge says there is more */
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent);
+    padding-bottom: 14px;
   }
   .note {
     margin: 0;

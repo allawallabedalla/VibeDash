@@ -9,7 +9,7 @@ import { sunToday, type SunForecast } from './sun-forecast';
 
 export { demoSunForecast, type SunForecast } from './sun-forecast';
 import { i18n, num, t, time } from '../i18n/index.svelte';
-import { lastReport, steadyValue } from '../model/series';
+import { freshFor, lastReport, steadyValue } from '../model/series';
 import { addDays, localDateKey, localMidnight } from '../model/time';
 
 const kw = (w: number | null) => (w === null ? null : w / 1000);
@@ -20,14 +20,11 @@ export function nowValue(data: DemoData, id: string): number {
   return latest(data, id)?.v ?? NaN;
 }
 
-/**
- * Current value, or null when the sensor has been silent for more than 2.5
- * steps: an old value is not "now".
- */
+/** Current value, or null when the sensor has been silent too long: an old value is not "now". */
 export function freshValue(data: DemoData, id: string): number | null {
   const s = latest(data, id);
   const step = data.series[id]?.stepMs ?? 60_000;
-  return s && data.now - s.t <= step * 2.5 ? s.v : null;
+  return s && data.now - s.t <= freshFor(step) ? s.v : null;
 }
 
 /** Same tile, but honest about missing data: a dash and the reason, no graphic. */
@@ -73,7 +70,7 @@ export function reportedAt(data: DemoData, id: string): string | null {
   const s = data.series[id];
   if (!s?.held) return null;
   const last = lastReport(s, data.now);
-  if (last === null || data.now - last <= s.stepMs * 2.5) return null;
+  if (last === null || data.now - last <= freshFor(s.stepMs)) return null;
   return t('state.lastReport', { when: whenText(data, last) });
 }
 

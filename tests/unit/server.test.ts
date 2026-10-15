@@ -392,3 +392,32 @@ describe('answer cache and packed files (Audit02 B-08, DE2-05)', () => {
     expect(png.headers['Content-Encoding']).toBeUndefined();
   });
 });
+
+describe('boards (extra pages from house services)', () => {
+  it('lists the boards in health and serves only mapped ones, checked', async () => {
+    const r = validateMapping({
+      ...example,
+      boards: [{ id: 'garden', title: 'Garten', icon: 'leaf', url: 'http://127.0.0.1:9/garden' }],
+    });
+    if (!r.ok) throw new Error(r.errors.join());
+    let asked = 0;
+    const d = deps({
+      mapping: r.mapping,
+      board: async () => {
+        asked++;
+        return { updated: null, sections: [{ type: 'text', title: 'T', text: 'hallo' }] };
+      },
+    });
+    const h = await get('/api/health', d);
+    expect((h.body as { boards: unknown[] }).boards).toEqual([
+      { id: 'garden', title: 'Garten', icon: 'leaf' },
+    ]);
+    expect((await get('/api/board/garden', d)).status).toBe(200);
+    expect((await get('/api/board/other', d)).status).toBe(404);
+    expect(asked).toBe(1);
+    expect(
+      validateMapping({ ...example, boards: [{ id: 'Bad Id', title: 'x', url: 'file:///etc' }] })
+        .ok,
+    ).toBe(false);
+  });
+});

@@ -15,13 +15,22 @@
     forecast?: (number | null)[];
     low?: (number | null)[];
     high?: (number | null)[];
+    /** Forecast computed afterwards (weather of back then), drawn dashed and named as such. */
+    recomputed?: (number | null)[];
   }
 
   interface Props {
     data: SeriesData;
     periods: { id: string; label: string }[];
     period: string;
-    labels: { actual: string; forecast: string; band: string; periods: string; empty?: string };
+    labels: {
+      actual: string;
+      forecast: string;
+      band: string;
+      periods: string;
+      empty?: string;
+      recomputed?: string;
+    };
     color?: string;
     forecastColor?: string;
     unit: string;
@@ -82,6 +91,10 @@
     const hourOf = (ms: number) => Number(fmtHour.format(ms));
     const stepMs = data.x.length > 1 ? data.x[1]! - data.x[0]! : 0;
     const hourly = spanDays > 1.5 && spanDays < 10 && stepMs > 0 && stepMs <= 3_600_000;
+    // one value per day (drawn at noon): the date sits right under its point,
+    // every k-th day so the labels keep their room – not on midnight between
+    const daily = stepMs >= 20 * 3_600_000;
+    const everyK = Math.max(1, Math.ceil((data.x.length * 72) / Math.max(1, box.clientWidth - 40)));
     const axis = {
       stroke: muted,
       grid: { stroke: line, width: 1 },
@@ -89,13 +102,16 @@
       font: '13px -apple-system, system-ui, sans-serif',
     };
     const spline = uPlot.paths.spline!();
-    const hasFc = !!data.forecast;
+    const hasRe = !!data.recomputed?.some((v) => v !== null);
+    const hasFc = !!data.forecast || hasRe;
+    const hasBand = !!data.low?.some((v) => v !== null);
     const few = data.x.length <= 31;
 
     const opts: uPlot.Options = {
       width: box.clientWidth,
       height,
-      padding: [8, 4, 0, 0],
+      // room on the right so the last date label is not cut off
+      padding: [8, 22, 0, 0],
       legend: { show: false },
       cursor: { show: false },
       tzDate: (ts) => uPlot.tzDate(new Date(ts * 1e3), timeZone),
@@ -114,7 +130,14 @@
                     .filter((t) => [0, ...(spanDays < 4 ? [12] : [])].includes(hourOf(t)))
                     .map((t) => t / 1e3),
               }
-            : {}),
+            : daily
+              ? {
+                  splits: () =>
+                    data.x
+                      .filter((_, i) => (data.x.length - 1 - i) % everyK === 0)
+                      .map((t) => t / 1e3),
+                }
+              : {}),
           values: (_u, splits) =>
             splits.map((s) =>
               spanDays > 1.5 && (!hourly || hourOf(s * 1e3) === 0)
@@ -153,13 +176,26 @@
             ]
           : []),
       ],
-      bands: hasFc ? [{ series: [3, 2], fill: alpha(fc, 0.07) }] : [],
+      bands: hasFc && hasBand ? [{ series: [3, 2], fill: alpha(fc, 0.07) }] : [],
     };
+    if (hasRe) {
+      opts.series.push({
+        label: labels.recomputed ?? '',
+        stroke: alpha(fc, 0.6),
+        width: 1.5,
+        dash: [5, 5],
+        paths: spline,
+        spanGaps: false,
+        points: { show: false },
+      });
+    }
 
     const xs = data.x.map((t) => t / 1e3);
+    const none = data.x.map(() => null);
     const rows: uPlot.AlignedData = hasFc
-      ? [xs, data.actual, data.low ?? [], data.high ?? [], data.forecast ?? []]
+      ? [xs, data.actual, data.low ?? none, data.high ?? none, data.forecast ?? none]
       : [xs, data.actual];
+    if (hasRe) (rows as unknown as (number | null)[][]).push(data.recomputed!);
     plot = new uPlot(opts, rows, box);
   }
 
@@ -194,8 +230,15 @@
       {#if data.actual.some((v) => v !== null)}
         <span><i class="l" style:background="var({color})"></i>{labels.actual}</span>
       {/if}
-      {#if data.forecast}
+      {#if data.forecast?.some((v) => v !== null)}
         <span><i class="l thin" style:background="var({forecastColor})"></i>{labels.forecast}</span>
+      {/if}
+      {#if data.recomputed?.some((v) => v !== null) && labels.recomputed}
+        <span
+          ><i class="l thin dashed" style:color="var({forecastColor})"></i>{labels.recomputed}</span
+        >
+      {/if}
+      {#if data.low?.some((v) => v !== null)}
         <span><i class="b" style:background="var({forecastColor})"></i>{labels.band}</span>
       {/if}
     </div>
@@ -254,6 +297,14 @@
   }
   .l.thin {
     height: 2px;
+    opacity: 0.75;
+  }
+  .l.dashed {
+    background: repeating-linear-gradient(
+      90deg,
+      currentColor 0 5px,
+      transparent 5px 9px
+    ) !important;
     opacity: 0.75;
   }
   .b {

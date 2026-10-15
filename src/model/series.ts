@@ -31,6 +31,14 @@ export function findGaps(
   return gaps;
 }
 
+/**
+ * How long a value counts as "now": 2.5 steps, but at least FRESH_MIN_MS – the
+ * server answers from a short cache (up to 20 s) and a sensor writes every few
+ * seconds, so a value can be ~30 s old without anything missing.
+ */
+export const FRESH_MIN_MS = 90_000;
+export const freshFor = (stepMs: number): number => Math.max(stepMs * 2.5, FRESH_MIN_MS);
+
 /** Time of the last real report at or before `at` (held sensors), else of the last sample. */
 export function lastReport(series: Series | undefined, at = Infinity): number | null {
   if (!series) return null;

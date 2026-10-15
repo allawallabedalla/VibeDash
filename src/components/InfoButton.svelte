@@ -3,8 +3,22 @@
   import { t } from '../i18n/index.svelte';
   import Icon from './Icon.svelte';
 
-  let { open = $bindable(false), controls }: { open?: boolean; controls: string } = $props();
+  let {
+    open = $bindable(false),
+    controls,
+    ontoggle,
+  }: { open?: boolean; controls: string; ontoggle?: () => void } = $props();
 </script>
+
+<!-- Escape closes an open explanation -->
+<svelte:window
+  onkeydown={(e) => {
+    if (open && e.key === 'Escape') {
+      if (ontoggle) ontoggle();
+      else open = false;
+    }
+  }}
+/>
 
 <button
   type="button"
@@ -12,7 +26,7 @@
   aria-expanded={open}
   aria-controls={controls}
   aria-label={open ? t('info.close') : t('info.open')}
-  onclick={() => (open = !open)}
+  onclick={() => (ontoggle ? ontoggle() : (open = !open))}
 >
   <Icon name={open ? 'close' : 'info'} size={18} />
 </button>

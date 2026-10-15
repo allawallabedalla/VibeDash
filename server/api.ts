@@ -15,7 +15,8 @@ import type { ChargeSession, ChargingNow, PlanSummary } from './charging';
 import type { ResolvedLocation } from './location';
 import { thinBefore } from '../src/model/series';
 import type { Series } from '../src/model/types';
-import { sourcesOf, type Mapping, type SeriesMapping } from './mapping';
+import { sourcesOf, type BoardMapping, type Mapping, type SeriesMapping } from './mapping';
+import type { Board } from '../src/model/board';
 
 export const RANGES = {
   '1h': 3_600_000,
@@ -44,6 +45,8 @@ export interface ApiDeps {
     sessions: (days: number) => Promise<ChargeSession[]>;
     plan: () => Promise<PlanSummary | null>;
   };
+  /** A board's content from its house service, checked (src/model/board.ts). */
+  board?: (b: BoardMapping) => Promise<Board | null>;
   /** Daily energy of a meter, [local day start, kWh or null]. */
   daily?: (m: SeriesMapping, fromMs: number, toMs: number) => Promise<[number, number | null][]>;
   now: () => number;
@@ -231,6 +234,26 @@ export async function handleApi(
       pv: Boolean(deps.pv),
       plan: Boolean(deps.plan),
       timeZone: deps.mapping?.timeZone ?? null,
+      boards: (deps.mapping?.boards ?? []).map(({ id, title, icon }) => ({ id, title, icon })),
+    });
+  }
+
+  const bm = /^\/api\/board\/([a-z][a-z0-9_-]{0,31})$/.exec(path);
+  if (bm) {
+    const b = deps.mapping?.boards?.find((x) => x.id === bm[1]);
+    if (!b || !deps.board) return json(404, { error: 'unknown_board' });
+    const get = deps.board;
+    return cached(deps, `board|${b.id}`, CACHE_MS.long / 2, async () => {
+      try {
+        const board = await get(b);
+        return board ? json(200, board) : json(502, { error: 'not_a_board' });
+      } catch (err) {
+        const e = err as Error;
+        if (e.name === 'TimeoutError' || e.name === 'AbortError')
+          return json(504, { error: 'timeout' });
+        deps.log(`board ${b.id}: ${e.message}`);
+        return json(502, { error: 'upstream' });
+      }
     });
   }
 

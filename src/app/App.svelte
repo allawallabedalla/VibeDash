@@ -5,7 +5,8 @@
   import Overview from '../pages/Overview.svelte';
   import { onMount } from 'svelte';
   import { currentSource, load, store } from './data.svelte';
-  import { router, type Route } from './router.svelte';
+  import { boardOf, router, type Route } from './router.svelte';
+  import { iconOf } from '../components/Icon.svelte';
 
   onMount(() => {
     void load();
@@ -25,6 +26,7 @@
     (store.state.status === 'ready' && currentSource() === 'demo')
       ? [{ id: 'charging', label: t('page.charging'), icon: 'plugCar' as const }]
       : []),
+    ...store.boards.map((b) => ({ id: `b/${b.id}`, label: b.title, icon: iconOf(b.icon) })),
   ]);
 
   function toggleTheme() {
@@ -111,6 +113,10 @@
         <!-- Pages after the first are loaded on demand (first page < 200 KB JS). -->
         {#await import('../pages/Forecasts.svelte') then { default: Forecasts }}<Forecasts
           />{/await}
+      {:else if boardOf(router.route)}
+        {#await import('../pages/BoardPage.svelte') then { default: BoardPage }}
+          <BoardPage id={boardOf(router.route)!} />
+        {/await}
       {:else if router.route === 'charging'}
         <!-- Loaded on demand: only homes with evcc need it. -->
         {#if store.charging && !store.evcc && !store.plan}
