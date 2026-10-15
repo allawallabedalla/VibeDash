@@ -10,6 +10,7 @@
   import type { Board, BoardColor, BoardTile } from '../model/board';
   import { i18n, t, time } from '../i18n/index.svelte';
   import AccuracyCard from '../components/AccuracyCard.svelte';
+  import BoardPlan from '../components/BoardPlan.svelte';
   import Card from '../components/Card.svelte';
   import DataTable, { type Column, type Row } from '../components/DataTable.svelte';
   import DayBars from '../components/DayBars.svelte';
@@ -95,7 +96,17 @@
     {#each view.b.sections as s, i (i)}
       <!-- tiles get the title as heading; cards carry it themselves -->
       {#if s.title && s.type === 'tiles'}<h2>{s.title}</h2>{/if}
-      {#if s.type === 'tiles'}
+      {#if s.type === 'plan'}
+        <Card
+          title={s.title || tab?.title || ''}
+          icon="home"
+          color="var(--home)"
+          note={s.note}
+          info={s.info}
+        >
+          <BoardPlan plan={s} timeZone={house.timeZone} />
+        </Card>
+      {:else if s.type === 'tiles'}
         <TileRow count={Math.min(4, s.tiles.length)}>
           {#each s.tiles as x, k (k)}<Tile {...tileOf(x)} />{/each}
         </TileRow>

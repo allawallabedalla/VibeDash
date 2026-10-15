@@ -57,3 +57,157 @@ describe('board from a house service: checked and trimmed', () => {
     expect(acc.models[0]).toMatchObject({ pct: 100, n: 0 });
   });
 });
+
+describe('board floor plan', () => {
+  it('keeps floors, rooms and views, drops broken geometry and unknown rooms', () => {
+    const b = sanitizeBoard({
+      sections: [
+        {
+          type: 'plan',
+          title: 'Plan',
+          floors: [
+            {
+              id: 'f1',
+              name: 'Ground',
+              box: [0, 0, 10, 8],
+              walls: [
+                [
+                  [0, 0],
+                  [10, 0],
+                ],
+                [[1, 'x']],
+              ],
+              rooms: [
+                {
+                  id: 'a',
+                  name: 'A',
+                  kind: 'room',
+                  polygon: [
+                    [0, 0],
+                    [5, 0],
+                    [5, 4],
+                    [0, 4],
+                  ],
+                  label: [2, 2],
+                },
+                {
+                  id: 'bad',
+                  name: 'two points',
+                  polygon: [
+                    [0, 0],
+                    [1, 1],
+                  ],
+                },
+                {
+                  id: 'c',
+                  name: 'C',
+                  kind: 'weird',
+                  polygon: [
+                    [5, 0],
+                    [9, 0],
+                    [9, 4],
+                  ],
+                  label: [7, 1],
+                },
+              ],
+            },
+          ],
+          views: [
+            { id: 't', label: 'Temp', kind: 'temp', unit: '°', values: { a: 21.5, ghost: 3 } },
+            { id: 'x', label: 'X', kind: 'nope', values: {} },
+          ],
+          details: { a: [{ label: 'Soll', value: '21 °C' }], ghost: [] },
+          timeline: { start: 0, stepMs: 900000, steps: 3, light: { a: [1, 0, 'x', 1] } },
+          link: { label: '3D', url: 'javascript:alert(1)' },
+        },
+      ],
+    })!;
+    const p = b.sections[0]!;
+    if (p.type !== 'plan') throw new Error();
+    expect(p.floors[0]!.rooms.map((r) => [r.id, r.kind])).toEqual([
+      ['a', 'room'],
+      ['c', 'room'],
+    ]);
+    expect(p.floors[0]!.walls).toEqual([
+      [
+        [0, 0],
+        [10, 0],
+      ],
+    ]);
+    expect(p.views.map((v) => v.id)).toEqual(['t']);
+    expect(p.views[0]!.values).toEqual({ a: 21.5 });
+    expect(Object.keys(p.details)).toEqual(['a']);
+    expect(p.timeline!.light.a).toEqual([1, 0, 0]);
+    expect(p.link).toBeUndefined();
+  });
+});
+
+describe('board floor plan in 3D', () => {
+  it('keeps walls, roof, stairs and blocks within limits, drops broken parts', () => {
+    const square = [
+      [0, 0],
+      [4, 0],
+      [4, 4],
+      [0, 4],
+    ];
+    const b = sanitizeBoard({
+      sections: [
+        {
+          type: 'plan',
+          floors: [
+            {
+              id: 'g',
+              name: 'G',
+              box: [0, 0, 4, 4],
+              rooms: [{ id: 'a', polygon: square, label: [2, 2] }],
+            },
+          ],
+          model3d: {
+            floors: [
+              {
+                id: 'g',
+                base: 0,
+                height: 2.75,
+                walls: [
+                  {
+                    outer: square,
+                    holes: [
+                      [
+                        [1, 1],
+                        [2, 1],
+                        [2, 2],
+                      ],
+                      [[1, 1]],
+                    ],
+                  },
+                ],
+              },
+              { id: 'empty', walls: [] },
+            ],
+            roof: [
+              [
+                [0, 0, 3],
+                [4, 0, 3],
+                [2, 2, 5],
+              ],
+              [[0, 0]],
+            ],
+            stairs: [
+              { x0: 1, x1: 2, y0: 0, y1: 3, steps: 999, height: 3 },
+              { x0: 2, x1: 1 },
+            ],
+            blocks: [{ base: 0, height: 500, walls: [{ outer: square }] }],
+          },
+        },
+      ],
+    })!;
+    const p = b.sections[0]!;
+    if (p.type !== 'plan') throw new Error();
+    const m = p.model3d!;
+    expect(m.floors.map((f) => f.id)).toEqual(['g']);
+    expect(m.floors[0]!.walls[0]!.holes).toHaveLength(1);
+    expect(m.roof).toHaveLength(1);
+    expect(m.stairs).toEqual([{ x0: 1, x1: 2, y0: 0, y1: 3, base: 0, height: 3, steps: 40 }]);
+    expect(m.blocks[0]!.height).toBe(3);
+  });
+});
