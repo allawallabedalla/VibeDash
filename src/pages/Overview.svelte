@@ -71,13 +71,13 @@
     const x = Array.from({ length: 24 }, (_, h) => start + h * 3_600_000 + 1_800_000);
     const own = hourlyPvForecast(house, x);
     if (own && currentSource() !== 'demo') {
-      const w = (v: (number | null)[]) => v.map((k) => (k === null ? 0 : k * 1000));
+      // kW like the measured line (Audit02 DE2-01: W here made the measured line look flat)
       sunFc = {
         at: x.map((t) => t - 1_800_000),
         stepMs: 3_600_000,
-        p10: w(own.low.some((v) => v !== null) ? own.low : own.value),
-        p50: w(own.value),
-        p90: w(own.high.some((v) => v !== null) ? own.high : own.value),
+        p10: own.low.some((v) => v !== null) ? own.low : own.value,
+        p50: own.value,
+        p90: own.high.some((v) => v !== null) ? own.high : own.value,
       };
     }
   }

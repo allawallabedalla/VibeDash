@@ -77,11 +77,11 @@
         <Icon name="sun" size={14} />
         {#if d.pv}
           <span
-            >{t('wd.pv')}
-            {d.pv.approx ? '≈ ' : ''}{num(d.pv.value)} kWh</span
+            ><span class="pvword">{t('wd.pv')} </span>{d.pv.approx ? '≈ ' : ''}{num(d.pv.value)}
+            kWh</span
           >
         {:else}
-          <span>{t('wd.pv')} –</span>
+          <span><span class="pvword">{t('wd.pv')} </span>–</span>
         {/if}
       </div>
       {#if d.pv?.approx && d.pv.low !== undefined && d.pv.high !== undefined && d.pv.high > d.pv.low}
@@ -224,6 +224,18 @@
     }
     .temp b {
       font-size: 18px;
+    }
+    /* four days in a row: no word may push the card wider (Audit02 DE2-03) */
+    .day {
+      overflow: hidden;
+    }
+    .pvword {
+      display: none;
+    }
+    .pv,
+    .span {
+      white-space: normal;
+      font-size: 13px;
     }
   }
 </style>

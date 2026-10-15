@@ -16,7 +16,14 @@ const TYPES: Record<string, string> = {
 export async function staticFile(
   distDir: string,
   pathname: string,
-): Promise<{ status: number; type: string; body: Buffer; immutable: boolean } | null> {
+): Promise<{
+  status: number;
+  type: string;
+  body: Buffer;
+  immutable: boolean;
+  path: string;
+  mtimeMs: number;
+} | null> {
   const root = resolve(distDir);
   let rel: string;
   try {
@@ -35,6 +42,8 @@ export async function staticFile(
       type: TYPES[extname(file)] ?? 'application/octet-stream',
       body: await readFile(file),
       immutable: rel.startsWith('/assets/'),
+      path: file,
+      mtimeMs: s.mtimeMs,
     };
   } catch {
     return null;

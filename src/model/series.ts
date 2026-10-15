@@ -6,20 +6,27 @@ import type { Estimate, Gap, Sample, Series } from './types';
  * no real report came for longer than its hold time; the gap starts at the
  * last real report, not where the held value ran out.
  */
-export function findGaps(series: Series, factor = 2.5): Gap[] {
+export function findGaps(
+  series: Series,
+  factor = 2.5,
+  /** Shortest silence that counts at all: for steady series and for held ones. */
+  min: { steadyMs?: number; heldMs?: number } = {},
+): Gap[] {
   const gaps: Gap[] = [];
   if (series.held) {
     const r = series.held.reports;
+    const limit = Math.max(series.held.holdMs, min.heldMs ?? 0);
     for (let i = 1; i < r.length; i++) {
-      if (r[i]! - r[i - 1]! > series.held.holdMs) gaps.push({ from: r[i - 1]!, to: r[i]! });
+      if (r[i]! - r[i - 1]! > limit) gaps.push({ from: r[i - 1]!, to: r[i]! });
     }
     return gaps;
   }
   const s = series.samples;
+  const limit = Math.max(series.stepMs * factor, min.steadyMs ?? 0);
   for (let i = 1; i < s.length; i++) {
     const prev = s[i - 1]!;
     const cur = s[i]!;
-    if (cur.t - prev.t > series.stepMs * factor) gaps.push({ from: prev.t, to: cur.t });
+    if (cur.t - prev.t > limit) gaps.push({ from: prev.t, to: cur.t });
   }
   return gaps;
 }

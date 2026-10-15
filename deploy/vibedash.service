@@ -7,6 +7,10 @@
 [Unit]
 Description=VibeDash (read-only house dashboard)
 After=network-online.target
+# a release that keeps failing stops after 5 tries in 5 min (no endless loop);
+# scripts/release.sh notices it and goes back to the previous release
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Service]
 WorkingDirectory=%h/.config/vibedash
@@ -18,14 +22,16 @@ MemoryMax=768M
 TasksMax=64
 UMask=0077
 
-# Hardening: no privilege gain (blocks sudo/setuid), read-only system and home
-# except the settings file it may write, own /tmp, only network sockets.
+# Hardening: no privilege gain (blocks sudo/setuid), read-only system, own /tmp,
+# only network sockets. The home is hidden (Audit02 B-03): only the releases,
+# Node and the config are mounted in, read-only; writable only local/ (settings).
 NoNewPrivileges=yes
 PrivateTmp=yes
 PrivateUsers=yes
 ProtectSystem=strict
-ProtectHome=read-only
-ReadWritePaths=%h/.config/vibedash/local
+ProtectHome=tmpfs
+BindReadOnlyPaths=%h/.local/share/vibedash %h/.local/opt/node %h/.config/vibedash
+BindPaths=%h/.config/vibedash/local
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes

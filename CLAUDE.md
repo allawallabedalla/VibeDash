@@ -6,6 +6,7 @@ Vollständiger Hintergrund, Architektur und Fahrplan: **ANLEITUNG.md** (zuerst l
 ## Immer
 
 - **Keine echten Hausdaten** im Repo: keine Adressen, IPs, Gruppenadressen, Grundrisse, Namen, Screenshots echter Häuser. Entwicklung und Tests nur mit synthetischen Demo-Daten. Zugangsdaten nur in `.env` (in `.gitignore`).
+- **Audits im Repo nur als Zusammenfassung** (ohne Messwerte, Screenshots, Hausnamen); Detailberichte bleiben lokal beim Betreiber (Audit02 B-05).
 - **Design-Regeln aus ANLEITUNG.md Abschnitt 5 sind verbindlich.** Kurz:
   - erste Ebene = Kacheln mit Mini-Grafik, Tabellen nur als zweiter Abschnitt darunter
   - Outline-Icon + 1–2 Wörter, **keine Emojis**, keine Symbolketten
