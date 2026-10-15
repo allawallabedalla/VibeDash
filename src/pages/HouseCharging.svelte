@@ -15,6 +15,7 @@
   import { addDays, localDateKey, localMidnight } from '../model/time';
   import ChargeTrace from './ChargeTrace.svelte';
   import PageHead from './PageHead.svelte';
+  import { carNext } from '../model/outlook';
 
   interface Session {
     start: number;
@@ -98,6 +99,17 @@
         : t('hc.range', { low: num(d.low), high: num(d.high) })
       : undefined;
 
+  // what comes next: the end of the running plan block (or "outside the plan")
+  const untilText = $derived.by(() => {
+    if (view.s !== 'ready' || !view.a.now.running) return '';
+    const c = carNext(Date.now(), true, view.a.plan?.blocks ?? []);
+    return c?.kind === 'until'
+      ? ` · ${t('hc.until', { time: time(c.at, tz) })}`
+      : c?.kind === 'outside'
+        ? ` · ${t('hc.outsidePlan')}`
+        : '';
+  });
+
   const tiles = $derived.by<TileProps[]>(() => {
     if (view.s !== 'ready') return [];
     const { now, sessions, plan, span, maxKw } = view.a;
@@ -140,7 +152,7 @@
         value: now.running && kw !== null ? num(kw, 1) : now.running ? '…' : '0',
         unit: 'kW',
         sub: now.running
-          ? t('hc.since', { time: time(now.since!, tz), who: who(now.source) })
+          ? t('hc.since', { time: time(now.since!, tz), who: who(now.source) }) + untilText
           : t('hc.notCharging'),
         ...(maxKw
           ? {

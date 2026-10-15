@@ -9,6 +9,9 @@
   import type { DemoData } from '../demo';
   import { valueAt } from '../model/series';
   import { energyFlows, type FlowInput } from '../model/flows';
+  import { batteryNext, carNext, duration, type PlanBlock } from '../model/outlook';
+  import { batteryCapacityKwh } from '../app/tiles';
+  import { localDateKey } from '../model/time';
   import { num, t, time } from '../i18n/index.svelte';
   import Card from '../components/Card.svelte';
   import EnergyFlow from '../components/EnergyFlow.svelte';
@@ -31,6 +34,22 @@
   );
   const v = (id: (typeof IDS)[number]): number | null => values[id] ?? null;
   let car = $state<number | null>(null);
+  // the charge planner's view: is the car charging, which blocks are planned
+  let charge = $state<{ running: boolean; blocks: PlanBlock[] } | null>(null);
+  const loadCharge = async () => {
+    if (!store.charging) return;
+    try {
+      const r = await fetch('/api/charging?days=1', { signal: AbortSignal.timeout(20_000) });
+      if (!r.ok) return;
+      const a = (await r.json()) as {
+        now: { running: boolean };
+        plan: { blocks: PlanBlock[] } | null;
+      };
+      charge = { running: a.now.running, blocks: a.plan?.blocks ?? [] };
+    } catch {
+      // keep the last answer
+    }
+  };
   let stand = $state(untrack(() => house.now));
 
   const latest = async (id: string): Promise<number | null> => {
@@ -56,10 +75,17 @@
   onMount(() => {
     if (currentSource() === 'demo') return;
     void refresh();
+    void loadCharge();
     const timer = setInterval(() => {
       if (document.visibilityState === 'visible') void refresh();
     }, 30_000);
-    return () => clearInterval(timer);
+    const slow = setInterval(() => {
+      if (document.visibilityState === 'visible') void loadCharge();
+    }, 60_000);
+    return () => {
+      clearInterval(timer);
+      clearInterval(slow);
+    };
   });
 
   const input = $derived<FlowInput | null>(
@@ -74,6 +100,37 @@
         },
   );
   const flows = $derived(input ? energyFlows(input) : null);
+
+  // one line about what comes next: the car from the plan, the battery at this power
+  const outlook = $derived.by(() => {
+    const parts: string[] = [];
+    const tz = house.timeZone;
+    const clock = (at: number) =>
+      localDateKey(at, tz) === localDateKey(stand, tz)
+        ? time(at, tz)
+        : t('flow.next.tomorrow', { time: time(at, tz) });
+    if (charge) {
+      const c = carNext(stand, charge.running, charge.blocks);
+      if (c?.kind === 'until') {
+        parts.push(
+          c.kwhLeft !== null && c.kwhLeft >= 0.5
+            ? t('flow.next.carUntilKwh', { time: clock(c.at), kwh: num(c.kwhLeft) })
+            : t('flow.next.carUntil', { time: clock(c.at) }),
+        );
+      } else if (c?.kind === 'outside') parts.push(t('flow.next.carOutside'));
+      else if (c?.kind === 'next') parts.push(t('flow.next.carNext', { time: clock(c.at) }));
+    }
+    const b = flows
+      ? batteryNext(flows.battery, v('battery_soc'), batteryCapacityKwh(house))
+      : null;
+    if (b) {
+      const d = duration(b.hours, { over: t('flow.next.over') });
+      parts.push(
+        b.kind === 'full' ? t('flow.next.batFull', { d }) : t('flow.next.batLasts', { d }),
+      );
+    }
+    return parts;
+  });
 
   const summary = $derived.by(() => {
     if (!flows) return t('sources.gap');
@@ -96,7 +153,8 @@
   title={t('flow.title')}
   icon="bolt"
   color="var(--sun)"
-  note={t('flow.note', { time: time(stand, house.timeZone) })}
+  note={[...outlook, t('flow.asOf', { time: time(stand, house.timeZone) })].join(' · ')}
+  info={{ what: t('flow.info.what'), source: t('flow.info.source') }}
 >
   {#if flows}
     <EnergyFlow

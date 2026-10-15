@@ -82,6 +82,10 @@
     const hourOf = (ms: number) => Number(fmtHour.format(ms));
     const stepMs = data.x.length > 1 ? data.x[1]! - data.x[0]! : 0;
     const hourly = spanDays > 1.5 && spanDays < 10 && stepMs > 0 && stepMs <= 3_600_000;
+    // one value per day (drawn at noon): the date sits right under its point,
+    // every k-th day so the labels keep their room – not on midnight between
+    const daily = stepMs >= 20 * 3_600_000;
+    const everyK = Math.max(1, Math.ceil((data.x.length * 72) / Math.max(1, box.clientWidth - 40)));
     const axis = {
       stroke: muted,
       grid: { stroke: line, width: 1 },
@@ -114,7 +118,14 @@
                     .filter((t) => [0, ...(spanDays < 4 ? [12] : [])].includes(hourOf(t)))
                     .map((t) => t / 1e3),
               }
-            : {}),
+            : daily
+              ? {
+                  splits: () =>
+                    data.x
+                      .filter((_, i) => (data.x.length - 1 - i) % everyK === 0)
+                      .map((t) => t / 1e3),
+                }
+              : {}),
           values: (_u, splits) =>
             splits.map((s) =>
               spanDays > 1.5 && (!hourly || hourOf(s * 1e3) === 0)

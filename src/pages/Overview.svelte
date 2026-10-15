@@ -292,12 +292,12 @@
   .status {
     margin: 16px 0 16px;
   }
+  /* heading, then the switch on the left, right above the curve it filters */
   .period-head {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
     margin: 0 0 12px;
   }
   .period-head h2 {
