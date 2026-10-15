@@ -104,7 +104,7 @@
           ...tp,
           value: last ? num(last[1]!, last[1]! < 10 ? 1 : 0) : '–',
           lines: yearLines(r, tz),
-          caption: t('year.caption', { sum: num(sinceJan) }),
+          caption: (demo ? `${t('year.demo')} · ` : '') + t('year.caption', { sum: num(sinceJan) }),
           endLabel: last ? dm(last[0]) : '',
         };
       }),

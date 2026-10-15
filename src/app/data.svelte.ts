@@ -32,6 +32,7 @@ const RECENT_MS = 48 * 3_600_000; // only ask about gaps from the last two days
 let state = $state<State>({ status: 'loading' });
 let version = $state(0);
 let evcc = $state(false);
+let charging = $state(false);
 let pv = $state(false);
 let plan = $state(false);
 
@@ -149,6 +150,7 @@ export async function load(): Promise<void> {
       }
     | undefined;
   evcc = body?.evcc === true;
+  charging = (body as { charging?: boolean } | undefined)?.charging === true;
   pv = body?.pv === true;
   plan = body?.plan === true;
   if (health?.status === 200 && body?.source === 'live' && body.timeZone) {
@@ -184,6 +186,10 @@ export const store = {
   /** evcc is connected: charging page with sessions. */
   get evcc(): boolean {
     return evcc;
+  },
+  /** charging from the house's own records (read-only), without evcc */
+  get charging(): boolean {
+    return charging;
   },
   /** Changes on every (re)load; pages are keyed on it. */
   get version(): number {

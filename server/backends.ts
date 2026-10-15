@@ -1,6 +1,6 @@
 /** Wire the mapped series to their back-ends (InfluxDB, Home Assistant). */
 import { haClient } from '../src/adapters/homeassistant';
-import { influxClient, type FetchLike } from '../src/adapters/influx1';
+import { influxClient, type FetchLike, type InfluxResponse } from '../src/adapters/influx1';
 import { deriveCounter } from '../src/model/derive';
 import { holdForward } from '../src/model/series';
 import type { Series } from '../src/model/types';
@@ -16,6 +16,8 @@ export function createBackends(
       ok: true;
       series: (m: SeriesMapping, from: number, to: number) => Promise<Series>;
       daily: (m: SeriesMapping, from: number, to: number) => Promise<[number, number | null][]>;
+      /** raw InfluxQL for read-only helpers (charging records); null without Influx */
+      query: ((q: string) => Promise<InfluxResponse>) | null;
     }
   | { ok: false; errors: string[] } {
   const needed = sourcesOf(mapping);
@@ -114,5 +116,6 @@ export function createBackends(
     series: (m, from, to) =>
       m.source === 'derived' ? derived(m, from, to) : measured(m, from, to),
     daily: dailyOf,
+    query: influx ? influx.query : null,
   };
 }
