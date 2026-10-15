@@ -198,7 +198,6 @@
         <span><i class="l thin" style:background="var({forecastColor})"></i>{labels.forecast}</span>
         <span><i class="b" style:background="var({forecastColor})"></i>{labels.band}</span>
       {/if}
-      <span class="unit">{unit}</span>
     </div>
     {#if periods.length > 1}
       <div class="seg" role="group" aria-label={labels.periods}>
@@ -211,6 +210,8 @@
     {/if}
   </div>
   {#if isEmpty}<p class="empty">{labels.empty ?? '–'}</p>{/if}
+  <!-- the unit sits over the value axis, not in the legend (it read like "10–90 % kW") -->
+  {#if !isEmpty}<div class="unit">{unit}</div>{/if}
   <div
     class="plot"
     class:hidden={isEmpty}
@@ -263,6 +264,8 @@
   }
   .unit {
     color: var(--muted);
+    font-size: var(--small);
+    margin: 2px 0 -6px;
   }
   .seg {
     display: flex;

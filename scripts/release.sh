@@ -109,6 +109,12 @@ pnpm build >/dev/null
 # vite writes dist/ and dist-server/ in the checkout; the release gets its own copy
 cp -a dist "$tmp/dist"
 cp -a dist-server "$tmp/dist-server"
+# keep the previous release's page parts: a tab opened before the switch still
+# finds the files it asks for (hashed names, never overwritten)
+if [ -n "$now" ] && [ -d "$now/dist/assets" ]; then
+  # only files of the last 14 days, so old parts do not pile up release after release
+  find "$now/dist/assets" -maxdepth 1 -type f -mtime -14 -exec cp -pn {} "$tmp/dist/assets/" \; 2>/dev/null || true
+fi
 git rev-parse HEAD > "$tmp/COMMIT"
 check "$tmp" || { echo "the new build rejects .env or the mapping – not switched" >&2; exit 1; }
 [ -f "$MAPPING" ] && install -m 600 "$MAPPING" "$tmp/mapping.json"
