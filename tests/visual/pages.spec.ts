@@ -138,19 +138,30 @@ test('info opens by tap or click, not by hover', async ({ page, isMobile }, info
   await expect(tile.getByText('Was heißt das?')).toHaveCount(0);
 });
 
-test('time series period switch redraws the chart', async ({ page, isMobile }, info) => {
+test('the page period switch redraws the chart and the autarky', async ({
+  page,
+  isMobile,
+}, info) => {
   await page.goto('/?lang=de');
   const card = page.locator('.ts');
   const canvas = card.locator('canvas');
   await expect(canvas).toBeVisible();
   const before = await canvas.screenshot();
+  const autarky = page.locator('.tile', { hasText: 'Autarkie' });
+  const subBefore = await autarky.innerText();
 
-  const month = card.getByRole('button', { name: '30 Tage' });
+  const month = page.locator('.period').getByRole('button', { name: '30 Tage' });
   await tap(page, isMobile, month);
   await expect(month).toHaveAttribute('aria-pressed', 'true');
   const after = await canvas.screenshot();
   expect(after.equals(before)).toBe(false);
+  // the autarky now covers the 30 days, with their dates
+  expect(await autarky.innerText()).not.toBe(subBefore);
   await card.screenshot({ path: `screenshots/timeseries-month-${info.project.name}.png` });
+
+  // ±3 days: hourly, with the days ahead
+  await tap(page, isMobile, page.locator('.period').getByRole('button', { name: '±3 Tage' }));
+  await expect(canvas).toBeVisible();
 });
 
 test('tabs navigate between pages', async ({ page, isMobile }) => {
