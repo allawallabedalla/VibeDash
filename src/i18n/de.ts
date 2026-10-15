@@ -532,12 +532,16 @@ export const de = {
   'hc.tomorrow': 'Morgen',
   'hc.nowTitle': 'Jetzt',
   'hc.trace.title': 'Verlauf dieser Ladung',
-  'hc.trace.titleIdle': 'Verlauf der letzten 6 Stunden',
+  'hc.trace.titleH': 'Verlauf der letzten {h} Stunden',
+  'hc.trace.charge': 'Diese Ladung',
+  'hc.trace.period': 'Zeitraum',
+  'hc.trace.bin1': 'Minutenmittel',
+  'hc.trace.bin5': '5-Minuten-Mittel',
   'hc.trace.car': 'Auto',
   'hc.trace.feed': 'Einspeisung',
   'hc.trace.import': 'Netzbezug',
   'hc.trace.note':
-    'Minutenmittel in kW, Stand {time}, jede Minute neu. Geht das Auto in Stufen hoch, sollte die Einspeisung auf einen kleinen Rest fallen und kein Netzbezug entstehen.',
+    '{bin} in kW, Stand {time}, jede Minute neu. Geht das Auto in Stufen hoch, sollte die Einspeisung auf einen kleinen Rest fallen und kein Netzbezug entstehen.',
   'hc.trace.aria': 'Auto lädt mit {car} kW, Einspeisung {feed} kW',
   'hc.planTitle': 'Ladeplan',
   'hc.planNote':
