@@ -25,7 +25,7 @@
     >
       <div class="col">
         {#if v}
-          <span class="v">{num(v, v < 10 ? 1 : 0)}</span>
+          <span class="v">{num(v, Number.isInteger(v) || v >= 10 ? 0 : 1)}</span>
           <span class="bar" style:height="{(100 * v) / max}%" style:background={color}></span>
         {:else}
           <span class="dash"></span>

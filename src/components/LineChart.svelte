@@ -31,8 +31,10 @@
   const hi = $derived.by(() => {
     const m = Math.max(...all, 0);
     if (m <= 0) return 1;
+    // a round top close above the largest value (104 → 120, not 200)
     const p = 10 ** Math.floor(Math.log10(m));
-    return Math.ceil(m / p) * p;
+    const f = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find((k) => k * p >= m) ?? 10;
+    return f * p;
   });
   const from = $derived(x[0] ?? 0);
   const to = $derived(x.at(-1) ?? 1);

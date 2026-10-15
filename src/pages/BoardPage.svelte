@@ -93,7 +93,8 @@
       <p class="muted-note">{t('board.updated', { time: time(view.b.updated, house.timeZone) })}</p>
     {/if}
     {#each view.b.sections as s, i (i)}
-      {#if s.title}<h2>{s.title}</h2>{/if}
+      <!-- tiles get the title as heading; cards carry it themselves -->
+      {#if s.title && s.type === 'tiles'}<h2>{s.title}</h2>{/if}
       {#if s.type === 'tiles'}
         <TileRow count={Math.min(4, s.tiles.length)}>
           {#each s.tiles as x, k (k)}<Tile {...tileOf(x)} />{/each}
