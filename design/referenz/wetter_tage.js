@@ -1,4 +1,4 @@
-// Board Woche (BL-175): Wetterkacheln 3 Tage zurück · heute · 3 voraus. IC = {bedeutung: zeichen} setzt der Generator.
+// Board Woche: Wetterkacheln 3 Tage zurück · heute · 3 voraus. IC = {bedeutung: zeichen} setzt der Generator.
 // Abfragen: A wetter_tag art=gemessen, B wetter_tag art=prognose (aktuell), C /entwurf/energie/tage2 (PV-Ertrag),
 // D pv_prognose_tag (Stundenmodell, aktuell), E auto_plan (geplante Ladung heute/morgen/übermorgen). Fehlt ein Wert: „–“.
 const w = htmlNode.querySelector(".wk");
