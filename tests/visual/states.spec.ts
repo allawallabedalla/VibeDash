@@ -157,8 +157,17 @@ test('battery kWh from the nominal capacity; derived consumption named', async (
   await page.goto('/?lang=de');
   const battery = page.locator('.tile', { hasText: 'Akku' }).first();
   await expect(battery).toContainText('7,5 / 12,5 kWh');
-  await battery.getByRole('button').first().click();
-  await expect(battery).toContainText('Nennkapazität laut Wechselrichter (12,5 kWh)');
+  // the page loads in two steps (24 h, then 31 days); a tile drawn anew in
+  // between closes its ⓘ again – wait for the second step, retry the tap
+  await page.waitForLoadState('networkidle');
+  await expect(async () => {
+    if (!((await battery.textContent()) ?? '').includes('Nennkapazität')) {
+      await battery.getByRole('button').first().click();
+    }
+    await expect(battery).toContainText('Nennkapazität laut Wechselrichter (12,5 kWh)', {
+      timeout: 1500,
+    });
+  }).toPass({ timeout: 10_000 });
   await expect(page.getByText('Verbrauch aus der Leistung aufsummiert')).toBeVisible();
 });
 
