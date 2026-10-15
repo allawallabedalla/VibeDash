@@ -490,6 +490,14 @@ export const de = {
   'hc.noPlan': 'kein Plan',
   'hc.tomorrow': 'Morgen',
   'hc.nowTitle': 'Jetzt',
+  'hc.trace.title': 'Verlauf dieser Ladung',
+  'hc.trace.titleIdle': 'Verlauf der letzten 6 Stunden',
+  'hc.trace.car': 'Auto',
+  'hc.trace.feed': 'Einspeisung',
+  'hc.trace.import': 'Netzbezug',
+  'hc.trace.note':
+    'Minutenmittel in kW, Stand {time}, jede Minute neu. Geht das Auto in Stufen hoch, sollte die Einspeisung auf einen kleinen Rest fallen und kein Netzbezug entstehen.',
+  'hc.trace.aria': 'Auto lädt mit {car} kW, Einspeisung {feed} kW',
   'hc.planTitle': 'Ladeplan',
   'hc.planNote':
     'Plan von {made} Uhr · Hausakku jetzt {soc} %, Mindestlinie {min} %. Nur Anzeige, VibeDash schaltet nichts.',

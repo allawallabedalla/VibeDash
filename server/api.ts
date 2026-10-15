@@ -280,6 +280,7 @@ export async function handleApi(
         sessions,
         plan,
         maxKw: c?.maxKw ?? null,
+        powerSeries: c?.power ?? null,
         span: c?.plan?.span ?? null,
       });
     } catch (err) {

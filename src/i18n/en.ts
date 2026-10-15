@@ -486,6 +486,14 @@ export const en: Record<MessageKey, string> = {
   'hc.noPlan': 'no plan',
   'hc.tomorrow': 'Tomorrow',
   'hc.nowTitle': 'Now',
+  'hc.trace.title': 'Course of this charge',
+  'hc.trace.titleIdle': 'Course of the last 6 hours',
+  'hc.trace.car': 'Car',
+  'hc.trace.feed': 'Feed-in',
+  'hc.trace.import': 'Grid import',
+  'hc.trace.note':
+    'One-minute means in kW, as of {time}, new every minute. When the car steps up, feed-in should fall to a small rest and no grid import appear.',
+  'hc.trace.aria': 'Car charging with {car} kW, feed-in {feed} kW',
   'hc.planTitle': 'Charge plan',
   'hc.planNote':
     'Plan of {made} · house battery now {soc} %, minimum line {min} %. Display only, VibeDash switches nothing.',

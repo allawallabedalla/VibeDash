@@ -13,6 +13,7 @@
   import TileRow from '../components/TileRow.svelte';
   import { i18n, num, t, time } from '../i18n/index.svelte';
   import { addDays, localDateKey, localMidnight } from '../model/time';
+  import ChargeTrace from './ChargeTrace.svelte';
   import PageHead from './PageHead.svelte';
 
   interface Session {
@@ -46,6 +47,8 @@
     };
     sessions: Session[];
     plan: Plan | null;
+    /** series id of the car's power (mapping.charging.power), for the course */
+    powerSeries: string | null;
     /** end of the power scale (mapping.charging.maxKw); null = no scale */
     maxKw: number | null;
     /** what the plan's two day numbers mean (mapping.charging.plan.span) */
@@ -248,6 +251,15 @@
     <TileRow count={4}>
       {#each tiles as tile (tile.label)}<Tile {...tile} />{/each}
     </TileRow>
+
+    {#if view.a.powerSeries}
+      <div class="row-gap"></div>
+      <ChargeTrace
+        powerSeries={view.a.powerSeries}
+        since={view.a.now.running ? view.a.now.since : null}
+        timeZone={tz}
+      />
+    {/if}
 
     {#if view.a.plan}
       <h2>{t('hc.planTitle')}</h2>
