@@ -20,7 +20,6 @@
   import DataTable from '../components/DataTable.svelte';
   import Icon from '../components/Icon.svelte';
   import Segmented from '../components/Segmented.svelte';
-  import SoftTimeSeries from '../components/SoftTimeSeries.svelte';
   import SourceArc from '../components/SourceArc.svelte';
   import StatusBar, { type StatusItem } from '../components/StatusBar.svelte';
   import Tile from '../components/Tile.svelte';
@@ -171,21 +170,24 @@
   <h2>{period === 'day' ? t('page.today') : t('page.period')}</h2>
   <div class="cards wide-left">
     <Card title={t('ts.title')} icon="sun" color="var(--sun)">
-      <SoftTimeSeries
-        data={tsData}
-        periods={[{ id: period, label: '' }]}
-        {period}
-        labels={{
-          actual: t('ts.actual'),
-          forecast: period === 'span' ? t('ts.forecastSpan') : t('ts.forecast'),
-          band: t('ts.band'),
-          periods: t('ts.periods'),
-          empty: t('state.noData'),
-        }}
-        unit={tsData.unit === 'kW' ? 'kW' : t('ts.perDay')}
-        timeZone={tz}
-        {locale}
-      />
+      <!-- the chart library loads after the first paint (first page < 200 KB JS) -->
+      {#await import('../components/SoftTimeSeries.svelte') then { default: SoftTimeSeries }}
+        <SoftTimeSeries
+          data={tsData}
+          periods={[{ id: period, label: '' }]}
+          {period}
+          labels={{
+            actual: t('ts.actual'),
+            forecast: period === 'span' ? t('ts.forecastSpan') : t('ts.forecast'),
+            band: t('ts.band'),
+            periods: t('ts.periods'),
+            empty: t('state.noData'),
+          }}
+          unit={tsData.unit === 'kW' ? 'kW' : t('ts.perDay')}
+          timeZone={tz}
+          {locale}
+        />
+      {/await}
     </Card>
     <Card title={t('page.sources')} icon="home" color="var(--home)">
       {#if src}
@@ -203,6 +205,11 @@
       {/if}
     </Card>
   </div>
+
+  <!-- loaded on demand: keeps the first page under its JS budget -->
+  {#await import('./YearSection.svelte') then { default: YearSection }}<YearSection
+      {house}
+    />{/await}
 
   <h2>{t('page.review')}</h2>
   <Card title={t('review.title')} icon="clock" color="var(--muted)" note={reviewNote(house)}>

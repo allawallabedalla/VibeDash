@@ -37,6 +37,8 @@ export interface ApiDeps {
   mode: 'live' | 'demo';
   mapping?: Mapping;
   series?: (m: SeriesMapping, fromMs: number, toMs: number) => Promise<Series>;
+  /** Daily energy of a meter, [local day start, kWh or null]. */
+  daily?: (m: SeriesMapping, fromMs: number, toMs: number) => Promise<[number, number | null][]>;
   now: () => number;
   log: (msg: string) => void;
   evcc?: {
@@ -220,6 +222,29 @@ export async function handleApi(
         .filter((m) => !m.helper)
         .map((m) => ({ ...m.entity, stepMs: m.stepMs })),
     });
+  }
+
+  const dm = /^\/api\/daily\/([a-z][a-z0-9_]{0,63})$/.exec(path);
+  if (dm) {
+    const name = dm[1]!;
+    const m = Object.hasOwn(deps.mapping.series, name) ? deps.mapping.series[name] : undefined;
+    if (!m || m.helper) return json(404, { error: 'unknown_series' });
+    if (!deps.daily || m.source !== 'influx' || m.entity.kind !== 'energy_counter') {
+      return json(400, { error: 'not_a_meter' });
+    }
+    const days = Number(url.searchParams.get('days') ?? '400');
+    if (!Number.isInteger(days) || days < 1 || days > 800) return json(400, { error: 'bad_days' });
+    const now = deps.now();
+    try {
+      const rows = await deps.daily(m, now - days * 86_400_000, now);
+      return json(200, { name, unit: 'kWh', days: rows });
+    } catch (err) {
+      const e = err as Error;
+      if (e.name === 'TimeoutError' || e.name === 'AbortError')
+        return json(504, { error: 'timeout' });
+      deps.log(`daily ${name}: ${e instanceof InfluxError ? e.message : e.name}`);
+      return json(502, { error: 'upstream' });
+    }
   }
 
   const match = /^\/api\/series\/([a-z][a-z0-9_]{0,63})$/.exec(path);

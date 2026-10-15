@@ -413,6 +413,26 @@ export const de = {
   'ts.span': '±3 Tage',
   'page.period': 'Zeitraum',
   'ts.forecastSpan': 'Prognose (Vorabend, voraus neuester Lauf)',
+  'year.title': 'Im Jahr',
+  'year.sun': 'Sonnenstrom',
+  'year.import': 'Netzbezug',
+  'year.feed': 'Einspeisung',
+  'year.caption': 'Tageswerte, Mittel über 7 Tage · seit 1.1. {sum} kWh',
+  'year.info.what':
+    'Jahreskurve je Tag aus Zählerständen; blasse Linie = Vorjahr, sobald es Daten dafür gibt.',
+  'year.info.source':
+    'Zählerstand am Tagesende minus Vortag; ältere Tage aus der früheren Messreihe desselben Zählers.',
+  'year.info.demo': 'Erfundene Werte des Demo-Hauses.',
+  'year.sun.sentence': '**Sonnenstrom** gestern erzeugt',
+  'year.import.sentence': 'kamen gestern **aus dem Netz**',
+  'year.feed.sentence': 'gingen gestern **ins Netz**',
+  'week.house': 'Haus',
+  'week.rooms': 'Räume',
+  'week.roomsNote': 'Balken = kühlster bis wärmster Wert, Strich = Mittel über die Zeit.',
+  'gallery.room.living': 'Wohnen',
+  'gallery.room.office': 'Büro',
+  'gallery.room.bath': 'Bad',
+  'gallery.room.bedroom': 'Schlafen',
 } as const;
 
 export type MessageKey = keyof typeof de;

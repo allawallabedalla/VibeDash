@@ -12,6 +12,7 @@
  */
 import { daily, type DemoData } from '../demo';
 import { addDays, localDateKey, localMidnight } from '../model/time';
+import { toGrid } from '../model/series';
 import type { Sample } from '../model/types';
 
 export interface Day {
@@ -277,4 +278,33 @@ export function weekNumbers(data: DemoData): WeekNumbers {
       night: data.now - todayDay.start >= 5 * 3_600_000 ? nightMean(loadSamples, one)[0]! : null,
     },
   };
+}
+
+/**
+ * Rooms over the completed days: coolest and warmest value and the time
+ * mean (hourly means first, so a sensor that reports often does not weigh
+ * more). Every temperature series with a room counts.
+ */
+export function roomRanges(
+  data: DemoData,
+  days: Day[],
+): { name: string; low: number; high: number; mean: number }[] {
+  const from = days[0]?.start ?? data.now;
+  const to = days.at(-1)?.end ?? data.now;
+  return data.entities
+    .filter((e) => e.kind === 'temperature' && e.room && data.series[e.id]?.samples.length)
+    .flatMap((e) => {
+      const s = data.series[e.id]!.samples.filter((x) => x.t >= from && x.t < to);
+      if (!s.length) return [];
+      const hours = toGrid(s, from, to, 3_600_000).filter((v): v is number => v !== null);
+      if (!hours.length) return [];
+      return [
+        {
+          name: e.name,
+          low: Math.min(...s.map((x) => x.v)),
+          high: Math.max(...s.map((x) => x.v)),
+          mean: hours.reduce((a, b) => a + b, 0) / hours.length,
+        },
+      ];
+    });
 }

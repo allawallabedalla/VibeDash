@@ -107,7 +107,7 @@ const COMMON_KEYS = [
   'helper',
   'aheadMs',
 ];
-const INFLUX_KEYS = [...COMMON_KEYS, 'measurement', 'field', 'tags', 'maxHoldMs'];
+const INFLUX_KEYS = [...COMMON_KEYS, 'measurement', 'field', 'tags', 'maxHoldMs', 'history'];
 const HA_KEYS = [...COMMON_KEYS, 'entityId', 'maxHoldMs', 'longTerm'];
 const DERIVED_KEYS = [...COMMON_KEYS, 'terms'];
 
@@ -249,7 +249,32 @@ export function validateMapping(
         field: entry.field as string,
         ...(entry.tags ? { tags: entry.tags as Record<string, string> } : {}),
         ...(typeof entry.maxHoldMs === 'number' ? { maxHoldMs: entry.maxHoldMs } : {}),
+        ...(isObj(entry.history)
+          ? {
+              history: {
+                measurement: String(entry.history.measurement),
+                field: String(entry.history.field),
+                ...(isObj(entry.history.tags)
+                  ? { tags: entry.history.tags as Record<string, string> }
+                  : {}),
+                ...(typeof entry.history.scale === 'number' ? { scale: entry.history.scale } : {}),
+              },
+            }
+          : {}),
       };
+      if (entry.history !== undefined) {
+        const h = entry.history;
+        if (
+          !isObj(h) ||
+          !isText(h.measurement) ||
+          !isText(h.field) ||
+          (h.tags !== undefined &&
+            (!isObj(h.tags) || !Object.values(h.tags).every((v) => isText(v))))
+        ) {
+          errors.push(`${at}.history: { measurement, field, tags? } of an older measurement`);
+        }
+        if (entry.kind !== 'energy_counter') errors.push(`${at}.history: only for energy_counter`);
+      }
       if (
         entry.maxHoldMs !== undefined &&
         (typeof entry.maxHoldMs !== 'number' ||

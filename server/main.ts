@@ -40,7 +40,14 @@ if (existsSync(config.mappingPath)) {
   if (!result.ok) fail(result.errors);
   const backends = createBackends(result.mapping, config, fetch);
   if (!backends.ok) fail(backends.errors);
-  deps = { mode: 'live', mapping: result.mapping, series: backends.series, now: Date.now, log };
+  deps = {
+    mode: 'live',
+    mapping: result.mapping,
+    series: backends.series,
+    daily: backends.daily,
+    now: Date.now,
+    log,
+  };
   log(
     `live mode (${sourcesOf(result.mapping).join(' + ')}): ${Object.keys(result.mapping.series).length} named series from ${config.mappingPath}`,
   );

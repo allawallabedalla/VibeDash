@@ -20,6 +20,8 @@
   import Tabs from '../components/Tabs.svelte';
   import TileRow from '../components/TileRow.svelte';
   import Card from '../components/Card.svelte';
+  import FlowBars from '../components/FlowBars.svelte';
+  import RoomRanges from '../components/RoomRanges.svelte';
   import Progress from '../components/Progress.svelte';
   import Sparkline from '../components/Sparkline.svelte';
   import Tile, { type TileProps } from '../components/Tile.svelte';
@@ -314,6 +316,54 @@
     />
   </div>
   <p class="muted-note">{t('acc.sunNote')}</p>
+
+  {#await import('../pages/YearSection.svelte') then { default: YearSection }}<YearSection
+      house={demo}
+    />{/await}
+
+  <h2>{t('week.house')}</h2>
+  <div class="cards">
+    <Card
+      title={t('week.rooms')}
+      icon="thermometer"
+      color="var(--climate)"
+      note={t('week.roomsNote')}
+    >
+      <RoomRanges
+        label={t('week.rooms')}
+        rooms={[
+          { name: t('gallery.room.living'), low: 20.4, high: 23.1, mean: 22.0 },
+          { name: t('gallery.room.office'), low: 22.1, high: 24.6, mean: 23.4 },
+          { name: t('gallery.room.bath'), low: 21.2, high: 24.0, mean: 23.1 },
+          { name: t('gallery.room.bedroom'), low: 18.9, high: 21.7, mean: 20.4 },
+        ]}
+      />
+    </Card>
+    <Card title={t('week.whereTo')} icon="sun" color="var(--sun)">
+      <FlowBars
+        flows={[
+          {
+            label: t('week.toHouse'),
+            value: 62,
+            color: 'var(--sun-soft)',
+            textColor: 'var(--sun-text)',
+          },
+          {
+            label: t('week.toBattery'),
+            value: 103,
+            color: 'var(--battery)',
+            textColor: 'var(--good-text)',
+          },
+          {
+            label: t('week.toGrid'),
+            value: 108,
+            color: 'var(--feed)',
+            textColor: 'var(--feed-text)',
+          },
+        ]}
+      />
+    </Card>
+  </div>
 
   <h2>{t('gallery.progress')}</h2>
   <Card

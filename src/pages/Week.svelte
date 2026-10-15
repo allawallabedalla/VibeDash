@@ -5,11 +5,12 @@
    */
   import { currentData, currentSource } from '../app/data.svelte';
   import { batteryNowTile, gridNowTile, loadNowTile, sunNowTile } from '../app/tiles';
-  import { weekNumbers } from '../app/week';
+  import { roomRanges, weekNumbers } from '../app/week';
   import Card from '../components/Card.svelte';
   import DayBars from '../components/DayBars.svelte';
   import DayRanges from '../components/DayRanges.svelte';
   import FlowBars from '../components/FlowBars.svelte';
+  import RoomRanges from '../components/RoomRanges.svelte';
   import SoftTimeSeries from '../components/SoftTimeSeries.svelte';
   import Tile, { type TileProps } from '../components/Tile.svelte';
   import TileRow from '../components/TileRow.svelte';
@@ -24,6 +25,7 @@
   const tz = house.timeZone;
   const locale = $derived(i18n.locale === 'de' ? 'de-DE' : 'en-GB');
   const w = weekNumbers(house);
+  const rooms = roomRanges(house, w.days);
   // charts: the seven completed days, then today (lighter, apart from the sums)
   const today = w.days.length;
 
@@ -142,19 +144,48 @@
   const f = w.flows;
   const est = f?.source === 'power';
   const whereTo = $derived([
-    { label: t('week.toHouse'), value: f?.direct ?? null, color: 'var(--sun-soft)', approx: est },
-    { label: t('week.toBattery'), value: f?.charged ?? null, color: 'var(--battery)', approx: est },
-    { label: t('week.toGrid'), value: f?.feed ?? null, color: 'var(--feed)' },
+    {
+      label: t('week.toHouse'),
+      value: f?.direct ?? null,
+      color: 'var(--sun-soft)',
+      textColor: 'var(--sun-text)',
+      approx: est,
+    },
+    {
+      label: t('week.toBattery'),
+      value: f?.charged ?? null,
+      color: 'var(--battery)',
+      textColor: 'var(--good-text)',
+      approx: est,
+    },
+    {
+      label: t('week.toGrid'),
+      value: f?.feed ?? null,
+      color: 'var(--feed)',
+      textColor: 'var(--feed-text)',
+    },
   ]);
   const whereFrom = $derived([
-    { label: t('week.fromSun'), value: f?.direct ?? null, color: 'var(--sun-soft)', approx: est },
+    {
+      label: t('week.fromSun'),
+      value: f?.direct ?? null,
+      color: 'var(--sun-soft)',
+      textColor: 'var(--sun-text)',
+      approx: est,
+    },
     {
       label: t('week.fromBattery'),
       value: f?.discharged ?? null,
       color: 'var(--battery)',
+      textColor: 'var(--good-text)',
       approx: est,
     },
-    { label: t('week.fromGrid'), value: f?.imp ?? null, color: 'var(--import)' },
+    {
+      label: t('week.fromGrid'),
+      value: f?.imp ?? null,
+      color: 'var(--import)',
+      textColor: 'var(--import-text)',
+    },
   ]);
   const flowNote = $derived(
     [
@@ -240,14 +271,39 @@
     </Card>
   </div>
 
-  <h2>{t('week.flows')} · {period}</h2>
+  <h2>{t('week.house')} · {period}</h2>
   <div class="cards">
-    <Card title={t('week.whereTo')} icon="sun" color="var(--sun)">
-      <FlowBars flows={whereTo} />
-    </Card>
-    <Card title={t('week.whereFrom')} icon="home" color="var(--home)">
-      <FlowBars flows={whereFrom} />
-    </Card>
+    {#if rooms.length >= 2}
+      <Card
+        title={t('week.rooms')}
+        icon="thermometer"
+        color="var(--climate)"
+        note={t('week.roomsNote')}
+      >
+        <RoomRanges {rooms} label={t('week.rooms')} />
+      </Card>
+    {/if}
+    <div class="stack">
+      <Card title={t('week.whereTo')} icon="sun" color="var(--sun)">
+        <FlowBars flows={whereTo} />
+      </Card>
+      <Card title={t('week.whereFrom')} icon="home" color="var(--home)">
+        <FlowBars flows={whereFrom} />
+      </Card>
+    </div>
   </div>
   <p class="muted-note">{flowNote}</p>
 </div>
+
+<style>
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  @media (max-width: 600px) {
+    .stack {
+      gap: 10px;
+    }
+  }
+</style>

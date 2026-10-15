@@ -35,6 +35,11 @@ export interface InfluxMapping {
    * (written forward in steps); only after that it counts as a gap.
    */
   maxHoldMs?: number;
+  /**
+   * Meters only: an older measurement of the same meter, used for daily
+   * values on days before this one has any (e.g. a replaced logger).
+   */
+  history?: { measurement: string; field: string; tags?: Record<string, string>; scale?: number };
 }
 
 /** Quote an identifier for InfluxQL ("name", with " and \ escaped). */
@@ -59,6 +64,23 @@ export function rawQuery(m: InfluxMapping, fromMs: number, toMs: number, rp?: st
     ...Object.entries(m.tags ?? {}).map(([k, v]) => `${ident(k)} = ${literal(v)}`),
   ];
   return `SELECT ${ident(m.field)} FROM ${from(m, rp)} WHERE ${where.join(' AND ')}`;
+}
+
+/** Last reading per local day in [fromMs, toMs) – cheap daily meter values for long ranges. */
+export function dailyLastQuery(
+  m: { measurement: string; field: string; tags?: Record<string, string> },
+  fromMs: number,
+  toMs: number,
+  timeZone: string,
+  rp?: string,
+): string {
+  const where = [
+    `time >= ${Math.floor(fromMs)}ms`,
+    `time < ${Math.floor(toMs)}ms`,
+    ...Object.entries(m.tags ?? {}).map(([k, v]) => `${ident(k)} = ${literal(v)}`),
+  ];
+  const src = rp ? `${ident(rp)}.${ident(m.measurement)}` : ident(m.measurement);
+  return `SELECT LAST(${ident(m.field)}) FROM ${src} WHERE ${where.join(' AND ')} GROUP BY time(1d) tz(${literal(timeZone)})`;
 }
 
 /** Last value at or before `atMs` (for "now" tiles). */
@@ -169,6 +191,16 @@ export function influxClient(config: InfluxConfig, fetchFn: FetchLike, timeoutMs
         stepMs: m.stepMs,
         samples: parseSamples(res, m.scale),
       };
+    },
+    /** Last reading per local day (time = local midnight), nulls dropped. */
+    async dailyLast(
+      m: { measurement: string; field: string; tags?: Record<string, string>; scale?: number },
+      fromMs: number,
+      toMs: number,
+      timeZone: string,
+    ) {
+      const res = await query(dailyLastQuery(m, fromMs, toMs, timeZone, config.retentionPolicy));
+      return parseSamples(res, m.scale);
     },
     async measurements(): Promise<string[]> {
       return parseList(await query(inventory.measurements()));

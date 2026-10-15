@@ -29,6 +29,9 @@
   --fair-text: #a35f00;
   --poor-text: #c43c3c;
   --rain: #1f62b0;
+  --sun-text: #a35f00;
+  --import-text: #8a3ab9;
+  --feed-text: #6c6c70;
   --icon-soft: #8e8e93;
   --look-bg: #fff6e5;
   --act-bg: #ffecea;
@@ -74,6 +77,9 @@
   --fair-text: #ffb340;
   --poor-text: #ff6961;
   --rain: #5aa9ff;
+  --sun-text: #ffb340;
+  --import-text: #d08cf0;
+  --feed-text: #98989d;
   --icon-soft: #8e8e93;
   --look-bg: #3a2e14;
   --act-bg: #3d1f1d;
@@ -113,6 +119,9 @@
     --fair-text: #ffb340;
     --poor-text: #ff6961;
     --rain: #5aa9ff;
+    --sun-text: #ffb340;
+    --import-text: #d08cf0;
+    --feed-text: #98989d;
     --icon-soft: #8e8e93;
     --look-bg: #3a2e14;
     --act-bg: #3d1f1d;
