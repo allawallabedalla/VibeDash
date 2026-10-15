@@ -11,8 +11,12 @@ export function allowedHosts(env: Record<string, string | undefined>): Set<strin
   const name = hostname().toLowerCase();
   out.add(name);
   out.add(`${name}.local`);
-  for (const list of Object.values(networkInterfaces())) {
-    for (const a of list ?? []) out.add(a.address.toLowerCase());
+  try {
+    for (const list of Object.values(networkInterfaces())) {
+      for (const a of list ?? []) out.add(a.address.toLowerCase());
+    }
+  } catch {
+    // a sandbox without netlink: name, localhost and ALLOWED_HOSTS still apply
   }
   if (env.HOST && env.HOST !== '0.0.0.0' && env.HOST !== '::') out.add(env.HOST.toLowerCase());
   for (const h of (env.ALLOWED_HOSTS ?? '').split(',')) {

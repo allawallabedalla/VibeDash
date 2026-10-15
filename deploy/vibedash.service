@@ -29,7 +29,8 @@ ReadWritePaths=%h/.config/vibedash/local
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes
-RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+# AF_NETLINK: to learn its own addresses for the Host check
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
 RestrictNamespaces=yes
 RestrictRealtime=yes
 RestrictSUIDSGID=yes
