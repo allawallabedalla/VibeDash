@@ -433,4 +433,12 @@ export const en: Record<MessageKey, string> = {
   'notes.item': '{when}: {text}',
   'notes.gap': 'Gap {when}: {text}',
   'review.known': '{text}, meters complete',
+  'wd.model': 'model',
+  'wd.modelShort': 'model',
+  'wd.noteOwn':
+    'Past days: high/low from the outdoor sensor, sky and sun ≈ from the PV curve against a clear day, rain from the weather model, PV from the meter. ≈ PV = forecast with 10–90 % span.',
+  'wd.sky.clear': 'clear',
+  'wd.sky.clouds': 'single clouds',
+  'wd.sky.hazy': 'hazy',
+  'wd.sky.overcast': 'overcast',
 };

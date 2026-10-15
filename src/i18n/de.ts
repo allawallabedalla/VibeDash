@@ -437,6 +437,14 @@ export const de = {
   'notes.item': '{when}: {text}',
   'notes.gap': 'Lücke {when}: {text}',
   'review.known': '{text}, Zähler vollständig',
+  'wd.model': 'Modell',
+  'wd.modelShort': 'Modell',
+  'wd.noteOwn':
+    'Vergangene Tage: Hoch/Tief vom Außenfühler, Himmel und Sonne ≈ aus der PV-Kurve gegen einen klaren Tag, Regen aus dem Wettermodell, PV vom Zähler. ≈ PV = Prognose mit Spanne 10–90 %.',
+  'wd.sky.clear': 'klar',
+  'wd.sky.clouds': 'einzelne Wolken',
+  'wd.sky.hazy': 'diesig',
+  'wd.sky.overcast': 'bedeckt',
 } as const;
 
 export type MessageKey = keyof typeof de;
