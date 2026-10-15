@@ -85,9 +85,19 @@ Without `local/mapping.json` the server runs in demo mode.
 **Running it for good** (Audit01 C-04/S-05): never serve the development
 folder. `scripts/release.sh` builds the checked-out commit into
 `~/.local/share/vibedash/releases/<commit>` and switches `current` to it in one
-step (`scripts/release.sh rollback` goes back). Config (`.env`,
-`local/mapping.json`) lives in `~/.config/vibedash`. `deploy/vibedash.service`
-is a hardened user unit (no privilege gain, read-only system and home).
+step. Config (`.env`, `local/mapping.json`) lives in `~/.config/vibedash`.
+
+Safe switching (Audit02 B-01): the new build first checks `.env` and the
+mapping (`node dist-server/main.js --check`); each release keeps a copy of the
+mapping it went live with; after the restart `/api/health` must answer within
+30 s, otherwise the previous release comes back (with its mapping copy if it
+rejects the current one). `scripts/release.sh rollback` goes back the same way.
+Before replacing the mapping, ask the live release:
+`scripts/release.sh check new-mapping.json`.
+
+`deploy/vibedash.service` is a hardened user unit: no privilege gain, read-only
+system, the home hidden except the releases, Node and the config (Audit02 B-03),
+writable only `local/`; it stops after 5 failed starts in 5 min.
 
 **Network** (Audit01 S-01/S-02): the server listens on this machine only
 (`HOST=127.0.0.1`) unless `.env` says `HOST=0.0.0.0`. It answers only Host

@@ -59,6 +59,13 @@ if (existsSync(config.mappingPath)) {
   log(`no ${config.mappingPath}: demo mode (synthetic data in the browser)`);
 }
 
+// `--check`: validate .env and the mapping with this build, then exit (release.sh
+// runs it before switching, so a release never starts on a mapping it rejects)
+if (process.argv.includes('--check')) {
+  log('check ok');
+  process.exit(0);
+}
+
 // Car charging from the house's own records (read-only), when mapped and Influx is there.
 if (deps.mapping?.charging && backendsQuery) {
   const c = deps.mapping.charging;
