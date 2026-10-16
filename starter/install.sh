@@ -17,7 +17,7 @@ set -euo pipefail
 REPO_URL="${VIBEDASH_REPO_URL:-https://github.com/allawallabedalla/VibeDash.git}"
 DIR="${VIBEDASH_DIR:-/opt/vibedash}"
 PORT="${VIBEDASH_PORT:-8095}"
-EVCC_CONFIG="${VIBEDASH_EVCC_CONFIG:-}"          # nur Test: eigene evcc.yaml (z. B. Demo-Geräte)
+SETUP_DEMO="${VIBEDASH_SETUP_DEMO:-off}"         # nur CI-Test: Demo-Geräte im Assistenten anbieten
 
 say() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 stop() { printf '\n\033[1;31mAbbruch:\033[0m %s\nEs wurde nichts verändert.\n' "$*" >&2; exit 1; }
@@ -68,16 +68,29 @@ if [ ! -f .env ]; then
     echo "INFLUX_ADMIN_PASSWORD=$(pw)"
     echo "INFLUX_EVCC_PASSWORD=$(pw)"
     echo "INFLUX_VIBEDASH_PASSWORD=$(pw)"
+    echo "EVCC_ADMIN_PASSWORD=$(pw)"
+    echo "SETUP_CODE=$(shuf -i 100000-999999 -n 1)"
     echo "VIBEDASH_PORT=${PORT}"
     echo "ALLOWED_HOSTS=${name},${name}.local,${name}.fritz.box${ip:+,${ip}}"
     echo "TZ=$(timedatectl show -p Timezone --value 2>/dev/null || echo Europe/Berlin)"
+    # Heimnetz für die Gerätesuche des Assistenten (nur ein privates /24, sonst aus)
+    if [ -n "${VIBEDASH_SCAN_CIDR+x}" ]; then echo "SCAN_CIDR=${VIBEDASH_SCAN_CIDR}"; else
+      case "$ip" in
+        10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[01].*) echo "SCAN_CIDR=${ip%.*}.0/24" ;;
+        *) echo "SCAN_CIDR=" ;;
+      esac
+    fi
   } > .env
 fi
+# ältere Installationen: fehlende Einträge ergänzen, vorhandene nie ändern
+grep -q '^EVCC_ADMIN_PASSWORD=' .env || echo "EVCC_ADMIN_PASSWORD=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 24)" >> .env
+grep -q '^SETUP_CODE=' .env || echo "SETUP_CODE=$(shuf -i 100000-999999 -n 1)" >> .env
+grep -q '^SCAN_CIDR=' .env || echo "SCAN_CIDR=" >> .env
 chmod 600 .env
 # evcc-Konfiguration: nur beim ersten Mal (danach gehört sie dem Agenten/Assistenten)
 if [ ! -f evcc.yaml ]; then
   evcc_pw=$(grep '^INFLUX_EVCC_PASSWORD=' .env | cut -d= -f2)
-  sed "s/EVCC_INFLUX_PASSWORT/${evcc_pw}/" "${EVCC_CONFIG:-evcc.vorlage.yaml}" > evcc.yaml
+  sed "s/EVCC_INFLUX_PASSWORT/${evcc_pw}/" evcc.vorlage.yaml > evcc.yaml
   chmod 600 evcc.yaml
 fi
 mkdir -p local
@@ -87,13 +100,15 @@ chown -R 1000:1000 local 2>/dev/null || true
 
 # ── 5. Starten ─────────────────────────────────────────────────────────────────────────────────────────
 say "Schritt 5 von 5: Starten (beim ersten Mal einige Minuten) …"
-docker compose --env-file .env up -d --build
+SETUP_DEMO="$SETUP_DEMO" docker compose --env-file .env up -d --build
 for _ in $(seq 1 60); do
   if curl -fsS "http://127.0.0.1:${PORT}/api/health" >/dev/null 2>&1; then
     host=$(hostname)
-    say "Fertig. Öffne im Browser:  http://${host}:${PORT}"
-    echo "Noch keine Geräte angebunden – das Dashboard zeigt deshalb „keine Daten“. Weiter geht es mit dem Agenten"
-    echo "(ERSTEINRICHTUNG.md, Weg A) bzw. später mit dem Einrichtungs-Assistenten im Browser."
+    setup_code=$(grep '^SETUP_CODE=' .env | cut -d= -f2)
+    say "Fertig. Jetzt im Browser öffnen:  http://${host}:${PORT}/#/einrichten"
+    printf '\n   Dein Einrichtungs-Code:  \033[1m%s\033[0m   (aufschreiben oder abfotografieren)\n\n' "$setup_code"
+    echo "Der Assistent im Browser verbindet Solaranlage, Akku und Netzzähler – nur mit Ja/Nein und einem Blick"
+    echo "in deine Hersteller-App. Mit einem Agenten (Claude Code) geht es auch ohne Assistent (ERSTEINRICHTUNG.md)."
     exit 0
   fi
   sleep 5

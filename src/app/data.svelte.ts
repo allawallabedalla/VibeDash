@@ -45,6 +45,8 @@ export interface BoardTab {
 let boards = $state<BoardTab[]>([]);
 /** the server keeps a local feedback backlog (button on every page) */
 let feedback = $state(false);
+/** the setup assistant is still open (starter pack, not finished) */
+let setupOpen = $state(false);
 let pv = $state(false);
 let plan = $state(false);
 
@@ -210,6 +212,7 @@ export async function load(): Promise<void> {
         }))
     : [];
   feedback = (body as { feedback?: boolean } | undefined)?.feedback === true;
+  setupOpen = (body as { setup?: boolean } | undefined)?.setup === true;
   pv = body?.pv === true;
   plan = body?.plan === true;
   if (health?.status === 200 && body?.source === 'live' && body.timeZone) {
@@ -249,6 +252,10 @@ export const store = {
   /** charging from the house's own records (read-only), without evcc */
   get charging(): boolean {
     return charging;
+  },
+  /** The setup assistant is open (banner on the pages). */
+  get setupOpen(): boolean {
+    return setupOpen;
   },
   /** Feedback button on every page (local backlog on the server). */
   get feedback(): boolean {

@@ -18,6 +18,14 @@ import type { Series } from '../src/model/types';
 import { sourcesOf, type BoardMapping, type Mapping, type SeriesMapping } from './mapping';
 import { ITEM_ID, type Board } from '../src/model/board';
 import {
+  deviceBody,
+  templatesFor,
+  USAGES,
+  type evccAdmin,
+  type SetupState,
+  type Usage,
+} from './setup';
+import {
   cleanText,
   KINDS,
   STATUSES,
@@ -91,6 +99,8 @@ export interface ApiDeps {
   ) => Promise<{ status: number; body: unknown }>;
   /** The local feedback backlog (server/feedback.ts). */
   feedback?: FeedbackStore;
+  /** Setup assistant (server/setup.ts): only with the starter pack (EVCC + SETUP_CODE). */
+  setup?: SetupDeps;
   weather?: {
     /** false when WEATHER=off: no external request at all */
     enabled: boolean;
@@ -151,6 +161,113 @@ function parseBody(req: RequestInfo): Record<string, unknown> | null {
     return null;
   }
 }
+
+export interface SetupDeps {
+  checkCode: (code: unknown) => 'ok' | 'wrong' | 'locked';
+  state: { read: () => SetupState; write: (s: SetupState) => void };
+  evcc: ReturnType<typeof evccAdmin>;
+  scanCidr: string | null;
+  scan: (cidr: string) => Promise<{ host: string; ports: number[] }[]>;
+  allowDemo: boolean;
+}
+
+/** The safety questions (RISIKEN.md) the assistant asks first – all must be "yes". */
+export const SETUP_QUESTIONS = ['own_home', 'read_only', 'no_opening', 'ask_if_unsure'] as const;
+
+let setupTemplates: { at: number; raw: unknown } | null = null;
+
+async function handleSetup(
+  path: string,
+  method: string,
+  deps: ApiDeps,
+  req: RequestInfo,
+): Promise<ApiResult> {
+  const st = deps.setup;
+  if (!st) return json(404, { error: 'no_setup' });
+  const state = st.state.read();
+  if (path === '/api/setup' && method === 'GET') {
+    return json(200, {
+      open: !state.done,
+      done: state.done ?? null,
+      scan: Boolean(st.scanCidr),
+      questions: SETUP_QUESTIONS,
+      answered: SETUP_QUESTIONS.every((q) => state.answers?.[q] === true),
+    });
+  }
+  if (method !== 'POST') return json(405, { error: 'method_not_allowed' });
+  const refused = writeGuard(req, 8192);
+  if (refused) return refused;
+  const body = parseBody(req);
+  if (!body) return json(400, { error: 'bad_body' });
+  if (state.done) return json(409, { error: 'setup_closed' });
+  const code = st.checkCode(body.code);
+  if (code === 'locked') return json(429, { error: 'too_many_tries' });
+  if (code !== 'ok') return json(403, { error: 'wrong_code' });
+  const step = path.slice('/api/setup/'.length);
+  if (step === 'unlock') return json(200, { ok: true });
+  if (step === 'answers') {
+    const a = isObjRec(body.answers) ? body.answers : {};
+    const answers = Object.fromEntries(SETUP_QUESTIONS.map((q) => [q, a[q] === true]));
+    st.state.write({ ...state, answers });
+    return json(200, { ok: true, all: SETUP_QUESTIONS.every((q) => answers[q]) });
+  }
+  // everything below needs all safety questions answered with yes
+  if (!SETUP_QUESTIONS.every((q) => state.answers?.[q] === true)) {
+    return json(409, { error: 'questions_first' });
+  }
+  if (step === 'scan') {
+    if (body.allowed !== true) return json(400, { error: 'scan_needs_yes' });
+    if (!st.scanCidr) return json(200, { found: [], note: 'scan_off' });
+    if (tooMany(deps.now())) return json(429, { error: 'too_many' });
+    return json(200, { found: await st.scan(st.scanCidr) });
+  }
+  if (step === 'finish') {
+    st.state.write({ ...state, done: new Date(deps.now()).toISOString() });
+    await st.evcc.restart().catch(() => null);
+    return json(200, { ok: true });
+  }
+  const usage = USAGES.includes(body.usage as Usage) ? (body.usage as Usage) : null;
+  if (!usage) return json(400, { error: 'bad_usage' });
+  try {
+    if (!setupTemplates || deps.now() - setupTemplates.at > 600_000) {
+      const r = await st.evcc.templates();
+      if (r.status !== 200) return json(502, { error: 'evcc_templates' });
+      setupTemplates = { at: deps.now(), raw: r.data };
+    }
+    const list = templatesFor(setupTemplates.raw, usage, st.allowDemo);
+    if (step === 'templates') return json(200, { templates: list });
+    const t = list.find((x) => x.template === body.template);
+    if (!t) return json(400, { error: 'unknown_template' });
+    const values = isObjRec(body.values) ? body.values : {};
+    const dev = deviceBody(t, usage, values);
+    if ('error' in dev) return json(400, { error: dev.error });
+    if (step === 'test') {
+      const r = await st.evcc.test(dev.body);
+      return json(r.status === 200 ? 200 : 502, { result: r.data });
+    }
+    if (step === 'save') {
+      const c = await st.evcc.create(dev.body);
+      const name = isObjRec(c.data) ? String(c.data.name ?? '') : '';
+      if (c.status >= 300 || !name) return json(502, { error: 'evcc_create', result: c.data });
+      const site = await st.evcc.site();
+      const cur = isObjRec(site.data) ? site.data : {};
+      const list2 = (k: string) => (Array.isArray(cur[k]) ? (cur[k] as unknown[]).map(String) : []);
+      const update =
+        usage === 'grid'
+          ? { grid: name }
+          : { [usage]: [...list2(usage).filter((x) => x !== name), name] };
+      const u = await st.evcc.updateSite(update);
+      if (u.status >= 300) return json(502, { error: 'evcc_site', result: u.data });
+      return json(200, { ok: true, name });
+    }
+  } catch (e) {
+    return timeoutOr(e as Error, deps.log, 'setup');
+  }
+  return json(404, { error: 'unknown_step' });
+}
+
+const isObjRec = (v: unknown): v is Record<string, unknown> =>
+  !!v && typeof v === 'object' && !Array.isArray(v);
 
 export const BOARD_ACTIONS = ['done', 'ack', 'comment', 'delete', 'undo', 'snooze'] as const;
 export type BoardAction = (typeof BOARD_ACTIONS)[number];
@@ -308,6 +425,9 @@ export async function handleApi(
   if (path === '/api/location' && (method === 'GET' || method === 'POST')) {
     return handleLocation(method, deps, req);
   }
+  if (path === '/api/setup' || path.startsWith('/api/setup/')) {
+    return handleSetup(path, method, deps, req);
+  }
   if (path === '/api/feedback' && (method === 'GET' || method === 'POST')) {
     return handleFeedback(method, deps, req);
   }
@@ -357,6 +477,7 @@ export async function handleApi(
       })),
       feedback: Boolean(deps.feedback),
       build: deps.build ?? null,
+      setup: deps.setup ? !deps.setup.state.read().done : false,
     });
   }
 
