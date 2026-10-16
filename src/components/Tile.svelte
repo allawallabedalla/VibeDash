@@ -118,16 +118,6 @@
 </script>
 
 <article class="tile" class:open bind:this={el}>
-  <!-- the whole tile is a tap target for the enlarged view; ⓘ sits above it -->
-  {#if !open}
-    <button
-      type="button"
-      class="hit"
-      aria-label={t('zoom.open', { label })}
-      aria-haspopup="dialog"
-      onclick={() => (zoomed = true)}
-    ></button>
-  {/if}
   <header>
     <span class="icon" style:color><Icon name={icon} /></span>
     <span class="label">{label}</span>
@@ -211,6 +201,16 @@
         {/if}
       </div>
     {/if}
+  {/if}
+  <!-- the whole tile is a tap target for the enlarged view; ⓘ sits above it (last, so ⓘ comes first) -->
+  {#if !open}
+    <button
+      type="button"
+      class="hit"
+      aria-label={t('zoom.open', { label })}
+      aria-haspopup="dialog"
+      onclick={() => (zoomed = true)}
+    ></button>
   {/if}
 </article>
 
