@@ -292,6 +292,10 @@ everything in the browser for a made-up car (the demo home has none).
 
 ## Docker
 
+**Starter pack (fresh mini PC):** `starter/install.sh` sets up everything on Ubuntu Server LTS – InfluxDB (internal
+only, separate write/read users), evcc as the universal device reader and VibeDash – and is tested on a fresh Ubuntu
+in CI. See [ERSTEINRICHTUNG.md](ERSTEINRICHTUNG.md).
+
 ```sh
 docker build -t vibedash .
 docker run -d -p 8080:8080 --env-file .env -v "$PWD/local:/app/local:ro" vibedash

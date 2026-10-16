@@ -12,8 +12,9 @@ Ja/Nein-Fragen, schaust in eine App oder machst ein Foto. Alles ist **risikofrei
 **Entschieden (16.10.2026):** Betriebssystem **Ubuntu Server LTS** · gebrauchte Geräte werden **immer neu
 aufgesetzt** · ohne Agent: **Installer + Einrichtungs-Assistent im Browser**.
 
-Stand: Stufe 1 und Weg A funktionieren heute. Der Installer (2B) und der Browser-Assistent sind **geplant**
-(Backlog „Starter-Paket“); bis dahin braucht es Weg A.
+Stand: Stufe 1, Weg A und die Installer-Zeile (2B Schritt 1) funktionieren heute – auf frischem Ubuntu automatisch
+getestet. Der **Einrichtungs-Assistent im Browser** (2B Schritt 2) ist noch **geplant**; bis dahin bindet der Agent die
+Geräte an (Weg A).
 
 ---
 
@@ -82,15 +83,26 @@ Helfer fragt: **„Nutzt du ein Werkzeug, das selbst Befehle auf dem Mini-PC aus
 1. Am Mini-PC (Bildschirm oder per Fernzugang vom Laptop) die Installationszeile von Claude Code aus der offiziellen
    Anleitung (docs.claude.com) eingeben – das ist die einzige Zeile, die du tippst.
 2. `claude` starten und sagen: **„Richte VibeDash ein“** mit dem Link zu diesem Repo.
-3. Ab hier übernimmt der Agent alles: Repo holen, Datenbank, Dienste, Updates, Geräte finden, Dashboard. Du beantwortest
+3. Der Agent führt zuerst den Installer aus (`starter/install.sh`, wie Weg B) und trägt danach deine Geräte in
+   `starter/evcc.yaml` ein – nur lesend, jede Zuordnung mit deinem Ja und einer Gegenprobe in der Hersteller-App.
+4. Ab hier übernimmt der Agent alles: Repo holen, Datenbank, Dienste, Updates, Geräte finden, Dashboard. Du beantwortest
    nur Ja/Nein, schaust in Apps oder machst Fotos ([INBETRIEBNAHME.md](INBETRIEBNAHME.md), [AGENT.md](AGENT.md)).
 
-### Weg B · Nur ein Chat (ChatGPT, Claude im Browser) – geplant
+### Weg B · Nur ein Chat (ChatGPT, Claude im Browser) – Installer da, Assistent geplant
 
 Ein Chat kann nichts auf dem Mini-PC ausführen. Damit du trotzdem nichts über Software wissen musst:
 
-1. **Eine einzige Zeile** am Mini-PC einfügen (kommt mit dem Starter-Paket in diesem Repo, z. B. `install.sh`). Sie
-   installiert Datenbank, evcc und VibeDash, legt Benutzer und Rechte an und richtet Updates ein.
+1. **Eine einzige Zeile** am Mini-PC einfügen (genau so, aus diesem Repo):
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/allawallabedalla/VibeDash/main/starter/install.sh | sudo bash
+   ```
+
+   Sie fragt einmal nach deinem Passwort und richtet ein: Datenbank (nur intern, ohne Port nach außen), evcc als
+   „Universal-Leser“ für Wechselrichter, Akku und Wallbox (ohne Geräte, nur lesend), VibeDash mit einem Benutzer ohne
+   Schreibrechte, automatische Sicherheitsupdates. Zugangsdaten legt sie selbst an (nur für den Rechner lesbar).
+   Nochmal ausführen ist sicher. Am Ende steht die Adresse für den Browser.
+
 2. Danach im Browser `http://hausserver:8095/einrichten` öffnen. Ein **Assistent** führt durch den Rest – mit denselben
    Ja/Nein-Fragen, App-Blicken und Fotos wie beim Agenten. Der Chat hilft dir nur beim Verstehen, er gibt keine Befehle.
 3. **Schlägt dein Chat andere Befehle vor: nicht ausführen.** Nur die Zeile aus diesem Repo.

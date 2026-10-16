@@ -40,6 +40,19 @@ After installation VibeDash shows **demo data**. Real values need a **data sourc
 reliably: every device type speaks differently, registers are vendor-specific, and some
 devices need a manual step by the person. Say so honestly.
 
+### 1.0 Fresh mini PC: the starter pack
+
+On a machine without a data store, run `sudo bash starter/install.sh` (idempotent; see `ERSTEINRICHTUNG.md`). It
+installs Docker from Ubuntu packages and starts, in `starter/compose.yaml`: InfluxDB 1.8 (database `haus`, no published
+port, users `evcc` write-only / `vibedash` read-only, credentials in `starter/.env` mode 600), **evcc** as the
+universal reader (Modbus, OCPP, vendor APIs) and VibeDash (`starter/mapping.evcc.json`: evcc writes one measurement per
+value, field `value`; grid import and battery discharge are positive in evcc, so the mapping flips them with
+`scale: -1`). Then add the person's devices to `starter/evcc.yaml` from evcc's read-only templates – one at a time,
+each confirmed with a yes and a check against the manufacturer app – and restart with
+`docker compose -f starter/compose.yaml --env-file starter/.env up -d`. Never write demo devices into a real home
+(`starter/test/evcc.demo.yaml` is for CI only). No control in evcc (no charge modes other than off) until
+LADESTEUERUNG.md.
+
 ### 1.1 Pick the path (offer in this order)
 
 1. **Home Assistant present?** → use the Home Assistant adapter (available, section 2).

@@ -13,10 +13,14 @@ local/*
 !local/mapping.example.json
 !local/mapping.example.homeassistant.json
 dist-server/
-compose.yaml
+/compose.yaml
 forecast/.venv/
 __pycache__/
 *.sqlite
 .pytest_cache/
 .ruff_cache/
 .claude/worktrees/
+# Starter-Paket: Zugangsdaten und erzeugte Konfiguration bleiben auf dem Rechner
+starter/.env
+starter/evcc.yaml
+starter/local/
