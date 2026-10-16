@@ -14,6 +14,7 @@
   import Card from '../components/Card.svelte';
   import DataTable, { type Column, type Row } from '../components/DataTable.svelte';
   import DayBars from '../components/DayBars.svelte';
+  import ItemActions from '../components/ItemActions.svelte';
   import { iconOf } from '../components/Icon.svelte';
   import LineChart from '../components/LineChart.svelte';
   import Tile, { type TileProps } from '../components/Tile.svelte';
@@ -151,6 +152,9 @@
                       >{/if}
                     <span>{it.text}</span>
                     {#if it.meta}<span class="meta">{it.meta}</span>{/if}
+                    {#if tab?.actions && it.id && it.actions?.length}
+                      <ItemActions board={id} item={it} onchanged={() => void load()} />
+                    {/if}
                   </li>
                 {/each}
               </ul>

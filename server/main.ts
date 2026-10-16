@@ -7,6 +7,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { handleApi, type ApiDeps } from './api';
+import { fileStore } from './feedback';
 import { createBackends } from './backends';
 import { encodeBody, gzipStatic } from './compress';
 import { chargeSessions, fetchPlan } from './charging';
@@ -76,6 +77,23 @@ if (deps.mapping?.boards?.length) {
     return sanitizeBoard(await r.json());
   };
   log(`boards: ${deps.mapping.boards.map((b) => b.id).join(', ')}`);
+  // clicks on board items go to the house service that made the board – only to the address in the mapping
+  if (deps.mapping.boards.some((b) => b.actionUrl)) {
+    deps.boardAction = async (b, a) => {
+      const r = await fetch(b.actionUrl!, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Haus-Aktion': '1' },
+        body: JSON.stringify(a),
+        signal: AbortSignal.timeout(config.timeoutMs),
+      });
+      return { status: r.status, body: await r.json().catch(() => null) };
+    };
+  }
+}
+
+// Feedback button on every page: a local backlog for VibeDash itself (FEEDBACK=off disables it).
+if (process.env.FEEDBACK !== 'off') {
+  deps.feedback = fileStore(process.env.FEEDBACK_PATH ?? 'local/feedback.json');
 }
 
 // Car charging from the house's own records (read-only), when mapped and Influx is there.
@@ -265,7 +283,7 @@ const server = createServer(async (req, res) => {
         body = '';
         for await (const chunk of req) {
           body += chunk;
-          if (body.length > 1024) break;
+          if (body.length > 2048) break;
         }
       }
       const r = await handleApi(req.method ?? 'GET', url, deps, {

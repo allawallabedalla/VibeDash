@@ -38,8 +38,12 @@ export interface BoardTab {
   id: string;
   title: string;
   icon: string;
+  /** the board's items take clicks (done, ack, comment …) */
+  actions?: boolean;
 }
 let boards = $state<BoardTab[]>([]);
+/** the server keeps a local feedback backlog (button on every page) */
+let feedback = $state(false);
 let pv = $state(false);
 let plan = $state(false);
 
@@ -176,8 +180,10 @@ export async function load(): Promise<void> {
           id: b.id,
           title: b.title,
           icon: typeof b.icon === 'string' ? b.icon : 'info',
+          ...((b as { actions?: unknown }).actions === true ? { actions: true } : {}),
         }))
     : [];
+  feedback = (body as { feedback?: boolean } | undefined)?.feedback === true;
   pv = body?.pv === true;
   plan = body?.plan === true;
   if (health?.status === 200 && body?.source === 'live' && body.timeZone) {
@@ -217,6 +223,10 @@ export const store = {
   /** charging from the house's own records (read-only), without evcc */
   get charging(): boolean {
     return charging;
+  },
+  /** Feedback button on every page (local backlog on the server). */
+  get feedback(): boolean {
+    return feedback;
   },
   /** Boards (extra pages from house services), in mapping order. */
   get boards(): BoardTab[] {
