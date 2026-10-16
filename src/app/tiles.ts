@@ -226,14 +226,17 @@ export function batteryTile(data: DemoData): TileProps {
 
 export function gridTile(data: DemoData): TileProps {
   const grid = nowValue(data, 'grid_power');
+  // one label, the sign says the direction (E-33: feed-in +, import −), the word below says it again;
+  // never "Netzbezug −0,1" (a double negative, Audit03 U-02)
+  const quiet = Math.abs(grid) < 50;
   return staleOr(data, 'grid_power', {
-    label: Number.isNaN(grid) ? t('sources.grid') : grid >= 0 ? t('tile.feedIn') : t('tile.import'),
+    label: t('tile.grid'),
     icon: 'grid',
-    color: grid >= 0 ? 'var(--feed)' : 'var(--import)',
+    color: quiet || grid >= 0 ? 'var(--feed)' : 'var(--import)',
     zoom: zoomKw('grid_power', t('sources.grid'), 'var(--feed)'),
-    value: signed(grid / 1000, 1),
+    value: quiet ? num(0, 1) : signed(grid / 1000, 1),
     unit: 'kW',
-    sub: t('sub.now'),
+    sub: quiet ? t('word.balanced') : grid > 0 ? t('word.feed') : t('word.import'),
     graphic: {
       kind: 'spark',
       values: last24h(data, 'grid_power').map(kw),
