@@ -16,6 +16,25 @@ const kw = (w: number | null) => (w === null ? null : w / 1000);
 const signed = (v: number, digits: number) =>
   `${v > 0 ? '+' : v < 0 ? '−' : ''}${num(Math.abs(v), digits)}`;
 
+/** Enlarged tile: which series to draw (power in kW, levels around their values). */
+const zoomKw = (id: string, label: string, color: string): TileProps['zoom'] => ({
+  lines: [{ id, label, color, scale: 1 / 1000 }],
+  unit: 'kW',
+  digits: 1,
+});
+const zoomLevel = (
+  id: string,
+  label: string,
+  color: string,
+  unit: string,
+  digits = 1,
+): TileProps['zoom'] => ({
+  lines: [{ id, label, color }],
+  unit,
+  digits,
+  tight: true,
+});
+
 export function nowValue(data: DemoData, id: string): number {
   return latest(data, id)?.v ?? NaN;
 }
@@ -96,6 +115,7 @@ export function sunTile(data: DemoData, fc?: SunForecast | null): TileProps {
     label: t('tile.sun'),
     icon: 'sun',
     color: 'var(--sun)',
+    zoom: zoomKw('pv_power', t('tile.sun'), 'var(--sun)'),
     value: num(nowValue(data, 'pv_power') / 1000, 1),
     unit: 'kW',
     sub: t('sub.now'),
@@ -120,6 +140,7 @@ export function loadTile(data: DemoData): TileProps {
     label: t('tile.home'),
     icon: 'home',
     color: 'var(--home)',
+    zoom: zoomKw('load_power', t('tile.home'), 'var(--home)'),
     value: num(nowValue(data, 'load_power') / 1000, 1),
     unit: 'kW',
     sub: t('sub.now'),
@@ -189,6 +210,7 @@ export function batteryTile(data: DemoData): TileProps {
     label: t('tile.battery'),
     icon: 'battery',
     color: 'var(--battery)',
+    zoom: zoomLevel('battery_soc', t('tile.battery'), 'var(--battery)', '%', 0),
     value: num(soc),
     unit: '%',
     sub: cap === null ? undefined : `${num((soc / 100) * cap, 1)} / ${num(cap, 1)} kWh`,
@@ -208,6 +230,7 @@ export function gridTile(data: DemoData): TileProps {
     label: Number.isNaN(grid) ? t('sources.grid') : grid >= 0 ? t('tile.feedIn') : t('tile.import'),
     icon: 'grid',
     color: grid >= 0 ? 'var(--feed)' : 'var(--import)',
+    zoom: zoomKw('grid_power', t('sources.grid'), 'var(--feed)'),
     value: signed(grid / 1000, 1),
     unit: 'kW',
     sub: t('sub.now'),
@@ -239,6 +262,7 @@ export function tempTile(data: DemoData): TileProps {
     label: t('tile.temp'),
     icon: 'thermometer',
     color: 'var(--climate)',
+    zoom: zoomLevel('living_temp', t('tile.temp'), 'var(--climate)', '°C'),
     value: num(temp, 1),
     unit: '°C',
     sub: t('sub.comfort', { low: num(20), high: num(24) }),
@@ -266,6 +290,7 @@ export function humidityTile(data: DemoData): TileProps {
     label: t('tile.humidity'),
     icon: 'droplet',
     color: 'var(--climate)',
+    zoom: zoomLevel('living_humidity', t('tile.humidity'), 'var(--climate)', '%', 0),
     value: num(humidity),
     unit: '%',
     sub: t('sub.comfort', { low: num(40), high: num(60) }),
@@ -460,6 +485,7 @@ export function sunNowTile(data: DemoData): TileProps {
     label: t('tile.sun'),
     icon: 'sun',
     color: 'var(--sun)',
+    zoom: zoomKw('pv_power', t('tile.sun'), 'var(--sun)'),
     value: num(w / 1000, 1),
     unit: 'kW',
     sub: w >= 50 ? t('word.sunOn') : t('word.sunOff'),
@@ -479,6 +505,7 @@ export function loadNowTile(data: DemoData): TileProps {
     label: t('tile.home'),
     icon: 'home',
     color: 'var(--home)',
+    zoom: zoomKw('load_power', t('tile.home'), 'var(--home)'),
     value: num(load / 1000, 1),
     unit: 'kW',
     sub: t('word.consumption'),
@@ -513,6 +540,7 @@ export function gridNowTile(data: DemoData): TileProps {
     label: t('tile.grid'),
     icon: 'grid',
     color: quiet || w > 0 ? 'var(--feed)' : 'var(--import)',
+    zoom: zoomKw('grid_power', t('sources.grid'), 'var(--feed)'),
     value: quiet ? num(0, 1) : signed(w / 1000, 1),
     unit: 'kW',
     sub: quiet ? t('word.balanced') : w > 0 ? t('word.feed') : t('word.import'),

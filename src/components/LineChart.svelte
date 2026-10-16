@@ -18,8 +18,10 @@
     unit: string;
     timeZone: string;
     label: string;
+    /** axis around the values instead of from zero (temperatures, battery level) */
+    tight?: boolean;
   }
-  let { x, lines, unit, timeZone, label }: Props = $props();
+  let { x, lines, unit, timeZone, label, tight = false }: Props = $props();
 
   let cw = $state(640);
   const VW = $derived(cw < 520 ? 380 : 640);
@@ -27,8 +29,23 @@
   const PAD = { l: 40, r: 14, t: 10, b: 22 };
 
   const all = $derived(lines.flatMap((l) => l.values).filter((v): v is number => v !== null));
-  const lo = $derived(Math.min(0, ...all));
+  /** a round step for a tight axis: 0.5, 1, 2, 5, 10 … */
+  const roundStep = (span: number) => {
+    const p = 10 ** Math.floor(Math.log10(Math.max(span, 1e-9)));
+    return ([1, 2, 5, 10].find((k) => k * p >= span / 4) ?? 10) * p;
+  };
+  const tightLo = $derived.by(() => {
+    if (!tight || !all.length) return null;
+    const step = roundStep(Math.max(...all) - Math.min(...all) || 1);
+    return Math.floor(Math.min(...all) / step) * step;
+  });
+  const lo = $derived(tightLo ?? Math.min(0, ...all));
   const hi = $derived.by(() => {
+    if (tight && all.length) {
+      const step = roundStep(Math.max(...all) - Math.min(...all) || 1);
+      const top = Math.ceil(Math.max(...all) / step) * step;
+      return top > lo ? top : lo + step;
+    }
     const m = Math.max(...all, 0);
     if (m <= 0) return 1;
     // a round top close above the largest value (104 → 120, not 200)
