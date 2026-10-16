@@ -16,7 +16,15 @@ import type { ResolvedLocation } from './location';
 import { thinBefore } from '../src/model/series';
 import type { Series } from '../src/model/types';
 import { sourcesOf, type BoardMapping, type Mapping, type SeriesMapping } from './mapping';
-import type { Board } from '../src/model/board';
+import { ITEM_ID, type Board } from '../src/model/board';
+import {
+  cleanText,
+  KINDS,
+  STATUSES,
+  type FeedbackKind,
+  type FeedbackStatus,
+  type FeedbackStore,
+} from './feedback';
 
 export const RANGES = {
   '1h': 3_600_000,
@@ -74,6 +82,13 @@ export interface ApiDeps {
       what: 'status' | 'guete' | 'prognose',
     ) => Promise<{ status: number; body: unknown }>;
   };
+  /** Board item clicked (done, ack, comment, delete, undo): passed on to the board's house service. */
+  boardAction?: (
+    b: BoardMapping,
+    a: BoardActionRequest,
+  ) => Promise<{ status: number; body: unknown }>;
+  /** The local feedback backlog (server/feedback.ts). */
+  feedback?: FeedbackStore;
   weather?: {
     /** false when WEATHER=off: no external request at all */
     enabled: boolean;
@@ -105,6 +120,115 @@ function timeoutOr(e: Error, log: (m: string) => void, what: string): ApiResult 
   return json(502, { error: 'upstream' });
 }
 
+/**
+ * Every write: the page itself only (Origin = Host, Sec-Fetch-Site same-origin),
+ * JSON, small body. Null when fine, else the refusal (Audit01 S-02, Audit02 B-04).
+ */
+function writeGuard(req: RequestInfo, maxBody = 1024): ApiResult | null {
+  const originHost = (() => {
+    try {
+      return req.origin ? new URL(req.origin).host : null;
+    } catch {
+      return null;
+    }
+  })();
+  if (!originHost || !req.host || originHost !== req.host)
+    return json(403, { error: 'cross_origin' });
+  if (req.fetchSite && req.fetchSite !== 'same-origin') return json(403, { error: 'cross_origin' });
+  if (!(req.contentType ?? '').includes('application/json'))
+    return json(415, { error: 'json_required' });
+  if (!req.body || req.body.length > maxBody) return json(400, { error: 'bad_body' });
+  return null;
+}
+
+function parseBody(req: RequestInfo): Record<string, unknown> | null {
+  try {
+    const b = JSON.parse(req.body ?? '');
+    return b && typeof b === 'object' && !Array.isArray(b) ? (b as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+export const BOARD_ACTIONS = ['done', 'ack', 'comment', 'delete', 'undo', 'snooze'] as const;
+export type BoardAction = (typeof BOARD_ACTIONS)[number];
+export interface BoardActionRequest {
+  board: string;
+  item: string;
+  action: BoardAction;
+  text?: string;
+  date?: string;
+}
+
+/** Simple brake against a stuck button or a loop: at most 30 writes a minute. */
+const writes: number[] = [];
+function tooMany(now: number): boolean {
+  while (writes.length && now - writes[0]! > 60_000) writes.shift();
+  if (writes.length >= 30) return true;
+  writes.push(now);
+  return false;
+}
+
+async function handleBoardAction(id: string, deps: ApiDeps, req: RequestInfo): Promise<ApiResult> {
+  const b = deps.mapping?.boards?.find((x) => x.id === id);
+  if (!b || !b.actionUrl || !deps.boardAction) return json(404, { error: 'no_actions' });
+  const refused = writeGuard(req);
+  if (refused) return refused;
+  const body = parseBody(req);
+  if (!body) return json(400, { error: 'bad_body' });
+  const item = typeof body.item === 'string' ? body.item : '';
+  const action = body.action as BoardAction;
+  if (!ITEM_ID.test(item) || !BOARD_ACTIONS.includes(action))
+    return json(400, { error: 'bad_action' });
+  const text = action === 'comment' ? cleanText(body.text, 500) : undefined;
+  if (action === 'comment' && !text) return json(400, { error: 'empty_comment' });
+  const date =
+    typeof body.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.date) ? body.date : undefined;
+  if (action === 'snooze' && !date) return json(400, { error: 'date_required' });
+  if (tooMany(deps.now())) return json(429, { error: 'too_many' });
+  try {
+    const r = await deps.boardAction(b, {
+      board: b.id,
+      item,
+      action,
+      ...(text ? { text } : {}),
+      ...(date ? { date } : {}),
+    });
+    // the board shows the change on the next look
+    deps.cache?.delete(`board|${b.id}`);
+    const ok = r.status >= 200 && r.status < 300;
+    const said = (r.body as { text?: unknown } | null)?.text;
+    return json(ok ? 200 : 502, { ok, text: cleanText(said, 120) });
+  } catch (e) {
+    return timeoutOr(e as Error, deps.log, `board ${b.id} action`);
+  }
+}
+
+async function handleFeedback(method: string, deps: ApiDeps, req: RequestInfo): Promise<ApiResult> {
+  const f = deps.feedback;
+  if (!f) return json(404, { error: 'no_feedback' });
+  if (method === 'GET') {
+    const entries = f.list();
+    return json(200, { entries: entries.slice(-200).reverse() });
+  }
+  const refused = writeGuard(req, 2048);
+  if (refused) return refused;
+  const body = parseBody(req);
+  if (!body) return json(400, { error: 'bad_body' });
+  if (tooMany(deps.now())) return json(429, { error: 'too_many' });
+  if (typeof body.id === 'string') {
+    const status = body.status as FeedbackStatus;
+    if (!STATUSES.includes(status)) return json(400, { error: 'bad_status' });
+    const e = f.setStatus(body.id.slice(0, 20), status);
+    return e ? json(200, { entry: e }) : json(404, { error: 'unknown_entry' });
+  }
+  const text = cleanText(body.text, 1000);
+  const page = cleanText(body.page, 60);
+  const kind = KINDS.includes(body.kind as FeedbackKind) ? (body.kind as FeedbackKind) : 'idea';
+  if (!text || !page) return json(400, { error: 'bad_body' });
+  return json(200, { entry: f.add({ page, kind, text }) });
+}
+
 async function handleLocation(method: string, deps: ApiDeps, req: RequestInfo): Promise<ApiResult> {
   const w = deps.weather;
   if (!w) return json(404, { error: 'not_found' });
@@ -115,27 +239,11 @@ async function handleLocation(method: string, deps: ApiDeps, req: RequestInfo): 
   if (!w.enabled) return json(409, { error: 'weather_off' });
   if (w.writable === false) return json(403, { error: 'location_write_off' });
   // every browser sends Origin on a POST; without it (curl, scripts) no write (Audit02 B-04)
-  const originHost = (() => {
-    try {
-      return req.origin ? new URL(req.origin).host : null;
-    } catch {
-      return null;
-    }
-  })();
-  if (!originHost || !req.host || originHost !== req.host) {
-    return json(403, { error: 'cross_origin' });
-  }
-  // a browser says where the request comes from; only the page itself may write
-  if (req.fetchSite && req.fetchSite !== 'same-origin') {
-    return json(403, { error: 'cross_origin' });
-  }
-  if (!(req.contentType ?? '').includes('application/json')) {
-    return json(415, { error: 'json_required' });
-  }
-  if (!req.body || req.body.length > 1024) return json(400, { error: 'bad_body' });
+  const refused = writeGuard(req);
+  if (refused) return refused;
   let body: { lat?: unknown; lon?: unknown; place?: unknown; language?: unknown };
   try {
-    body = JSON.parse(req.body);
+    body = JSON.parse(req.body ?? '');
   } catch {
     return json(400, { error: 'bad_body' });
   }
@@ -198,6 +306,11 @@ export async function handleApi(
   if (path === '/api/location' && (method === 'GET' || method === 'POST')) {
     return handleLocation(method, deps, req);
   }
+  if (path === '/api/feedback' && (method === 'GET' || method === 'POST')) {
+    return handleFeedback(method, deps, req);
+  }
+  const ba = /^\/api\/board\/([a-z][a-z0-9_-]{0,31})\/action$/.exec(path);
+  if (ba && method === 'POST') return handleBoardAction(ba[1]!, deps, req);
   if (method !== 'GET') return json(405, { error: 'method_not_allowed' });
 
   if (path === '/api/evcc/now' || path === '/api/evcc/sessions') {
@@ -234,7 +347,13 @@ export async function handleApi(
       pv: Boolean(deps.pv),
       plan: Boolean(deps.plan),
       timeZone: deps.mapping?.timeZone ?? null,
-      boards: (deps.mapping?.boards ?? []).map(({ id, title, icon }) => ({ id, title, icon })),
+      boards: (deps.mapping?.boards ?? []).map(({ id, title, icon, actionUrl }) => ({
+        id,
+        title,
+        icon,
+        ...(actionUrl && deps.boardAction ? { actions: true } : {}),
+      })),
+      feedback: Boolean(deps.feedback),
     });
   }
 

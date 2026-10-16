@@ -37,7 +37,15 @@
     root.dataset.theme = dark ? 'light' : 'dark';
   }
   const demoOnly = $derived(store.state.status === 'ready' && currentSource() === 'demo');
+  /** Feedback dialog: loaded only when opened (not part of the first page). */
+  let feedbackOpen = $state(false);
 </script>
+
+{#if feedbackOpen}
+  {#await import('../components/FeedbackDialog.svelte') then { default: FeedbackDialog }}
+    <FeedbackDialog page={router.route} onclose={() => (feedbackOpen = false)} />
+  {/await}
+{/if}
 
 <header class="top">
   <a class="brand" href="#/">VibeDash</a>
@@ -49,6 +57,17 @@
         >
       {/each}
     </div>
+    {#if store.feedback}
+      <button
+        type="button"
+        class="round"
+        aria-label={t('fb.button')}
+        title={t('fb.button')}
+        onclick={() => (feedbackOpen = true)}
+      >
+        <Icon name="comment" />
+      </button>
+    {/if}
     <button type="button" class="round" aria-label={t('toggle.theme')} onclick={toggleTheme}>
       <Icon name="contrast" />
     </button>

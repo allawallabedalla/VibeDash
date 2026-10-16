@@ -211,3 +211,40 @@ describe('board floor plan in 3D', () => {
     expect(m.blocks[0]!.height).toBe(3);
   });
 });
+
+describe('board list items that take clicks', () => {
+  it('keeps a valid id and known actions, drops the rest', () => {
+    const b = sanitizeBoard({
+      sections: [
+        {
+          type: 'list',
+          title: 'L',
+          items: [
+            {
+              text: 'Türen ölen',
+              id: 'plan:tueren',
+              actions: ['done', 'comment', 'explode', 'done'],
+              done: '2026-10-16 08:20',
+              acked: 'gestern',
+              snoozed: '2026-11-01',
+              comments: [{ text: 'mit Graphit', at: '2026-10-16 10:00' }, { text: '' }],
+            },
+            { text: 'kein Knopf', id: '<script>', actions: ['done'] },
+            { text: 'ohne Aktionen', id: 'plan:x' },
+          ],
+        },
+      ],
+    });
+    const items = (b!.sections[0] as unknown as { items: Record<string, unknown>[] }).items;
+    expect(items[0]).toEqual({
+      text: 'Türen ölen',
+      id: 'plan:tueren',
+      actions: ['done', 'comment'],
+      done: '2026-10-16 08:20',
+      snoozed: '2026-11-01',
+      comments: [{ text: 'mit Graphit', at: '2026-10-16 10:00' }],
+    });
+    expect(items[1]).toEqual({ text: 'kein Knopf' });
+    expect(items[2]).toEqual({ text: 'ohne Aktionen' });
+  });
+});

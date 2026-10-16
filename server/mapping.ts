@@ -86,6 +86,11 @@ export interface BoardMapping {
   title: string;
   icon: string;
   url: string;
+  /**
+   * Optional: where clicks on the board's items go (done, ack, comment, delete,
+   * undo) – a POST to the house service; without it the board stays read-only.
+   */
+  actionUrl?: string;
 }
 
 export interface Mapping {
@@ -682,9 +687,12 @@ export function validateMapping(
           typeof b.id !== 'string' ||
           !/^[a-z][a-z0-9_-]{0,31}$/.test(b.id) ||
           !isText(b.title) ||
-          !url(b.url)
+          !url(b.url) ||
+          (b.actionUrl !== undefined && !url(b.actionUrl))
         ) {
-          errors.push(`${at}: { id (a-z0-9_-), title, icon?, url (http/https) }`);
+          errors.push(
+            `${at}: { id (a-z0-9_-), title, icon?, url (http/https), actionUrl? (http/https) }`,
+          );
           return;
         }
         if (boards.some((x) => x.id === b.id)) errors.push(`${at}.id: twice`);
@@ -693,6 +701,7 @@ export function validateMapping(
           title: String(b.title).slice(0, 30),
           icon: typeof b.icon === 'string' ? b.icon.slice(0, 20) : 'info',
           url: String(b.url),
+          ...(b.actionUrl ? { actionUrl: String(b.actionUrl) } : {}),
         });
       });
   }

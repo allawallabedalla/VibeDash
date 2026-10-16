@@ -6,6 +6,7 @@
    * two minutes while the page is visible.
    */
   import { onMount } from 'svelte';
+  import { SvelteSet } from 'svelte/reactivity';
   import { currentData, store } from '../app/data.svelte';
   import type { Board, BoardColor, BoardTile } from '../model/board';
   import { i18n, t, time } from '../i18n/index.svelte';
@@ -14,7 +15,8 @@
   import Card from '../components/Card.svelte';
   import DataTable, { type Column, type Row } from '../components/DataTable.svelte';
   import DayBars from '../components/DayBars.svelte';
-  import { iconOf } from '../components/Icon.svelte';
+  import ItemActions from '../components/ItemActions.svelte';
+  import Icon, { iconOf } from '../components/Icon.svelte';
   import LineChart from '../components/LineChart.svelte';
   import Tile, { type TileProps } from '../components/Tile.svelte';
   import TileRow from '../components/TileRow.svelte';
@@ -76,6 +78,12 @@
     cols.map((c, i) => ({ ...c, ...(i >= 3 ? { phone: false } : {}) }));
   const rowsOf = (rows: { cells: Record<string, string> }[]): Row[] =>
     rows.map((r, i) => ({ id: String(i), cells: r.cells }));
+  /** open accordion items (section index | item id), kept across reloads */
+  const opened = new SvelteSet<string>();
+  function toggle(key: string) {
+    if (opened.has(key)) opened.delete(key);
+    else opened.add(key);
+  }
   const stateWord = (s?: string) =>
     s === 'act' ? t('board.act') : s === 'look' ? t('board.look') : s === 'ok' ? t('board.ok') : '';
 </script>
@@ -145,13 +153,46 @@
             {#if s.items.length}
               <ul class="items">
                 {#each s.items as it, k (k)}
-                  <li class="st-{it.state ?? 'none'}">
-                    {#if it.state && it.state !== 'open'}<span class="word"
-                        >{stateWord(it.state)}</span
-                      >{/if}
-                    <span>{it.text}</span>
-                    {#if it.meta}<span class="meta">{it.meta}</span>{/if}
-                  </li>
+                  {#if tab?.actions && it.id && it.actions?.length}
+                    <!-- accordion: tap the line, the note field and buttons open below -->
+                    {@const key = `${i}|${it.id}`}
+                    <li class="st-{it.state ?? 'none'} acc" class:open={opened.has(key)}>
+                      <button
+                        type="button"
+                        class="acc-head"
+                        aria-expanded={opened.has(key)}
+                        aria-controls="acc-{i}-{k}"
+                        onclick={() => toggle(key)}
+                      >
+                        <span class="line">
+                          {#if it.state && it.state !== 'open'}<span class="word"
+                              >{stateWord(it.state)}</span
+                            >{/if}
+                          <span>{it.text}</span>
+                          {#if it.meta}<span class="meta">{it.meta}</span>{/if}
+                        </span>
+                        {#if it.comments?.length}<span class="badge" aria-hidden="true"
+                            ><Icon name="comment" size={14} />{it.comments.length}</span
+                          >{/if}
+                        <span class="chev" aria-hidden="true"
+                          ><Icon name="chevron" size={18} /></span
+                        >
+                      </button>
+                      {#if opened.has(key)}
+                        <div id="acc-{i}-{k}">
+                          <ItemActions board={id} item={it} onchanged={() => void load()} />
+                        </div>
+                      {/if}
+                    </li>
+                  {:else}
+                    <li class="st-{it.state ?? 'none'}">
+                      {#if it.state && it.state !== 'open'}<span class="word"
+                          >{stateWord(it.state)}</span
+                        >{/if}
+                      <span>{it.text}</span>
+                      {#if it.meta}<span class="meta">{it.meta}</span>{/if}
+                    </li>
+                  {/if}
                 {/each}
               </ul>
             {:else}
@@ -207,6 +248,51 @@
   }
   .items li:last-child {
     border-bottom: 0;
+  }
+  .items li.acc {
+    display: block;
+    padding: 0;
+  }
+  .acc-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .acc-head .line {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 10px;
+    line-height: 1.35;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .chev {
+    color: var(--muted);
+    display: grid;
+    transition: transform 0.15s ease;
+  }
+  .acc.open .chev {
+    transform: rotate(90deg);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .chev {
+      transition: none;
+    }
   }
   .word {
     font-weight: 700;

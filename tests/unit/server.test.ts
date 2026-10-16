@@ -421,3 +421,136 @@ describe('boards (extra pages from house services)', () => {
     ).toBe(false);
   });
 });
+
+describe('clicks on board items and the feedback backlog', () => {
+  const write = (
+    path: string,
+    d: ApiDeps,
+    body: unknown,
+    origin = 'http://x',
+    fetchSite = 'same-origin',
+  ) =>
+    handleApi('POST', new URL(path, 'http://x'), d, {
+      body: JSON.stringify(body),
+      contentType: 'application/json',
+      host: 'x',
+      origin,
+      fetchSite,
+    });
+  const withBoards = (actionUrl?: string) => {
+    const r = validateMapping({
+      ...example,
+      boards: [
+        {
+          id: 'care',
+          title: 'Wartung',
+          url: 'http://127.0.0.1:9/care',
+          ...(actionUrl ? { actionUrl } : {}),
+        },
+      ],
+    });
+    if (!r.ok) throw new Error(r.errors.join());
+    return r.mapping;
+  };
+
+  it('passes a valid click on to the house service and forgets the cached board', async () => {
+    const sent: unknown[] = [];
+    const cache = new Map();
+    const d = deps({
+      mapping: withBoards('http://127.0.0.1:9/action'),
+      cache,
+      board: async () => ({ updated: null, sections: [] }),
+      boardAction: async (_b, a) => {
+        sent.push(a);
+        return { status: 200, body: { ok: true, text: 'erledigt' } };
+      },
+    });
+    await get('/api/board/care', d);
+    expect(cache.has('board|care')).toBe(true);
+    const r = await write('/api/board/care/action', d, {
+      item: 'plan:doors',
+      action: 'done',
+      date: '2026-10-16',
+    });
+    expect(r.status).toBe(200);
+    expect(sent).toEqual([
+      { board: 'care', item: 'plan:doors', action: 'done', date: '2026-10-16' },
+    ]);
+    expect(cache.has('board|care')).toBe(false);
+    const h = (await get('/api/health', d)).body as { boards: { actions?: boolean }[] };
+    expect(h.boards[0]!.actions).toBe(true);
+  });
+
+  it('refuses foreign pages, bad items, empty notes and boards without actions', async () => {
+    let calls = 0;
+    const d = deps({
+      mapping: withBoards('http://127.0.0.1:9/action'),
+      boardAction: async () => {
+        calls++;
+        return { status: 200, body: {} };
+      },
+    });
+    const ok = { item: 'plan:doors', action: 'ack' };
+    expect((await write('/api/board/care/action', d, ok, 'http://evil.example')).status).toBe(403);
+    expect((await write('/api/board/care/action', d, ok, 'http://x', 'cross-site')).status).toBe(
+      403,
+    );
+    expect(
+      (await write('/api/board/care/action', d, { item: '../../x', action: 'ack' })).status,
+    ).toBe(400);
+    expect(
+      (await write('/api/board/care/action', d, { item: 'plan:doors', action: 'switch' })).status,
+    ).toBe(400);
+    expect(
+      (await write('/api/board/care/action', d, { item: 'plan:doors', action: 'comment' })).status,
+    ).toBe(400);
+    // „Später“ needs a date
+    expect(
+      (await write('/api/board/care/action', d, { item: 'plan:doors', action: 'snooze' })).status,
+    ).toBe(400);
+    expect(calls).toBe(0);
+    expect(
+      (
+        await write('/api/board/care/action', d, {
+          item: 'plan:doors',
+          action: 'snooze',
+          date: '2026-11-01',
+        })
+      ).status,
+    ).toBe(200);
+    expect(calls).toBe(1);
+    const ro = deps({ mapping: withBoards(), boardAction: d.boardAction! });
+    expect((await write('/api/board/care/action', ro, ok)).status).toBe(404);
+    expect(
+      validateMapping({
+        ...example,
+        boards: [{ id: 'a', title: 'A', url: 'http://h/a', actionUrl: 'file:///x' }],
+      }).ok,
+    ).toBe(false);
+  });
+
+  it('keeps feedback in a local file: add, list, mark done', async () => {
+    const { fileStore } = await import('../../server/feedback');
+    const dir = mkdtempSync(join(tmpdir(), 'vd-fb-'));
+    const store = fileStore(join(dir, 'local', 'feedback.json'), () => 1_000);
+    const d = deps({ feedback: store });
+    const added = await write('/api/feedback', d, {
+      page: 'b/care',
+      kind: 'bug',
+      text: '  zu\nklein  ',
+    });
+    expect(added.status).toBe(200);
+    const id = (added.body as { entry: { id: string; text: string } }).entry.id;
+    expect((added.body as { entry: { text: string } }).entry.text).toBe('zu klein');
+    expect(
+      (await write('/api/feedback', d, { page: 'x', text: 'hi' }, 'http://evil.example')).status,
+    ).toBe(403);
+    expect((await write('/api/feedback', d, { id, status: 'done' })).status).toBe(200);
+    const list = (await get('/api/feedback', d)).body as {
+      entries: { status: string; kind: string }[];
+    };
+    expect(list.entries).toHaveLength(1);
+    expect(list.entries[0]).toMatchObject({ status: 'done', kind: 'bug' });
+    expect((await write('/api/feedback', d, { id, status: 'gone' })).status).toBe(400);
+  });
+});

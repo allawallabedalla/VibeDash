@@ -245,13 +245,17 @@
     justify-content: space-between;
     gap: 8px;
   }
+  .reading {
+    min-width: 0;
+  }
   .value {
     font-size: 30px;
     font-weight: 700;
     letter-spacing: -0.025em;
     line-height: 1.05;
     font-variant-numeric: tabular-nums;
-    white-space: nowrap;
+    /* numbers stay on one line; a long word value (from a board) may break instead of widening the page */
+    overflow-wrap: anywhere;
   }
   .approx {
     font-weight: 400;

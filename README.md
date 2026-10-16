@@ -157,6 +157,22 @@ limits and an example are in `src/model/board.ts`. Each section may carry `note`
 (one line below) and `info` (`{ what, source }` behind ⓘ). Unknown section types are
 left out; colours and states come from a fixed list.
 
+**Items that take clicks (optional).** A board with `"actionUrl"` in the mapping lets
+list items carry `"id": "<kind>:<key>"` and `"actions"` (`done`, `ack`, `comment`,
+`delete`, `undo`, `snooze` with a date). The page shows them as an accordion: tap a line,
+the note field and buttons open below ("later" asks for a date in a small dialog); a click goes to this server
+(`POST /api/board/<id>/action`, same page only, JSON, rate-limited), which passes
+`{ board, item, action, text?, date? }` with the header `X-Haus-Aktion: 1` to the
+`actionUrl` from the mapping – never to an address from the board itself. The house
+service stores the result and shows it on the next load (`done`/`acked` dates,
+`comments`). VibeDash keeps nothing and switches no device.
+
+## Feedback button (local backlog)
+
+Every page has a feedback button (top right): idea, bug or question about the page you
+are on. Entries stay on the server in `local/feedback.json` (`FEEDBACK_PATH`, mode 600,
+never in the repo) and can be marked done or dropped; `FEEDBACK=off` hides the button.
+
 ## Charging from the house's own records (`mapping.charging`)
 
 Without evcc, the **Charging** tab can read the house's own charge records from InfluxDB

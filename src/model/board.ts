@@ -30,6 +30,25 @@ export type BoardColor =
   'sun' | 'battery' | 'home' | 'grid' | 'import' | 'feed' | 'climate' | 'muted';
 export type BoardState = 'ok' | 'look' | 'act' | 'open';
 
+/** An item the user can act on: "<kind>:<key>", chosen by the house service. */
+export const ITEM_ID = /^[a-z]{1,16}:[A-Za-z0-9_.-]{1,64}$/;
+export type ItemAction = 'done' | 'ack' | 'comment' | 'delete' | 'undo' | 'snooze';
+export const ITEM_ACTIONS: ItemAction[] = ['done', 'ack', 'comment', 'delete', 'undo', 'snooze'];
+export interface BoardListItem {
+  text: string;
+  meta?: string;
+  state?: BoardState;
+  /** with id and actions the item gets buttons (only if the board takes actions) */
+  id?: string;
+  actions?: ItemAction[];
+  /** when it was marked done ("YYYY-MM-DD" or "YYYY-MM-DD HH:MM") / acknowledged (date) */
+  done?: string;
+  acked?: string;
+  /** put off until this date (YYYY-MM-DD) with "later" */
+  snoozed?: string;
+  comments?: { text: string; at: string }[];
+}
+
 export interface BoardInfo {
   what: string;
   source: string;
@@ -71,7 +90,7 @@ export type BoardSection =
       columns: { key: string; label: string; align?: 'right' }[];
       rows: { cells: Record<string, string>; state?: BoardState }[];
     })
-  | (Base & { type: 'list'; items: { text: string; meta?: string; state?: BoardState }[] })
+  | (Base & { type: 'list'; items: BoardListItem[] })
   | (Base & {
       type: 'accuracy';
       models: {
@@ -295,11 +314,32 @@ export function sanitizeBoard(raw: unknown): Board | null {
           type: 'list',
           items: list(s.items, 100)
             .filter(isObj)
-            .map((it) => ({
-              text: text(it.text, 400),
-              ...(opt(it.meta, 80) ? { meta: opt(it.meta, 80) } : {}),
-              ...(state(it.state) ? { state: state(it.state) } : {}),
-            })),
+            .map((it) => {
+              const id = typeof it.id === 'string' && ITEM_ID.test(it.id) ? it.id : null;
+              const actions = id
+                ? list(it.actions, 5).filter((a): a is ItemAction =>
+                    ITEM_ACTIONS.includes(a as ItemAction),
+                  )
+                : [];
+              const day = (v: unknown) =>
+                typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+              const stamp = (v: unknown) =>
+                typeof v === 'string' && /^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/.test(v) ? v : null;
+              const comments = list(it.comments, 5)
+                .filter(isObj)
+                .map((c) => ({ text: text(c.text, 500), at: text(c.at, 20) }))
+                .filter((c) => c.text);
+              return {
+                text: text(it.text, 400),
+                ...(opt(it.meta, 80) ? { meta: opt(it.meta, 80) } : {}),
+                ...(state(it.state) ? { state: state(it.state) } : {}),
+                ...(id && actions.length ? { id, actions: [...new Set(actions)] } : {}),
+                ...(stamp(it.done) ? { done: stamp(it.done)! } : {}),
+                ...(day(it.acked) ? { acked: day(it.acked)! } : {}),
+                ...(day(it.snoozed) ? { snoozed: day(it.snoozed)! } : {}),
+                ...(comments.length ? { comments } : {}),
+              };
+            }),
         });
         break;
       case 'accuracy':
