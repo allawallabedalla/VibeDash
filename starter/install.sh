@@ -104,6 +104,10 @@ SETUP_DEMO="$SETUP_DEMO" docker compose --env-file .env up -d --build
 for _ in $(seq 1 60); do
   if curl -fsS "http://127.0.0.1:${PORT}/api/health" >/dev/null 2>&1; then
     host=$(hostname)
+    if grep -q '"done"' local/setup.json 2>/dev/null; then
+      say "Fertig. Dein Dashboard:  http://${host}:${PORT}"
+      exit 0
+    fi
     setup_code=$(grep '^SETUP_CODE=' .env | cut -d= -f2)
     say "Fertig. Jetzt im Browser öffnen:  http://${host}:${PORT}/#/einrichten"
     printf '\n   Dein Einrichtungs-Code:  \033[1m%s\033[0m   (aufschreiben oder abfotografieren)\n\n' "$setup_code"

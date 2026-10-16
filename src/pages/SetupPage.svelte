@@ -8,7 +8,6 @@
    */
   import { onMount } from 'svelte';
   import { num, t } from '../i18n/index.svelte';
-  import PageHead from './PageHead.svelte';
 
   type Usage = 'pv' | 'battery' | 'grid';
   interface Param {
@@ -92,6 +91,8 @@
       if (!r.ok) return void (phase = 'closed');
       const s = (await r.json()) as { open: boolean; scan: boolean };
       scanOn = s.scan;
+      // without a network to search, skip the question: the step only says where the address is
+      if (!scanOn) found = [];
       phase = s.open ? 'code' : 'closed';
     } catch {
       phase = 'closed';
@@ -243,7 +244,7 @@
 </script>
 
 <div class="page">
-  <PageHead title={t('setup.title')} />
+  <h1 class="title">{t('setup.title')}</h1>
 
   {#if phase === 'load'}
     <p class="muted-note" role="status">{t('state.loading')}</p>
@@ -356,7 +357,11 @@
             </ul>
           {/if}
         {:else if (roleStep === 'form' || roleStep === 'check') && chosen}
-          <p><strong>{chosen.brands.join(', ')}</strong> · {chosen.products[0] ?? ''}</p>
+          <p>
+            <strong
+              >{[chosen.brands.join(', '), chosen.products[0]].filter(Boolean).join(' · ')}</strong
+            >
+          </p>
           {#if chosen.note}<p class="hint">{chosen.note}</p>{/if}
           {#each chosen.params.filter((p) => !p.advanced) as p (p.name)}
             <label class="field"
@@ -437,6 +442,10 @@
 </div>
 
 <style>
+  .title {
+    font-size: 26px;
+    margin: 8px 0 4px;
+  }
   .card {
     background: var(--surface);
     border-radius: 18px;

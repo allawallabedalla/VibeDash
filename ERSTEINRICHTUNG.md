@@ -12,9 +12,9 @@ Ja/Nein-Fragen, schaust in eine App oder machst ein Foto. Alles ist **risikofrei
 **Entschieden (16.10.2026):** Betriebssystem **Ubuntu Server LTS** · gebrauchte Geräte werden **immer neu
 aufgesetzt** · ohne Agent: **Installer + Einrichtungs-Assistent im Browser**.
 
-Stand: Stufe 1, Weg A und die Installer-Zeile (2B Schritt 1) funktionieren heute – auf frischem Ubuntu automatisch
-getestet. Der **Einrichtungs-Assistent im Browser** (2B Schritt 2) ist noch **geplant**; bis dahin bindet der Agent die
-Geräte an (Weg A).
+Stand: Stufe 1, Weg A und Weg B (Installer-Zeile + Einrichtungs-Assistent im Browser) funktionieren – auf frischem
+Ubuntu bei jeder Änderung automatisch getestet. Der Assistent bindet Solaranlage, Akku und Netzzähler an (nur lesend);
+Wallbox und Steuerung kommen später über den Agenten (LADESTEUERUNG.md).
 
 ---
 
@@ -88,7 +88,7 @@ Helfer fragt: **„Nutzt du ein Werkzeug, das selbst Befehle auf dem Mini-PC aus
 4. Ab hier übernimmt der Agent alles: Repo holen, Datenbank, Dienste, Updates, Geräte finden, Dashboard. Du beantwortest
    nur Ja/Nein, schaust in Apps oder machst Fotos ([INBETRIEBNAHME.md](INBETRIEBNAHME.md), [AGENT.md](AGENT.md)).
 
-### Weg B · Nur ein Chat (ChatGPT, Claude im Browser) – Installer da, Assistent geplant
+### Weg B · Nur ein Chat (ChatGPT, Claude im Browser)
 
 Ein Chat kann nichts auf dem Mini-PC ausführen. Damit du trotzdem nichts über Software wissen musst:
 
@@ -103,8 +103,14 @@ Ein Chat kann nichts auf dem Mini-PC ausführen. Damit du trotzdem nichts über 
    Schreibrechte, automatische Sicherheitsupdates. Zugangsdaten legt sie selbst an (nur für den Rechner lesbar).
    Nochmal ausführen ist sicher. Am Ende steht die Adresse für den Browser.
 
-2. Danach im Browser `http://hausserver:8095/einrichten` öffnen. Ein **Assistent** führt durch den Rest – mit denselben
-   Ja/Nein-Fragen, App-Blicken und Fotos wie beim Agenten. Der Chat hilft dir nur beim Verstehen, er gibt keine Befehle.
+2. Danach im Browser die Adresse öffnen, die am Ende steht (`http://hausserver:8095/#/einrichten`), und den
+   **Einrichtungs-Code** eingeben, der darunter steht. Der Assistent fragt:
+   - vier Sicherheitsfragen (Ja/Nein),
+   - „Darf ich im Heimnetz nach Geräten suchen?“ (Ja/Nein),
+   - je Gerät: „Hast du eine Solaranlage / einen Batteriespeicher / einen Netzzähler?“ → Hersteller aus der Liste
+     (steht auf dem Typenschild) → „Testen“ → **„Ich lese 3,2 kW. Zeigt deine Hersteller-App gerade ungefähr das?“**
+   - Am Ende „Einrichtung abschließen“ – danach ist der Assistent geschlossen, niemand kann mehr etwas umstellen.
+     Der Chat hilft dir nur beim Verstehen, er gibt keine Befehle.
 3. **Schlägt dein Chat andere Befehle vor: nicht ausführen.** Nur die Zeile aus diesem Repo.
 
 ## Risikofrei – was nie passiert
