@@ -389,6 +389,7 @@ export const en: Record<MessageKey, string> = {
   'zoom.mean': 'Mean',
   'zoom.n': 'Readings (n)',
   'zoom.since': 'Data only from {when}',
+  'zoom.curve': 'Curve: mean per {step} · lowest/highest from all readings',
   'flow.title': 'Energy flow now',
   'flow.sun': 'Sun',
   'flow.house': 'House',

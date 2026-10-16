@@ -59,6 +59,11 @@
           hour: '2-digit',
           minute: '2-digit',
         }).format(ms);
+  /** the curve shows means per step; min/max come from all readings */
+  const stepText = $derived.by(() => {
+    const m = Math.round(ZOOM_WINDOWS[win] / POINTS / 60_000);
+    return m < 120 ? `${m} min` : `${Math.round(m / 60)} h`;
+  });
   const late = $derived(
     lines.find((l) => l.covered !== null && l.covered - from > ZOOM_WINDOWS[win] * 0.1),
   );
@@ -100,7 +105,9 @@
       timeZone={data?.timeZone ?? 'Europe/Berlin'}
       label={tile.label}
       tight={zoom?.tight ?? false}
+      legendValues={false}
     />
+    <p class="sub">{t('zoom.curve', { step: stepText })}</p>
     {#if late?.covered}
       <p class="sub">{t('zoom.since', { when: when(late.covered) })}</p>
     {/if}
@@ -170,6 +177,9 @@
     margin: 0;
     font-size: 18px;
     flex: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--text);
   }
   .x {
     width: 44px;

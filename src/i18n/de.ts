@@ -392,6 +392,7 @@ export const de = {
   'zoom.mean': 'Mittel',
   'zoom.n': 'Messwerte (n)',
   'zoom.since': 'Daten erst ab {when}',
+  'zoom.curve': 'Kurve: Mittel je {step} · Tiefster/Höchster aus allen Messwerten',
   'flow.title': 'Energiefluss jetzt',
   'flow.sun': 'Sonne',
   'flow.house': 'Haus',

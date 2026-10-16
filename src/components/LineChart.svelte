@@ -20,8 +20,10 @@
     label: string;
     /** axis around the values instead of from zero (temperatures, battery level) */
     tight?: boolean;
+    /** legend with the last value of each line (off where the value is shown elsewhere) */
+    legendValues?: boolean;
   }
-  let { x, lines, unit, timeZone, label, tight = false }: Props = $props();
+  let { x, lines, unit, timeZone, label, tight = false, legendValues = true }: Props = $props();
 
   let cw = $state(640);
   const VW = $derived(cw < 520 ? 380 : 640);
@@ -92,7 +94,7 @@
     {@const v = last(l.values)}
     <li>
       <span class="key" class:dashed={l.dashed} style:color={l.color}></span>{l.label}
-      {v !== null ? `${num(v, Math.abs(v) < 10 ? 1 : 0)} ${unit}` : ''}
+      {legendValues && v !== null ? `${num(v, Math.abs(v) < 10 ? 1 : 0)} ${unit}` : ''}
     </li>
   {/each}
 </ul>
