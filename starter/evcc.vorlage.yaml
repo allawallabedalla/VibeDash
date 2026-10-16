@@ -1,0 +1,16 @@
+# evcc – Universal-Leser für Wechselrichter, Akku und Wallbox (VibeDash Starter-Paket).
+# install.sh setzt das Passwort ein (EVCC_INFLUX_PASSWORT). Geräte trägt später der Agent bzw. der
+# Einrichtungs-Assistent ein (nur lesend; Steuerung erst nach LADESTEUERUNG.md). Bis dahin: keine Geräte –
+# VibeDash zeigt ehrlich „keine Daten“, nie Beispielwerte.
+network:
+  schema: http
+  host: hausserver
+  port: 7070
+
+interval: 30s
+
+influx:
+  url: http://influxdb:8086
+  database: haus
+  user: evcc
+  password: EVCC_INFLUX_PASSWORT

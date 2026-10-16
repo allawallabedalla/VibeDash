@@ -20,3 +20,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .claude/worktrees/
+# Starter-Paket: Zugangsdaten und erzeugte Konfiguration bleiben auf dem Rechner
+starter/.env
+starter/evcc.yaml
+starter/local/

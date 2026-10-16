@@ -1,0 +1,64 @@
+{
+  "$comment": "VibeDash-Mapping für das Starter-Paket: Messwerte, die evcc in die Datenbank 'haus' schreibt (je Messwert eine Messreihe, Feld 'value'). evcc zählt Netzbezug und Akku-Entladen positiv; VibeDash zeigt Einspeisung und Akku-Laden positiv (scale -1). Energiezähler aus der Leistung integriert, bis echte Zähler angebunden sind.",
+  "timeZone": "Europe/Berlin",
+  "series": {
+    "pv_power": {
+      "name": "PV",
+      "kind": "power",
+      "unit": "W",
+      "measurement": "pvPower",
+      "field": "value",
+      "stepMs": 30000
+    },
+    "load_power": {
+      "name": "Haus",
+      "kind": "power",
+      "unit": "W",
+      "measurement": "homePower",
+      "field": "value",
+      "stepMs": 30000
+    },
+    "battery_power": {
+      "name": "Akku",
+      "kind": "power",
+      "unit": "W",
+      "measurement": "batteryPower",
+      "field": "value",
+      "scale": -1,
+      "stepMs": 30000
+    },
+    "battery_soc": {
+      "name": "Akku",
+      "kind": "state_of_charge",
+      "unit": "%",
+      "measurement": "batterySoc",
+      "field": "value",
+      "stepMs": 30000
+    },
+    "grid_power": {
+      "name": "Netz",
+      "kind": "power",
+      "unit": "W",
+      "measurement": "gridPower",
+      "field": "value",
+      "scale": -1,
+      "stepMs": 30000
+    },
+    "pv_energy": {
+      "source": "derived",
+      "name": "PV",
+      "kind": "energy_counter",
+      "unit": "kWh",
+      "stepMs": 300000,
+      "terms": [{ "integrate": "pv_power" }]
+    },
+    "load_energy": {
+      "source": "derived",
+      "name": "Haus",
+      "kind": "energy_counter",
+      "unit": "kWh",
+      "stepMs": 300000,
+      "terms": [{ "integrate": "load_power" }]
+    }
+  }
+}

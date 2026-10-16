@@ -81,3 +81,36 @@ jobs:
           curl -fsS localhost:8090/gesund | grep -q '"ok":true'
           test "$(docker exec vdf id -un)" = app
           docker rm -f vdf
+
+  starter:
+    # Starter-Paket auf frischem Ubuntu: Installer, Datenbank-Rechte, evcc schreibt, VibeDash liest (Demo-Geräte nur hier)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer (erster Lauf)
+        run: sudo VIBEDASH_DIR="$GITHUB_WORKSPACE" VIBEDASH_EVCC_CONFIG="$GITHUB_WORKSPACE/starter/test/evcc.demo.yaml" bash starter/install.sh
+      - name: Datenbank nur intern, Zugangsdaten nur root
+        run: |
+          ! sudo ss -tln | grep -q ':8086 '
+          test "$(sudo stat -c %a starter/.env)" = 600
+      - name: evcc schreibt, VibeDash liest
+        run: |
+          set -a; . <(sudo cat starter/.env); set +a
+          q() { sudo docker compose -f starter/compose.yaml --env-file starter/.env exec -T influxdb influx -username "$1" -password "$2" -database haus -execute "$3"; }
+          for i in $(seq 1 30); do q admin "$INFLUX_ADMIN_PASSWORD" 'SHOW MEASUREMENTS' | grep -q pvPower && break; sleep 5; done
+          q admin "$INFLUX_ADMIN_PASSWORD" 'SHOW MEASUREMENTS'
+          for m in pvPower homePower gridPower batteryPower batterySoc; do q admin "$INFLUX_ADMIN_PASSWORD" 'SHOW MEASUREMENTS' | grep -qx "$m"; done
+          # der Lese-Benutzer von VibeDash darf nicht schreiben
+          ! q vibedash "$INFLUX_VIBEDASH_PASSWORD" "DROP MEASUREMENT pvPower" 2>/dev/null
+          curl -fsS localhost:8095/api/health | tee /dev/stderr | grep -q '"source":"live"'
+          curl -fsS 'localhost:8095/api/series/pv_power?range=24h' | python3 -c "import json,sys; s=json.load(sys.stdin)['samples']; assert s and abs(s[-1][1]-4000)<1, s[-3:]"
+          # evcc: Netz -1500 W (Einspeisung) -> VibeDash +1500 W
+          curl -fsS 'localhost:8095/api/series/grid_power?range=24h' | python3 -c "import json,sys; s=json.load(sys.stdin)['samples']; assert s and abs(s[-1][1]-1500)<1, s[-3:]"
+      - name: Zweiter Lauf ändert keine Zugangsdaten
+        run: |
+          before=$(sudo sha256sum starter/.env)
+          sudo VIBEDASH_DIR="$GITHUB_WORKSPACE" bash starter/install.sh
+          test "$before" = "$(sudo sha256sum starter/.env)"
+      - name: Protokoll bei Fehler
+        if: failure()
+        run: sudo docker compose -f starter/compose.yaml --env-file starter/.env logs --tail 80
