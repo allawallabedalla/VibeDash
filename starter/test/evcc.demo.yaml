@@ -34,7 +34,7 @@ chargers:
 loadpoints:
   - title: Auto
     charger: wallbox
-    mode: "off"
+    mode: 'off'
 site:
   title: Testhaus
   meters:

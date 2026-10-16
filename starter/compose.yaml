@@ -1,0 +1,67 @@
+# VibeDash Starter-Paket (ERSTEINRICHTUNG.md): Datenbank, Universal-Leser und Dashboard auf einem Mini-PC.
+# Wird von starter/install.sh gestartet – nicht von Hand bearbeiten; Zugangsdaten stehen in starter/.env (600).
+#
+#   influxdb  – speichert die Messwerte; kein Port nach außen, nur im internen Netz der Container
+#   evcc      – liest Wechselrichter, Akku, Wallbox (Modbus, OCPP, Hersteller-APIs) und schreibt in die Datenbank
+#   vibedash  – das Dashboard; liest die Datenbank mit einem Benutzer OHNE Schreibrechte
+name: vibedash
+
+services:
+  influxdb:
+    image: influxdb:1.8.10
+    restart: unless-stopped
+    environment:
+      INFLUXDB_HTTP_AUTH_ENABLED: 'true'
+      INFLUXDB_DB: haus
+      INFLUXDB_ADMIN_USER: admin
+      INFLUXDB_ADMIN_PASSWORD: ${INFLUX_ADMIN_PASSWORD:?fehlt}
+      INFLUXDB_WRITE_USER: evcc
+      INFLUXDB_WRITE_USER_PASSWORD: ${INFLUX_EVCC_PASSWORD:?fehlt}
+      INFLUXDB_READ_USER: vibedash
+      INFLUXDB_READ_USER_PASSWORD: ${INFLUX_VIBEDASH_PASSWORD:?fehlt}
+      INFLUXDB_REPORTING_DISABLED: 'true'
+    volumes:
+      - influxdb-data:/var/lib/influxdb
+
+  evcc:
+    image: evcc/evcc:0.317.1
+    restart: unless-stopped
+    command: evcc --config /etc/evcc/evcc.yaml
+    volumes:
+      - ./evcc.yaml:/etc/evcc/evcc.yaml:ro
+      - evcc-data:/root/.evcc
+    ports:
+      # Oberfläche von evcc nur auf diesem Rechner (der Mensch braucht sie nicht)
+      - '127.0.0.1:7070:7070'
+      # OCPP-Wallboxen verbinden sich hierher (nur Heimnetz, keine Portfreigabe im Router)
+      - '8887:8887'
+    depends_on:
+      - influxdb
+
+  vibedash:
+    build: ..
+    image: vibedash:local
+    restart: unless-stopped
+    ports:
+      - '${VIBEDASH_PORT:-8095}:8080'
+    environment:
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_DB: haus
+      INFLUX_USER: vibedash
+      INFLUX_PASSWORD: ${INFLUX_VIBEDASH_PASSWORD:?fehlt}
+      EVCC_URL: http://evcc:7070
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost}
+      ALLOWED_HOSTS_EXACT: 'on'
+      LOCATION_WRITE: 'off'
+      LATITUDE: ${LATITUDE:-}
+      LONGITUDE: ${LONGITUDE:-}
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      - ./local:/app/local
+    depends_on:
+      - influxdb
+      - evcc
+
+volumes:
+  influxdb-data:
+  evcc-data:

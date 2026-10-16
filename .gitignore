@@ -13,7 +13,7 @@ local/*
 !local/mapping.example.json
 !local/mapping.example.homeassistant.json
 dist-server/
-compose.yaml
+/compose.yaml
 forecast/.venv/
 __pycache__/
 *.sqlite
