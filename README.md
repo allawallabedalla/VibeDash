@@ -14,7 +14,9 @@ Everything runs locally. No cloud, no CDN.
 **Made for complete laypeople.** Buy a mini PC, point Claude Code at this repository, and the agent does the rest –
 database, services, configuration. You only answer clear yes/no questions, look at your manufacturer's app, or take
 a photo of a type plate. No software know-how needed, and everything stays risk-free: the agent only reads, never
-switches a device, never asks you to open anything. Details: [INBETRIEBNAHME.md](INBETRIEBNAHME.md) section 0.
+switches a device, never asks you to open anything. Start here, even with a brand-new or used mini PC:
+[ERSTEINRICHTUNG.md](ERSTEINRICHTUNG.md) (from the box to the dashboard; with Claude Code or just a chat). Rules:
+[INBETRIEBNAHME.md](INBETRIEBNAHME.md) section 0.
 
 > Status: early. Pages Overview, Now, Forecasts and Charging (charge plan, stage A)
 > and a gallery of all building blocks; synthetic demo data, or InfluxDB 1.x and/or Home

@@ -4,7 +4,8 @@ You are building a calm dashboard for **one specific home** from the building bl
 `src/components/`. You do not invent new visual styles. You check the data before you show
 it. You ask the person when something looks odd.
 
-Read first: `CLAUDE.md` (rules), `ANLEITUNG.md` sections 5, 6 and 11 (design, data truth,
+Start of everything (a new or used mini PC, before this repo is even on it): `ERSTEINRICHTUNG.md`
+(Ubuntu Server LTS, wipe only after an explicit yes, agent or chat-only path). Read first: `CLAUDE.md` (rules), `ANLEITUNG.md` sections 5, 6 and 11 (design, data truth,
 forecasting), `INBETRIEBNAHME.md` (onboarding, source of section 1) and **`RISIKEN.md`**
 (risks, mandatory in someone else's home, source of section 1.4). Charging control is
 described in `LADESTEUERUNG.md` and is **not** part of setting up a home.
