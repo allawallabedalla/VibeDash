@@ -26,10 +26,10 @@ export const en: Record<MessageKey, string> = {
   'presence.nobody': 'nobody',
   'presence.active': 'active · since {since}',
   'presence.quiet': 'quiet, e.g. asleep · since {since}',
-  'presence.away': 'front door used · since {since}',
+  'presence.away': 'no motion since {since}',
   'info.presence.what':
-    'Estimated from indoor motion sensors, light switches and the front door: someone (motion or a switch in the last 30 min), quiet (nothing for a while but the door stayed shut – e.g. asleep) or nobody (the door was used after the last sign of life). Rooms without a sensor count only through switches.',
-  'info.presence.source': 'The house service (motion, switches, door contact), every minute.',
+    'Estimated only from signals inside – motion sensors and light switches: someone (motion or a switch in the last 30 min), quiet (at night, or by day less than an hour without motion – e.g. asleep) or nobody (by day nothing for at least an hour). Rooms without a sensor count only through switches.',
+  'info.presence.source': 'The house service (motion and switches inside), every minute.',
   'tile.temp': 'Living room',
   'tile.humidity': 'Humidity',
   'tile.yield': 'Yield today',

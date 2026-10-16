@@ -24,10 +24,10 @@ export const de = {
   'presence.nobody': 'keiner',
   'presence.active': 'aktiv · seit {since}',
   'presence.quiet': 'ruhig, z. B. Schlaf · seit {since}',
-  'presence.away': 'Haustür ging · seit {since}',
+  'presence.away': 'keine Bewegung seit {since}',
   'info.presence.what':
-    'Geschätzt aus Bewegungsmeldern innen, Lichtschaltern und der Haustür: jemand (gerade Bewegung oder Taster in den letzten 30 min), ruhig (länger nichts, aber die Haustür ging nicht – z. B. Schlaf) oder keiner (nach dem letzten Lebenszeichen ging die Haustür). Räume ohne Melder sieht es nur über Taster.',
-  'info.presence.source': 'Das Haus-Programm (Bewegung, Taster, Türkontakt), jede Minute.',
+    'Geschätzt nur aus Signalen von innen – Bewegungsmelder und Lichtschalter: jemand (Bewegung oder Taster in den letzten 30 min), ruhig (nachts oder tagsüber noch keine Stunde ohne Bewegung – z. B. Schlaf) oder keiner (tagsüber seit mindestens 1 Stunde nichts). Räume ohne Melder sieht es nur über Taster.',
+  'info.presence.source': 'Das Haus-Programm (Bewegung und Taster innen), jede Minute.',
   'tile.temp': 'Wohnzimmer',
   'tile.humidity': 'Luftfeuchte',
   'tile.yield': 'Ertrag heute',
