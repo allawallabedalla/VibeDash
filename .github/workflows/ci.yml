@@ -83,28 +83,45 @@ jobs:
           docker rm -f vdf
 
   starter:
-    # Starter-Paket auf frischem Ubuntu: Installer, Datenbank-Rechte, evcc schreibt, VibeDash liest (Demo-Geräte nur hier)
+    # Starter-Paket auf frischem Ubuntu: Installer, Rechte, dann der Einrichtungs-Assistent über seine API
+    # (Demo-Geräte nur hier), evcc schreibt, VibeDash liest
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Installer (erster Lauf)
-        run: sudo VIBEDASH_DIR="$GITHUB_WORKSPACE" VIBEDASH_EVCC_CONFIG="$GITHUB_WORKSPACE/starter/test/evcc.demo.yaml" bash starter/install.sh
+        run: sudo VIBEDASH_DIR="$GITHUB_WORKSPACE" VIBEDASH_SETUP_DEMO=on VIBEDASH_SCAN_CIDR= bash starter/install.sh
       - name: Datenbank nur intern, Zugangsdaten nur root
         run: |
           ! sudo ss -tln | grep -q ':8086 '
           test "$(sudo stat -c %a starter/.env)" = 600
+      - name: Einrichtungs-Assistent verbindet Geräte (über die API wie die Seite)
+        run: |
+          set -a; . <(sudo cat starter/.env); set +a
+          api() { curl -sS -X POST "localhost:8095/api/setup/$1" -H 'Content-Type: application/json' -H 'Origin: http://localhost:8095' -d "$2"; echo; }
+          C="\"code\":\"$SETUP_CODE\""
+          # falscher Code und fremde Seite werden abgewiesen
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST localhost:8095/api/setup/unlock -H 'Content-Type: application/json' -H 'Origin: http://localhost:8095' -d '{"code":"000000"}')" = 403
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST localhost:8095/api/setup/unlock -H 'Content-Type: application/json' -H 'Origin: http://evil.example' -d "{$C}")" = 403
+          api unlock "{$C}" | grep -q '"ok":true'
+          api answers "{$C,\"answers\":{\"own_home\":true,\"read_only\":true,\"no_opening\":true,\"ask_if_unsure\":true}}" | grep -q '"all":true'
+          api templates "{$C,\"usage\":\"pv\"}" | python3 -c "import json,sys; t=json.load(sys.stdin)['templates']; print(len(t), 'Vorlagen PV'); assert any(x['template']=='demo-meter' for x in t)"
+          api test "{$C,\"usage\":\"pv\",\"template\":\"demo-meter\",\"values\":{\"power\":\"4000\"}}" | tee /dev/stderr | grep -q '"value":4000'
+          api save "{$C,\"usage\":\"pv\",\"template\":\"demo-meter\",\"values\":{\"power\":\"4000\"}}" | grep -q '"ok":true'
+          api save "{$C,\"usage\":\"grid\",\"template\":\"demo-meter\",\"values\":{\"power\":\"-1500\"}}" | grep -q '"ok":true'
+          api save "{$C,\"usage\":\"battery\",\"template\":\"demo-battery\",\"values\":{\"power\":\"-1000\",\"soc\":\"60\"}}" | grep -q '"ok":true'
+          api finish "{$C}" | grep -q '"ok":true'
+          curl -fsS localhost:8095/api/setup | grep -q '"open":false'
+          api test "{$C,\"usage\":\"pv\",\"template\":\"demo-meter\",\"values\":{}}" | grep -q setup_closed
       - name: evcc schreibt, VibeDash liest
         run: |
           set -a; . <(sudo cat starter/.env); set +a
           q() { sudo docker compose -f starter/compose.yaml --env-file starter/.env exec -T influxdb influx -username "$1" -password "$2" -database haus -execute "$3"; }
-          for i in $(seq 1 30); do q admin "$INFLUX_ADMIN_PASSWORD" 'SHOW MEASUREMENTS' | grep -q pvPower && break; sleep 5; done
+          for i in $(seq 1 40); do q admin "$INFLUX_ADMIN_PASSWORD" 'SHOW MEASUREMENTS' | grep -qx pvPower && break; sleep 5; done
           q admin "$INFLUX_ADMIN_PASSWORD" 'SHOW MEASUREMENTS'
           for m in pvPower homePower gridPower batteryPower batterySoc; do q admin "$INFLUX_ADMIN_PASSWORD" 'SHOW MEASUREMENTS' | grep -qx "$m"; done
-          # der Lese-Benutzer von VibeDash darf nicht schreiben
           ! q vibedash "$INFLUX_VIBEDASH_PASSWORD" "DROP MEASUREMENT pvPower" 2>/dev/null
           curl -fsS localhost:8095/api/health | tee /dev/stderr | grep -q '"source":"live"'
           curl -fsS 'localhost:8095/api/series/pv_power?range=24h' | python3 -c "import json,sys; s=json.load(sys.stdin)['samples']; assert s and abs(s[-1][1]-4000)<1, s[-3:]"
-          # evcc: Netz -1500 W (Einspeisung) -> VibeDash +1500 W
           curl -fsS 'localhost:8095/api/series/grid_power?range=24h' | python3 -c "import json,sys; s=json.load(sys.stdin)['samples']; assert s and abs(s[-1][1]-1500)<1, s[-3:]"
       - name: Zweiter Lauf ändert keine Zugangsdaten
         run: |
@@ -113,4 +130,4 @@ jobs:
           test "$before" = "$(sudo sha256sum starter/.env)"
       - name: Protokoll bei Fehler
         if: failure()
-        run: sudo docker compose -f starter/compose.yaml --env-file starter/.env logs --tail 80
+        run: sudo docker compose -f starter/compose.yaml --env-file starter/.env logs --tail 120

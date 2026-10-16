@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { createServer } from 'node:http';
 import { handleApi, type ApiDeps } from './api';
 import { fileStore } from './feedback';
+import { codeChecker, evccAdmin, scan, stateFile } from './setup';
 import { createBackends } from './backends';
 import { encodeBody, gzipStatic } from './compress';
 import { chargeSessions, fetchPlan } from './charging';
@@ -91,6 +92,19 @@ if (deps.mapping?.boards?.length) {
       return { status: r.status, body: await r.json().catch(() => null) };
     };
   }
+}
+
+// Setup assistant (starter pack): only with evcc, its admin password and a setup code from the installer.
+if (config.evcc && process.env.SETUP_CODE && process.env.EVCC_ADMIN_PASSWORD) {
+  deps.setup = {
+    checkCode: codeChecker(process.env.SETUP_CODE),
+    state: stateFile(process.env.SETUP_STATE_PATH ?? 'local/setup.json'),
+    evcc: evccAdmin(config.evcc.url, process.env.EVCC_ADMIN_PASSWORD, fetch),
+    scanCidr: process.env.SCAN_CIDR || null,
+    scan: (cidr) => scan(cidr),
+    allowDemo: process.env.SETUP_DEMO === 'on',
+  };
+  log('setup assistant: /#/einrichten');
 }
 
 // Feedback button on every page: a local backlog for VibeDash itself (FEEDBACK=off disables it).
@@ -296,7 +310,7 @@ const server = createServer(async (req, res) => {
         body = '';
         for await (const chunk of req) {
           body += chunk;
-          if (body.length > 2048) break;
+          if (body.length > 8192) break;
         }
       }
       const r = await handleApi(req.method ?? 'GET', url, deps, {

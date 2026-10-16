@@ -2,9 +2,17 @@
  * Minimal hash router: #/ , #/week, #/now, #/forecasts, #/charging, #/gallery
  * and #/b/<id> for a board (a page a house service supplies). No dependency needed.
  */
-type Fixed = 'overview' | 'week' | 'now' | 'forecasts' | 'charging' | 'gallery';
+type Fixed = 'overview' | 'week' | 'now' | 'forecasts' | 'charging' | 'gallery' | 'einrichten';
 export type Route = Fixed | `b/${string}`;
-const routes: Fixed[] = ['overview', 'week', 'now', 'forecasts', 'charging', 'gallery'];
+const routes: Fixed[] = [
+  'overview',
+  'week',
+  'now',
+  'forecasts',
+  'charging',
+  'gallery',
+  'einrichten',
+];
 
 function parse(hash: string): Route {
   const name = hash.replace(/^#\/?/, '');

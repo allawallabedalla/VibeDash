@@ -89,6 +89,9 @@
     {#await import('../gallery/Gallery.svelte') then { default: Gallery }}
       <Gallery />
     {/await}
+  {:else if router.route === 'einrichten'}
+    <!-- Setup assistant: works before any data exists; loaded only here. -->
+    {#await import('../pages/SetupPage.svelte') then { default: SetupPage }}<SetupPage />{/await}
   {:else if store.state.status === 'loading'}
     <div class="page state" role="status" aria-live="polite">
       <p class="loading">{t('state.loading')}</p>
@@ -120,6 +123,14 @@
             {/each}
           </ul>
           <button type="button" class="retry" onclick={() => load()}>{t('state.retry')}</button>
+        </section>
+      </div>
+    {/if}
+    {#if store.setupOpen}
+      <div class="page">
+        <section class="notice small" role="status">
+          <p class="title">{t('setup.banner')}</p>
+          <a class="retry" href="#/einrichten">{t('setup.bannerGo')}</a>
         </section>
       </div>
     {/if}

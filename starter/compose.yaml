@@ -50,6 +50,11 @@ services:
       INFLUX_USER: vibedash
       INFLUX_PASSWORD: ${INFLUX_VIBEDASH_PASSWORD:?fehlt}
       EVCC_URL: http://evcc:7070
+      # Einrichtungs-Assistent (/#/einrichten): Code vom Installer, evcc-Admin-Passwort, Heimnetz für die Suche
+      EVCC_ADMIN_PASSWORD: ${EVCC_ADMIN_PASSWORD:-}
+      SETUP_CODE: ${SETUP_CODE:-}
+      SCAN_CIDR: ${SCAN_CIDR:-}
+      SETUP_DEMO: ${SETUP_DEMO:-off}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost}
       ALLOWED_HOSTS_EXACT: 'on'
       LOCATION_WRITE: 'off'
