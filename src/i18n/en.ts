@@ -528,12 +528,16 @@ export const en: Record<MessageKey, string> = {
   'hc.tomorrow': 'Tomorrow',
   'hc.nowTitle': 'Now',
   'hc.trace.title': 'Course of this charge',
-  'hc.trace.titleIdle': 'Course of the last 6 hours',
+  'hc.trace.titleH': 'Course of the last {h} hours',
+  'hc.trace.charge': 'This charge',
+  'hc.trace.period': 'Period',
+  'hc.trace.bin1': 'One-minute means',
+  'hc.trace.bin5': '5-minute means',
   'hc.trace.car': 'Car',
   'hc.trace.feed': 'Feed-in',
   'hc.trace.import': 'Grid import',
   'hc.trace.note':
-    'One-minute means in kW, as of {time}, new every minute. When the car steps up, feed-in should fall to a small rest and no grid import appear.',
+    '{bin} in kW, as of {time}, new every minute. When the car steps up, feed-in should fall to a small rest and no grid import appear.',
   'hc.trace.aria': 'Car charging with {car} kW, feed-in {feed} kW',
   'hc.planTitle': 'Charge plan',
   'hc.planNote':

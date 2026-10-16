@@ -7,8 +7,9 @@
    * Read-only, refreshed every minute.
    */
   import { onMount } from 'svelte';
-  import { num, t, time } from '../i18n/index.svelte';
+  import { i18n, num, t, time } from '../i18n/index.svelte';
   import Card from '../components/Card.svelte';
+  import Segmented from '../components/Segmented.svelte';
 
   interface Props {
     /** series id of the car's power (mapping.charging.power) */
@@ -20,6 +21,21 @@
   let { powerSeries, since, timeZone }: Props = $props();
 
   const MIN = 60_000;
+  const HOUR = 60 * MIN;
+  // the period: the running charge, or the last 6, 24 or 72 hours
+  type Period = 'charge' | '6h' | '24h' | '72h';
+  const HOURS: Record<Exclude<Period, 'charge'>, number> = { '6h': 6, '24h': 24, '72h': 72 };
+  let period = $state<Period>('6h');
+  let picked = false;
+  $effect.pre(() => {
+    // follow the charge until the person picks a period themselves
+    if (!picked) period = since !== null ? 'charge' : '6h';
+  });
+  const pick = (p: Period) => {
+    picked = true;
+    period = p;
+    void load();
+  };
   type Row = [number, number];
   let car = $state<Row[]>([]);
   let grid = $state<Row[]>([]);
@@ -27,7 +43,11 @@
   let failed = $state(false);
 
   const get = async (id: string): Promise<Row[]> => {
-    const r = await fetch(`/api/series/${id}?range=24h`, { signal: AbortSignal.timeout(20_000) });
+    // 72 h come from the week (thinned to 5-min values beyond two days, plenty here)
+    const range = period === '72h' ? '7d' : '24h';
+    const r = await fetch(`/api/series/${id}?range=${range}`, {
+      signal: AbortSignal.timeout(20_000),
+    });
     if (!r.ok) throw new Error(String(r.status));
     return ((await r.json()) as { samples: Row[] }).samples;
   };
@@ -48,17 +68,23 @@
     return () => clearInterval(timer);
   });
 
-  const from = $derived(since !== null ? since - 15 * MIN : now - 6 * 60 * MIN);
+  const from = $derived(
+    period === 'charge' && since !== null
+      ? since - 15 * MIN
+      : now - HOURS[period === 'charge' ? '6h' : period] * HOUR,
+  );
+  // 72 hours in 5-minute means, otherwise minute means
+  const BIN = $derived(period === '72h' ? 5 * MIN : MIN);
   const to = $derived(now);
 
-  /** one-minute means in kW; a minute without values stays a gap */
+  /** means per BIN in kW; a slot without values stays a gap */
   const perMinute = (rows: Row[], f: (w: number) => number) => {
-    const n = Math.max(1, Math.ceil((to - from) / MIN));
+    const n = Math.max(1, Math.ceil((to - from) / BIN));
     const sum = new Array<number>(n).fill(0);
     const cnt = new Array<number>(n).fill(0);
     for (const [t0, v] of rows) {
       if (t0 < from || t0 >= to) continue;
-      const i = Math.floor((t0 - from) / MIN);
+      const i = Math.floor((t0 - from) / BIN);
       sum[i]! += f(v) / 1000;
       cnt[i]! += 1;
     }
@@ -76,7 +102,7 @@
         return v;
       }
       age++;
-      return age <= 3 ? last : null;
+      return age * BIN <= 3 * MIN ? last : null;
     });
   });
   const feedKw = $derived(perMinute(grid, (w) => Math.max(0, w)));
@@ -85,8 +111,8 @@
   // ── drawing ────────────────────────────────────────────────────────────────
   // drawing width follows the card: narrow on the phone, so text keeps its size
   let cw = $state(640);
-  const VW = $derived(cw < 520 ? 380 : 640);
-  const VH = $derived(cw < 520 ? 230 : 200);
+  const VW = $derived(cw < 520 ? 380 : cw > 900 ? 1000 : 640);
+  const VH = $derived(cw < 520 ? 230 : cw > 900 ? 260 : 200);
   const PAD = { l: 34, r: 8, t: 10, b: 22 };
   const top = $derived(
     Math.max(
@@ -140,11 +166,27 @@
   );
   const ticksX = $derived.by(() => {
     const span = to - from;
-    const step = span > 4 * 3_600_000 ? 3_600_000 : 30 * MIN;
+    const narrow = cw < 520;
+    const step =
+      span <= 4 * HOUR
+        ? 30 * MIN
+        : span <= 8 * HOUR
+          ? HOUR
+          : span <= 26 * HOUR
+            ? (narrow ? 6 : 3) * HOUR
+            : (narrow ? 24 : 12) * HOUR;
     const out: number[] = [];
     for (let t0 = Math.ceil(from / step) * step; t0 <= to; t0 += step) out.push(t0);
     return out;
   });
+  const fmtTick = (t0: number) =>
+    to - from > 26 * HOUR
+      ? new Intl.DateTimeFormat(i18n.locale === 'de' ? 'de-DE' : 'en-GB', {
+          timeZone,
+          weekday: 'short',
+          hour: '2-digit',
+        }).format(t0)
+      : time(t0, timeZone);
   const xAt = (t0: number) => PAD.l + ((VW - PAD.l - PAD.r) * (t0 - from)) / Math.max(1, to - from);
 
   const lastOf = (vals: (number | null)[]): number | null => {
@@ -157,11 +199,26 @@
 </script>
 
 <Card
-  title={since !== null ? t('hc.trace.title') : t('hc.trace.titleIdle')}
+  title={period === 'charge' ? t('hc.trace.title') : t('hc.trace.titleH', { h: HOURS[period] })}
   icon="bolt"
   color="var(--battery)"
-  note={t('hc.trace.note', { time: time(now, timeZone) })}
+  note={t('hc.trace.note', {
+    time: time(now, timeZone),
+    bin: period === '72h' ? t('hc.trace.bin5') : t('hc.trace.bin1'),
+  })}
 >
+  <div class="period">
+    <Segmented
+      options={[
+        ...(since !== null ? [{ id: 'charge', label: t('hc.trace.charge') }] : []),
+        { id: '6h', label: '6 h' },
+        { id: '24h', label: '24 h' },
+        { id: '72h', label: '72 h' },
+      ]}
+      bind:value={() => period, (v) => pick(v as Period)}
+      label={t('hc.trace.period')}
+    />
+  </div>
   {#if failed}
     <p class="muted-note">{t('state.noData')}</p>
   {:else if carKw.some((v) => v !== null) || feedKw.some((v) => v !== null)}
@@ -194,7 +251,7 @@
       {/each}
       {#each ticksX as t0 (t0)}
         <text class="axis" x={xAt(t0)} y={VH - 4} text-anchor={xAt(t0) > VW - 30 ? 'end' : 'middle'}
-          >{time(t0, timeZone)}</text
+          >{fmtTick(t0)}</text
         >
       {/each}
       <path class="area feed" d={area(feedKw)} />
@@ -209,6 +266,11 @@
 </Card>
 
 <style>
+  .period {
+    margin-bottom: 8px;
+    max-width: 100%;
+    overflow-x: auto;
+  }
   .legend {
     display: flex;
     flex-wrap: wrap;
