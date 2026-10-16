@@ -4,7 +4,9 @@
  * Assistant or credentials and cannot send queries (only names from
  * local/mapping.json).
  */
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { createServer } from 'node:http';
 import { handleApi, type ApiDeps } from './api';
 import { fileStore } from './feedback';
@@ -266,6 +268,17 @@ const SECURITY_HEADERS = {
   'Content-Security-Policy':
     "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'",
 };
+
+// Build id = hash of the shipped index.html (asset names change with every build): an open page
+// asks /api/health now and then and reloads itself after a release (Audit03 follow-up).
+try {
+  deps.build = createHash('sha256')
+    .update(readFileSync(join(config.distDir, 'index.html')))
+    .digest('hex')
+    .slice(0, 12);
+} catch {
+  /* no build (dev server): pages never reload themselves */
+}
 
 const hosts = allowedHosts(process.env);
 const server = createServer(async (req, res) => {

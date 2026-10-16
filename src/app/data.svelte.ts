@@ -7,6 +7,7 @@
  */
 import { ENTITIES, generateDemo, type DemoData, type DemoIssue } from '../demo';
 import { explainedBy, type Note } from '../model/notes';
+import { newBuild } from '../model/release';
 import { counterResets, findGaps } from '../model/series';
 import type { Entity, Series } from '../model/types';
 
@@ -154,10 +155,35 @@ async function loadLive(
 
 let loads = 0;
 
+/**
+ * Release check: the build id from /api/health at first load; every 5 minutes
+ * (only while the page is visible) the page asks again and reloads itself when
+ * a new build is live – so a phone tab never keeps old code for hours. Never
+ * while a dialog is open or something is being typed.
+ */
+let build: string | null = null;
+let buildTimer: ReturnType<typeof setInterval> | undefined;
+export function busyTyping(): boolean {
+  if (typeof document === 'undefined') return true;
+  const el = document.activeElement;
+  const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+  return typing || !!document.querySelector('dialog[open]');
+}
+function watchBuild(first: unknown) {
+  if (typeof first !== 'string' || !first || buildTimer || typeof window === 'undefined') return;
+  build = first;
+  buildTimer = setInterval(async () => {
+    if (document.visibilityState !== 'visible' || busyTyping()) return;
+    const h = await getJson('/api/health');
+    if (newBuild(build, (h?.body as { build?: unknown } | undefined)?.build)) location.reload();
+  }, 5 * 60_000);
+}
+
 export async function load(): Promise<void> {
   const run = ++loads;
   state = { status: 'loading' };
   const health = await getJson('/api/health');
+  watchBuild((health?.body as { build?: unknown } | undefined)?.build);
   const body = health?.body as
     | {
         source?: string;
