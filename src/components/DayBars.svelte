@@ -86,6 +86,10 @@
     font-size: var(--small);
     color: var(--muted);
     white-space: nowrap;
+    /* a long label (from a board) is cut, never widens the page */
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .now .d {
     color: var(--text);
