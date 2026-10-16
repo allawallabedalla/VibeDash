@@ -134,7 +134,10 @@
           />{/await}
       {:else if boardOf(router.route)}
         {#await import('../pages/BoardPage.svelte') then { default: BoardPage }}
-          <BoardPage id={boardOf(router.route)!} />
+          <!-- a new board is a new page: load it afresh (Audit03 U-01) -->
+          {#key boardOf(router.route)}
+            <BoardPage id={boardOf(router.route)!} />
+          {/key}
         {/await}
       {:else if router.route === 'charging'}
         <!-- Loaded on demand: only homes with evcc need it. -->
