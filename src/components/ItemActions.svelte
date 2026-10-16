@@ -1,9 +1,11 @@
 <script lang="ts">
   /**
-   * Buttons under a board list item: done (with date, default today), seen,
-   * note, hide, undo. Each click goes to this server (POST /api/board/<id>/action),
-   * which passes it to the house service that made the board; afterwards the
-   * page reloads the board. Nothing here switches a device.
+   * The open part of an accordion item on a board: stamps (done, seen, put
+   * off), notes with a field for a new one, and the buttons Done (now, or
+   * another date), Later (a dialog: 1 week … 3 months or a date), Seen, Hide,
+   * Undo. Each click goes to this server (POST /api/board/<id>/action), which
+   * passes it to the house service that made the board; then the board reloads.
+   * Nothing here switches a device.
    */
   import type { BoardListItem, ItemAction } from '../model/board';
   import { t } from '../i18n/index.svelte';
@@ -12,19 +14,28 @@
   let { board, item, onchanged }: { board: string; item: BoardListItem; onchanged: () => void } =
     $props();
 
-  type Mode = 'idle' | 'done' | 'comment';
-  let mode = $state<Mode>('idle');
   let busy = $state(false);
   let failed = $state(false);
   let note = $state('');
-  const today = () => {
+  let otherDate = $state(false);
+  let laterDialog = $state<HTMLDialogElement>();
+
+  const iso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const today = () => iso(new Date());
+  const inDays = (n: number) => iso(new Date(Date.now() + n * 86_400_000));
+  const inMonths = (n: number) => {
     const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    d.setMonth(d.getMonth() + n);
+    return iso(d);
   };
   let day = $state(today());
+  let until = $state(inDays(7));
 
   const has = (a: ItemAction) => item.actions?.includes(a) ?? false;
-  const short = (iso: string) => `${Number(iso.slice(8, 10))}.${Number(iso.slice(5, 7))}.`;
+  /** "2026-10-16 08:20" -> "16.10. 08:20", "2026-10-16" -> "16.10." */
+  const short = (s: string) =>
+    `${Number(s.slice(8, 10))}.${Number(s.slice(5, 7))}.${s.length > 10 ? ` ${s.slice(11)}` : ''}`;
 
   async function send(action: ItemAction, extra: { text?: string; date?: string } = {}) {
     busy = true;
@@ -37,8 +48,9 @@
         signal: AbortSignal.timeout(20_000),
       });
       if (!r.ok) throw new Error(String(r.status));
-      mode = 'idle';
       note = '';
+      otherDate = false;
+      laterDialog?.close();
       onchanged();
     } catch {
       failed = true;
@@ -46,16 +58,47 @@
       busy = false;
     }
   }
+  const later = (date: string) => void send('snooze', { date });
 </script>
 
-<div class="acts">
-  {#if item.done}<span class="stamp">{t('item.doneOn', { date: short(item.done) })}</span>{/if}
-  {#if item.acked}<span class="stamp">{t('item.ackedOn', { date: short(item.acked) })}</span>{/if}
+<div class="panel">
+  {#if item.done || item.acked || item.snoozed}
+    <p class="stamps">
+      {#if item.done}<span>{t('item.doneOn', { date: short(item.done) })}</span>{/if}
+      {#if item.acked}<span>{t('item.ackedOn', { date: short(item.acked) })}</span>{/if}
+      {#if item.snoozed}<span>{t('item.snoozedUntil', { date: short(item.snoozed) })}</span>{/if}
+    </p>
+  {/if}
+
   {#each item.comments ?? [] as c, i (i)}
-    <p class="note"><Icon name="comment" size={14} /> {c.text} <span class="at">{c.at}</span></p>
+    <p class="note">
+      <Icon name="comment" size={14} /><span>{c.text}</span><span class="at">{c.at}</span>
+    </p>
   {/each}
 
-  {#if mode === 'done'}
+  {#if has('comment')}
+    <form
+      class="row"
+      onsubmit={(e) => {
+        e.preventDefault();
+        if (note.trim()) void send('comment', { text: note.trim() });
+      }}
+    >
+      <textarea
+        bind:value={note}
+        maxlength="500"
+        rows="2"
+        placeholder={t('item.notePlaceholder')}
+        aria-label={t('item.notePlaceholder')}></textarea>
+      {#if note.trim()}
+        <button type="submit" class="b main" disabled={busy}
+          ><Icon name="comment" size={16} />{t('item.saveNote')}</button
+        >
+      {/if}
+    </form>
+  {/if}
+
+  {#if otherDate}
     <form
       class="row"
       onsubmit={(e) => {
@@ -64,44 +107,35 @@
       }}
     >
       <label class="date"
-        ><span>{t('item.date')}</span>
-        <input type="date" bind:value={day} max={today()} required /></label
+        ><span>{t('item.date')}</span><input
+          type="date"
+          bind:value={day}
+          max={today()}
+          required
+        /></label
       >
       <button type="submit" class="b main" disabled={busy}
         ><Icon name="check" size={16} />{t('item.save')}</button
       >
-      <button type="button" class="b" onclick={() => (mode = 'idle')}>{t('item.cancel')}</button>
-    </form>
-  {:else if mode === 'comment'}
-    <form
-      class="row"
-      onsubmit={(e) => {
-        e.preventDefault();
-        if (note.trim()) void send('comment', { text: note.trim() });
-      }}
-    >
-      <!-- svelte-ignore a11y_autofocus -->
-      <input
-        class="text"
-        type="text"
-        maxlength="500"
-        bind:value={note}
-        placeholder={t('item.notePlaceholder')}
-        aria-label={t('item.notePlaceholder')}
-        autofocus
-      />
-      <button type="submit" class="b main" disabled={busy || !note.trim()}>{t('item.save')}</button>
-      <button type="button" class="b" onclick={() => (mode = 'idle')}>{t('item.cancel')}</button>
+      <button type="button" class="b" onclick={() => (otherDate = false)}>{t('item.cancel')}</button
+      >
     </form>
   {:else}
     <div class="row">
       {#if has('done')}
+        <button type="button" class="b main" disabled={busy} onclick={() => send('done')}
+          ><Icon name="check" size={16} />{t('item.done')}</button
+        >
+      {/if}
+      {#if has('snooze')}
         <button
           type="button"
           class="b"
           disabled={busy}
-          onclick={() => ((day = today()), (mode = 'done'))}
-          ><Icon name="check" size={16} />{t('item.done')}</button
+          onclick={() => {
+            until = inDays(7);
+            laterDialog?.showModal();
+          }}><Icon name="clock" size={16} />{t('item.later')}</button
         >
       {/if}
       {#if has('ack') && !item.acked}
@@ -109,35 +143,97 @@
           ><Icon name="eye" size={16} />{t('item.ack')}</button
         >
       {/if}
-      {#if has('comment')}
-        <button type="button" class="b" disabled={busy} onclick={() => (mode = 'comment')}
-          ><Icon name="comment" size={16} />{t('item.comment')}</button
-        >
-      {/if}
       {#if has('delete')}
         <button type="button" class="b" disabled={busy} onclick={() => send('delete')}
           ><Icon name="close" size={16} />{t('item.delete')}</button
         >
       {/if}
-      {#if item.done || item.acked}
+      {#if item.done || item.acked || item.snoozed}
         <button type="button" class="b" disabled={busy} onclick={() => send('undo')}
           ><Icon name="undo" size={16} />{t('item.undo')}</button
         >
       {/if}
+      {#if has('done')}
+        <button type="button" class="link" onclick={() => ((day = today()), (otherDate = true))}
+          >{t('item.otherDate')}</button
+        >
+      {/if}
     </div>
   {/if}
-  {#if busy}<span class="stamp" role="status">{t('item.busy')}</span>{/if}
-  {#if failed}<span class="stamp fail" role="alert">{t('item.failed')}</span>{/if}
+  {#if busy}<span class="hint" role="status">{t('item.busy')}</span>{/if}
+  {#if failed}<span class="hint fail" role="alert">{t('item.failed')}</span>{/if}
+
+  {#if has('snooze')}
+    <dialog bind:this={laterDialog} aria-labelledby="later-title">
+      <form method="dialog" class="head">
+        <h3 id="later-title">{t('item.laterTitle')}</h3>
+        <button class="x" aria-label={t('item.cancel')}><Icon name="close" /></button>
+      </form>
+      <p class="what">{item.text}</p>
+      <div class="choices">
+        <button type="button" class="b" disabled={busy} onclick={() => later(inDays(7))}
+          >{t('item.week')}</button
+        >
+        <button type="button" class="b" disabled={busy} onclick={() => later(inDays(14))}
+          >{t('item.twoWeeks')}</button
+        >
+        <button type="button" class="b" disabled={busy} onclick={() => later(inMonths(1))}
+          >{t('item.month')}</button
+        >
+        <button type="button" class="b" disabled={busy} onclick={() => later(inMonths(3))}
+          >{t('item.threeMonths')}</button
+        >
+      </div>
+      <form
+        class="row"
+        onsubmit={(e) => {
+          e.preventDefault();
+          later(until);
+        }}
+      >
+        <label class="date"
+          ><span>{t('item.until')}</span><input
+            type="date"
+            bind:value={until}
+            min={inDays(1)}
+            required
+          /></label
+        >
+        <button type="submit" class="b main" disabled={busy}
+          ><Icon name="clock" size={16} />{t('item.later')}</button
+        >
+      </form>
+      <p class="hint">{t('item.laterHint')}</p>
+      {#if failed}<p class="hint fail" role="alert">{t('item.failed')}</p>{/if}
+    </dialog>
+  {/if}
 </div>
 
 <style>
-  .acts {
-    flex-basis: 100%;
+  .panel {
+    display: grid;
+    gap: 10px;
+    padding: 4px 0 6px;
+  }
+  .stamps {
+    margin: 0;
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: 6px 10px;
-    margin-top: 4px;
+    gap: 4px 12px;
+    font-size: 14px;
+    color: var(--good-text);
+  }
+  .note {
+    margin: 0;
+    font-size: 14px;
+    display: flex;
+    gap: 6px;
+    align-items: baseline;
+  }
+  .at {
+    color: var(--muted);
+    margin-left: auto;
+    white-space: nowrap;
   }
   .row {
     display: flex;
@@ -149,13 +245,13 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    min-height: 36px;
-    padding: 0 12px;
+    min-height: 40px;
+    padding: 0 14px;
     border: 1px solid var(--line);
-    border-radius: 18px;
+    border-radius: 20px;
     background: var(--surface);
     color: var(--muted);
-    font-size: 14px;
+    font-size: 15px;
     cursor: pointer;
   }
   .b:hover:not(:disabled) {
@@ -169,26 +265,32 @@
     opacity: 0.5;
     cursor: default;
   }
-  .stamp {
-    font-size: 14px;
-    color: var(--good-text);
-  }
-  .stamp.fail {
-    color: var(--poor-text);
-  }
-  .note {
-    flex-basis: 100%;
-    margin: 0;
-    font-size: 14px;
-    color: var(--text);
-    display: flex;
-    gap: 6px;
-    align-items: baseline;
-  }
-  .at {
+  .link {
+    border: 0;
+    background: none;
     color: var(--muted);
-    margin-left: auto;
-    white-space: nowrap;
+    font-size: 14px;
+    text-decoration: underline;
+    cursor: pointer;
+    min-height: 40px;
+  }
+  textarea,
+  input {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 16px;
+  }
+  textarea {
+    flex: 1 1 100%;
+    padding: 8px 10px;
+    resize: vertical;
+  }
+  input {
+    min-height: 40px;
+    padding: 0 10px;
   }
   .date {
     display: inline-flex;
@@ -197,17 +299,60 @@
     font-size: 14px;
     color: var(--muted);
   }
-  input {
-    min-height: 36px;
-    border: 1px solid var(--line);
-    border-radius: 10px;
+  .hint {
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0;
+  }
+  .fail {
+    color: var(--poor-text);
+  }
+  dialog {
+    width: min(420px, calc(100vw - 32px));
+    border: 0;
+    border-radius: 18px;
+    padding: 16px 18px;
     background: var(--surface);
     color: var(--text);
-    font: inherit;
-    font-size: 16px;
-    padding: 0 10px;
+    box-shadow: var(--shadow);
   }
-  .text {
-    flex: 1 1 220px;
+  dialog[open] {
+    display: grid;
+    gap: 12px;
+  }
+  dialog::backdrop {
+    background: rgb(0 0 0 / 0.35);
+  }
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  h3 {
+    margin: 0;
+    font-size: 17px;
+  }
+  .what {
+    margin: 0;
+    font-size: 15px;
+  }
+  .choices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .choices .b {
+    justify-content: center;
+  }
+  .x {
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
   }
 </style>

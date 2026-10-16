@@ -504,7 +504,21 @@ describe('clicks on board items and the feedback backlog', () => {
     expect(
       (await write('/api/board/care/action', d, { item: 'plan:doors', action: 'comment' })).status,
     ).toBe(400);
+    // „Später“ needs a date
+    expect(
+      (await write('/api/board/care/action', d, { item: 'plan:doors', action: 'snooze' })).status,
+    ).toBe(400);
     expect(calls).toBe(0);
+    expect(
+      (
+        await write('/api/board/care/action', d, {
+          item: 'plan:doors',
+          action: 'snooze',
+          date: '2026-11-01',
+        })
+      ).status,
+    ).toBe(200);
+    expect(calls).toBe(1);
     const ro = deps({ mapping: withBoards(), boardAction: d.boardAction! });
     expect((await write('/api/board/care/action', ro, ok)).status).toBe(404);
     expect(

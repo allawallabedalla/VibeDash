@@ -159,7 +159,8 @@ left out; colours and states come from a fixed list.
 
 **Items that take clicks (optional).** A board with `"actionUrl"` in the mapping lets
 list items carry `"id": "<kind>:<key>"` and `"actions"` (`done`, `ack`, `comment`,
-`delete`, `undo`). The page shows small buttons; a click goes to this server
+`delete`, `undo`, `snooze` with a date). The page shows them as an accordion: tap a line,
+the note field and buttons open below ("later" asks for a date in a small dialog); a click goes to this server
 (`POST /api/board/<id>/action`, same page only, JSON, rate-limited), which passes
 `{ board, item, action, text?, date? }` with the header `X-Haus-Aktion: 1` to the
 `actionUrl` from the mapping – never to an address from the board itself. The house

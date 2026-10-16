@@ -150,7 +150,7 @@ function parseBody(req: RequestInfo): Record<string, unknown> | null {
   }
 }
 
-export const BOARD_ACTIONS = ['done', 'ack', 'comment', 'delete', 'undo'] as const;
+export const BOARD_ACTIONS = ['done', 'ack', 'comment', 'delete', 'undo', 'snooze'] as const;
 export type BoardAction = (typeof BOARD_ACTIONS)[number];
 export interface BoardActionRequest {
   board: string;
@@ -184,6 +184,7 @@ async function handleBoardAction(id: string, deps: ApiDeps, req: RequestInfo): P
   if (action === 'comment' && !text) return json(400, { error: 'empty_comment' });
   const date =
     typeof body.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.date) ? body.date : undefined;
+  if (action === 'snooze' && !date) return json(400, { error: 'date_required' });
   if (tooMany(deps.now())) return json(429, { error: 'too_many' });
   try {
     const r = await deps.boardAction(b, {

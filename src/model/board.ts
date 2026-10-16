@@ -32,8 +32,8 @@ export type BoardState = 'ok' | 'look' | 'act' | 'open';
 
 /** An item the user can act on: "<kind>:<key>", chosen by the house service. */
 export const ITEM_ID = /^[a-z]{1,16}:[A-Za-z0-9_.-]{1,64}$/;
-export type ItemAction = 'done' | 'ack' | 'comment' | 'delete' | 'undo';
-export const ITEM_ACTIONS: ItemAction[] = ['done', 'ack', 'comment', 'delete', 'undo'];
+export type ItemAction = 'done' | 'ack' | 'comment' | 'delete' | 'undo' | 'snooze';
+export const ITEM_ACTIONS: ItemAction[] = ['done', 'ack', 'comment', 'delete', 'undo', 'snooze'];
 export interface BoardListItem {
   text: string;
   meta?: string;
@@ -41,9 +41,11 @@ export interface BoardListItem {
   /** with id and actions the item gets buttons (only if the board takes actions) */
   id?: string;
   actions?: ItemAction[];
-  /** date (YYYY-MM-DD) it was marked done / acknowledged */
+  /** when it was marked done ("YYYY-MM-DD" or "YYYY-MM-DD HH:MM") / acknowledged (date) */
   done?: string;
   acked?: string;
+  /** put off until this date (YYYY-MM-DD) with "later" */
+  snoozed?: string;
   comments?: { text: string; at: string }[];
 }
 
@@ -321,6 +323,8 @@ export function sanitizeBoard(raw: unknown): Board | null {
                 : [];
               const day = (v: unknown) =>
                 typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+              const stamp = (v: unknown) =>
+                typeof v === 'string' && /^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/.test(v) ? v : null;
               const comments = list(it.comments, 5)
                 .filter(isObj)
                 .map((c) => ({ text: text(c.text, 500), at: text(c.at, 20) }))
@@ -330,8 +334,9 @@ export function sanitizeBoard(raw: unknown): Board | null {
                 ...(opt(it.meta, 80) ? { meta: opt(it.meta, 80) } : {}),
                 ...(state(it.state) ? { state: state(it.state) } : {}),
                 ...(id && actions.length ? { id, actions: [...new Set(actions)] } : {}),
-                ...(day(it.done) ? { done: day(it.done)! } : {}),
+                ...(stamp(it.done) ? { done: stamp(it.done)! } : {}),
                 ...(day(it.acked) ? { acked: day(it.acked)! } : {}),
+                ...(day(it.snoozed) ? { snoozed: day(it.snoozed)! } : {}),
                 ...(comments.length ? { comments } : {}),
               };
             }),

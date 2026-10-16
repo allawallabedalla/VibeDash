@@ -224,8 +224,9 @@ describe('board list items that take clicks', () => {
               text: 'Türen ölen',
               id: 'plan:tueren',
               actions: ['done', 'comment', 'explode', 'done'],
-              done: '2026-10-16',
+              done: '2026-10-16 08:20',
               acked: 'gestern',
+              snoozed: '2026-11-01',
               comments: [{ text: 'mit Graphit', at: '2026-10-16 10:00' }, { text: '' }],
             },
             { text: 'kein Knopf', id: '<script>', actions: ['done'] },
@@ -234,12 +235,13 @@ describe('board list items that take clicks', () => {
         },
       ],
     });
-    const items = (b!.sections[0] as { items: Record<string, unknown>[] }).items;
+    const items = (b!.sections[0] as unknown as { items: Record<string, unknown>[] }).items;
     expect(items[0]).toEqual({
       text: 'Türen ölen',
       id: 'plan:tueren',
       actions: ['done', 'comment'],
-      done: '2026-10-16',
+      done: '2026-10-16 08:20',
+      snoozed: '2026-11-01',
       comments: [{ text: 'mit Graphit', at: '2026-10-16 10:00' }],
     });
     expect(items[1]).toEqual({ text: 'kein Knopf' });
