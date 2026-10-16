@@ -119,6 +119,7 @@ const KINDS: EntityKind[] = [
   'humidity',
   'precipitation',
   'sunshine',
+  'occupancy',
 ];
 const NAME = /^[a-z][a-z0-9_]{0,63}$/;
 const COMMON_KEYS = [

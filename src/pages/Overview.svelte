@@ -11,6 +11,7 @@
     loadTile,
     sunTile,
     tempTile,
+    presenceTile,
     tomorrowTile,
     yieldTodayTile,
     demoSunForecast,
@@ -117,12 +118,15 @@
     batteryTile(house),
     gridTile(house),
   ]);
-  const row2 = $derived([
-    yieldTodayTile(house),
-    tomorrowTile(house),
-    autarkyTile(house, 'day'),
-    tempTile(house),
-  ]);
+  const row2 = $derived(
+    [
+      yieldTodayTile(house),
+      tomorrowTile(house),
+      autarkyTile(house, 'day'),
+      tempTile(house),
+      presenceTile(house),
+    ].filter((x): x is NonNullable<typeof x> => x !== null),
+  );
 
   const tsData = $derived(pvTimeSeries(house, period));
   // known events (mapping notes): named under the chart they show up in, and listed
@@ -187,7 +191,7 @@
     {#each row1 as tile (tile.label)}<Tile {...tile} />{/each}
   </TileRow>
   <div class="row-gap"></div>
-  <TileRow count={4}>
+  <TileRow count={row2.length}>
     {#each row2 as tile (tile.label)}<Tile {...tile} />{/each}
   </TileRow>
 
