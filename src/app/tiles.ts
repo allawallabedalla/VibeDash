@@ -555,3 +555,42 @@ export function gridNowTile(data: DemoData): TileProps {
     info: { what: t('info.grid.what'), source: t('info.grid.source') },
   });
 }
+
+/**
+ * Someone at home? From the house's own estimate (series home_presence, kind
+ * occupancy: 2 = active, 1 = quiet e.g. asleep, 0 = nobody). Shown only when
+ * the house has it; "nobody" and "quiet" are estimates (≈), with the time since.
+ */
+export function presenceTile(data: DemoData): TileProps | null {
+  const s = data.series['home_presence'];
+  if (!s?.samples.length) return null;
+  const now = freshValue(data, 'home_presence');
+  const tile: TileProps = {
+    label: t('tile.presence'),
+    icon: 'home',
+    color: 'var(--home)',
+    value: '–',
+    graphic: { kind: 'spark', values: last24h(data, 'home_presence'), min: 0 },
+    info: { what: t('info.presence.what'), source: t('info.presence.source') },
+  };
+  if (now === null) return staleOr(data, 'home_presence', tile);
+  const v = Math.round(now);
+  // since when: the last change in the readings
+  let since = s.samples.at(-1)!.t;
+  for (let i = s.samples.length - 1; i >= 0; i--) {
+    if (Math.round(s.samples[i]!.v) !== v) break;
+    since = s.samples[i]!.t;
+  }
+  const at = whenText(data, since);
+  return {
+    ...tile,
+    value: v >= 1 ? t('presence.someone') : t('presence.nobody'),
+    approx: v <= 1,
+    sub:
+      v === 2
+        ? t('presence.active', { since: at })
+        : v === 1
+          ? t('presence.quiet', { since: at })
+          : t('presence.away', { since: at }),
+  };
+}

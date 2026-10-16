@@ -17,7 +17,9 @@ export type EntityKind =
   | 'temperature'
   | 'humidity'
   | 'precipitation'
-  | 'sunshine';
+  | 'sunshine'
+  /** someone at home: 2 = active, 1 = quiet (e.g. asleep), 0 = nobody (estimate) */
+  | 'occupancy';
 
 export interface Entity {
   id: string;
