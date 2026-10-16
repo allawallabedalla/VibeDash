@@ -13,6 +13,15 @@ described in `LADESTEUERUNG.md` and is **not** part of setting up a home.
 
 ## 0. Ground rules
 
+- **For complete laypeople (binding, INBETRIEBNAHME.md section 0).** The promise: buy a mini PC, point Claude Code
+  at this repo, the agent does the rest – databases, services, updates, configuration. Ask the person **only**
+  (1) clear yes/no questions, one at a time, "no" = nothing happens, (2) to look at a manufacturer app and say what
+  it shows, (3) to take a photo (type plate, device display, router device list). Never ask for terminal commands,
+  config files, IPs/ports, passwords or tool knowledge. Explain nothing about the backend unless asked.
+- **Risk-free without exception.** Read only; never open devices or work on the meter cabinet; no firmware updates,
+  factory resets or guessed passwords; an app setting only if described click by click, harmless, reversible and
+  after its own "yes"; installer access needed → "ask your installer". When in doubt: don't.
+
 - **No real home data in the repository.** Mappings, hostnames, credentials, screenshots of
   the real home stay local (`.env`, `local/` – both git-ignored). Tests use demo data only.
 - **Data truth before display.** Every number on screen must be traceable to a source.

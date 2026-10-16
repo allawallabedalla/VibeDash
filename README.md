@@ -11,6 +11,11 @@ VibeDash is not one big app. It ships three things:
 
 Everything runs locally. No cloud, no CDN.
 
+**Made for complete laypeople.** Buy a mini PC, point Claude Code at this repository, and the agent does the rest –
+database, services, configuration. You only answer clear yes/no questions, look at your manufacturer's app, or take
+a photo of a type plate. No software know-how needed, and everything stays risk-free: the agent only reads, never
+switches a device, never asks you to open anything. Details: [INBETRIEBNAHME.md](INBETRIEBNAHME.md) section 0.
+
 > Status: early. Pages Overview, Now, Forecasts and Charging (charge plan, stage A)
 > and a gallery of all building blocks; synthetic demo data, or InfluxDB 1.x and/or Home
 > Assistant via the server. Agent build guide incl. onboarding: [AGENT.md](AGENT.md) (German source: [INBETRIEBNAHME.md](INBETRIEBNAHME.md)). Project background and roadmap (German): [ANLEITUNG.md](ANLEITUNG.md).
