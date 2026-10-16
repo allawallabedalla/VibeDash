@@ -5,6 +5,8 @@
 
 ## 0. Für wen: maximale Laien (verbindlich)
 
+Davor – Mini-PC auspacken, Ubuntu Server LTS installieren, Helfer wählen (Agent oder nur Chat): **[ERSTEINRICHTUNG.md](ERSTEINRICHTUNG.md)**.
+
 VibeDash ist für Menschen **ohne Heimserver- und Software-Wissen**. Das Versprechen:
 **Mini-PC kaufen, Claude Code auf dieses Repo zeigen – alles Weitere macht der Agent.**
 Datenbanken, Dienste, Updates, Konfiguration und das ganze Backend richtet der Agent selbst ein; der Mensch muss davon
