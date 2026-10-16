@@ -25,9 +25,8 @@
   const today = () => iso(new Date());
   const inDays = (n: number) => iso(new Date(Date.now() + n * 86_400_000));
   const inMonths = (n: number) => {
-    const d = new Date();
-    d.setMonth(d.getMonth() + n);
-    return iso(d);
+    const now = new Date();
+    return iso(new Date(now.getFullYear(), now.getMonth() + n, now.getDate()));
   };
   let day = $state(today());
   let until = $state(inDays(7));

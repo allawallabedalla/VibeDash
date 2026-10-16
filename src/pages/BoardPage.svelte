@@ -6,6 +6,7 @@
    * two minutes while the page is visible.
    */
   import { onMount } from 'svelte';
+  import { SvelteSet } from 'svelte/reactivity';
   import { currentData, store } from '../app/data.svelte';
   import type { Board, BoardColor, BoardTile } from '../model/board';
   import { i18n, t, time } from '../i18n/index.svelte';
@@ -78,12 +79,10 @@
   const rowsOf = (rows: { cells: Record<string, string> }[]): Row[] =>
     rows.map((r, i) => ({ id: String(i), cells: r.cells }));
   /** open accordion items (section index | item id), kept across reloads */
-  let opened = $state(new Set<string>());
+  const opened = new SvelteSet<string>();
   function toggle(key: string) {
-    const next = new Set(opened);
-    if (next.has(key)) next.delete(key);
-    else next.add(key);
-    opened = next;
+    if (opened.has(key)) opened.delete(key);
+    else opened.add(key);
   }
   const stateWord = (s?: string) =>
     s === 'act' ? t('board.act') : s === 'look' ? t('board.look') : s === 'ok' ? t('board.ok') : '';
