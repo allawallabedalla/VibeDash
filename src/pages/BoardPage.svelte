@@ -6,15 +6,16 @@
    * two minutes while the page is visible.
    */
   import { onMount } from 'svelte';
-  import { SvelteSet } from 'svelte/reactivity';
+  import { SvelteMap, SvelteSet } from 'svelte/reactivity';
   import { currentData, store } from '../app/data.svelte';
-  import type { Board, BoardColor, BoardTile } from '../model/board';
+  import type { Board, BoardColor, BoardSection, BoardTile } from '../model/board';
   import { i18n, t, time } from '../i18n/index.svelte';
   import AccuracyCard from '../components/AccuracyCard.svelte';
   import BoardPlan from '../components/BoardPlan.svelte';
   import Card from '../components/Card.svelte';
   import DataTable, { type Column, type Row } from '../components/DataTable.svelte';
   import DayBars from '../components/DayBars.svelte';
+  import Segmented from '../components/Segmented.svelte';
   import ItemActions from '../components/ItemActions.svelte';
   import Icon, { iconOf } from '../components/Icon.svelte';
   import LineChart from '../components/LineChart.svelte';
@@ -78,6 +79,35 @@
     cols.map((c, i) => ({ ...c, ...(i >= 3 ? { phone: false } : {}) }));
   const rowsOf = (rows: { cells: Record<string, string> }[]): Row[] =>
     rows.map((r, i) => ({ id: String(i), cells: r.cells }));
+  /**
+   * Time-span switches: sections with the same "group" share one choice; the
+   * switch sits above the first of them that brings ranges.
+   */
+  const span = new SvelteMap<string, string>();
+  type Ranged = Extract<BoardSection, { type: 'series' | 'bars' }>;
+  const isRanged = (s: BoardSection): s is Ranged =>
+    (s.type === 'series' || s.type === 'bars') && !!s.group && !!s.ranges?.length;
+  /** index of the section that carries a group's switch -> that section */
+  const switchAt = $derived.by(() => {
+    const at: Record<number, Ranged> = {};
+    const seen: string[] = [];
+    if (view.s !== 'ready') return at;
+    view.b.sections.forEach((s, i) => {
+      if (isRanged(s) && !seen.includes(s.group!)) {
+        seen.push(s.group!);
+        at[i] = s;
+      }
+    });
+    return at;
+  });
+  /** the chosen range of a section (by id), else its first range, else the section itself */
+  function pick<S extends Ranged>(s: S): S {
+    if (!isRanged(s)) return s;
+    const want = span.get(s.group!);
+    const r = s.ranges!.find((x) => x.id === want) ?? s.ranges![0]!;
+    return { ...s, ...r, title: s.title } as S;
+  }
+
   /** open accordion items (section index | item id), kept across reloads */
   const opened = new SvelteSet<string>();
   function toggle(key: string) {
@@ -102,6 +132,16 @@
       <p class="muted-note">{t('board.updated', { time: time(view.b.updated, house.timeZone) })}</p>
     {/if}
     {#each view.b.sections as s, i (i)}
+      {#if switchAt[i]}
+        {@const g = switchAt[i]}
+        <div class="span">
+          <Segmented
+            options={g.ranges!.map((r) => ({ id: r.id, label: r.label }))}
+            bind:value={() => span.get(g.group!) ?? g.ranges![0]!.id, (v) => span.set(g.group!, v)}
+            label={t('zoom.window')}
+          />
+        </div>
+      {/if}
       <!-- tiles get the title as heading; cards carry it themselves -->
       {#if s.title && s.type === 'tiles'}<h2>{s.title}</h2>{/if}
       {#if s.type === 'plan'}
@@ -128,17 +168,19 @@
           info={s.info}
         >
           {#if s.type === 'series'}
+            {@const v = pick(s)}
             <LineChart
-              x={s.x}
-              lines={s.lines.map((l) => ({ ...l, color: C[l.color] }))}
+              x={v.x}
+              lines={v.lines.map((l) => ({ ...l, color: C[l.color] }))}
               unit={s.unit}
               timeZone={house.timeZone}
               label={s.title}
             />
           {:else if s.type === 'bars'}
+            {@const v = pick(s)}
             <DayBars
-              values={s.values}
-              labels={s.labels}
+              values={v.values}
+              labels={v.labels}
               color={C[s.color]}
               unit={s.unit}
               label={s.title}
@@ -233,6 +275,10 @@
 </div>
 
 <style>
+  .span {
+    display: flex;
+    margin: 4px 0 10px;
+  }
   .items {
     list-style: none;
     margin: 0;

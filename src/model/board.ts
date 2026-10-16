@@ -58,6 +58,20 @@ interface Base {
   note?: string;
   info?: BoardInfo;
 }
+export interface SeriesLine {
+  label: string;
+  values: (number | null)[];
+  color: BoardColor;
+  dashed: boolean;
+}
+/**
+ * Sections with the same "group" share one time-span switch (shown above the
+ * first of them); each brings its own "ranges" with matching ids.
+ */
+interface Grouped {
+  group?: string;
+}
+
 export interface BoardTile {
   label: string;
   value: string;
@@ -72,19 +86,24 @@ export interface BoardTile {
 }
 export type BoardSection =
   | (Base & { type: 'tiles'; tiles: BoardTile[] })
-  | (Base & {
-      type: 'series';
-      unit: string;
-      x: number[];
-      lines: { label: string; values: (number | null)[]; color: BoardColor; dashed: boolean }[];
-    })
-  | (Base & {
-      type: 'bars';
-      unit: string;
-      labels: string[];
-      values: (number | null)[];
-      color: BoardColor;
-    })
+  | (Base &
+      Grouped & {
+        type: 'series';
+        unit: string;
+        x: number[];
+        lines: SeriesLine[];
+        /** the same chart for other time spans; a switch above the group picks one */
+        ranges?: { id: string; label: string; x: number[]; lines: SeriesLine[] }[];
+      })
+  | (Base &
+      Grouped & {
+        type: 'bars';
+        unit: string;
+        labels: string[];
+        values: (number | null)[];
+        color: BoardColor;
+        ranges?: { id: string; label: string; labels: string[]; values: (number | null)[] }[];
+      })
   | (Base & {
       type: 'table';
       columns: { key: string; label: string; align?: 'right' }[];
@@ -211,6 +230,20 @@ const opt = (v: unknown, max = 200): string | undefined => {
 };
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const list = (v: unknown, max: number): unknown[] => (Array.isArray(v) ? v.slice(0, max) : []);
+/** "group": a short name shared by sections that switch their time span together. */
+const grouped = (s: O): { group?: string } =>
+  typeof s.group === 'string' && /^[a-z][a-z0-9_-]{0,31}$/.test(s.group) ? { group: s.group } : {};
+/** up to 4 time spans, each with an id, a short label and its own data */
+function ranged<T>(s: O, one: (r: O) => T | null): ({ id: string; label: string } & T)[] {
+  const out: ({ id: string; label: string } & T)[] = [];
+  for (const r of list(s.ranges, 4)) {
+    if (!isObj(r) || typeof r.id !== 'string' || !/^[a-z0-9_-]{1,16}$/.test(r.id)) continue;
+    if (out.some((o) => o.id === r.id)) continue;
+    const d = one(r);
+    if (d) out.push({ id: r.id, label: text(r.label, 16) || r.id, ...d });
+  }
+  return out;
+}
 const color = (v: unknown, fallback: BoardColor = 'muted'): BoardColor =>
   COLORS.includes(v as BoardColor) ? (v as BoardColor) : fallback;
 const state = (v: unknown): BoardState | undefined =>
@@ -253,33 +286,48 @@ export function sanitizeBoard(raw: unknown): Board | null {
         });
         break;
       case 'series': {
-        const x = list(s.x, 2000).map(num);
-        if (x.some((v) => v === null)) break;
+        const one = (raw: O) => {
+          const x = list(raw.x, 2000).map(num);
+          if (x.some((v) => v === null)) return null;
+          return {
+            x: x as number[],
+            lines: list(raw.lines, 6)
+              .filter(isObj)
+              .map((l, i) => ({
+                label: text(l.label, 40),
+                values: list(l.values, x.length).map(num),
+                color: color(l.color, i === 0 ? 'sun' : 'muted'),
+                dashed: l.dashed === true,
+              })),
+          };
+        };
+        const main = one(s);
+        if (!main) break;
+        const ranges = ranged(s, (r) => one(r));
         sections.push({
           ...base,
+          ...grouped(s),
           type: 'series',
           unit: text(s.unit, 12),
-          x: x as number[],
-          lines: list(s.lines, 6)
-            .filter(isObj)
-            .map((l, i) => ({
-              label: text(l.label, 40),
-              values: list(l.values, x.length).map(num),
-              color: color(l.color, i === 0 ? 'sun' : 'muted'),
-              dashed: l.dashed === true,
-            })),
+          ...main,
+          ...(ranges.length ? { ranges } : {}),
         });
         break;
       }
       case 'bars': {
-        const labels = list(s.labels, 60).map((l) => text(l, 12));
+        const one = (raw: O) => {
+          const labels = list(raw.labels, 60).map((l) => text(l, 12));
+          return { labels, values: list(raw.values, labels.length).map(num) };
+        };
+        const ranges = ranged(s, (r) => one(r));
         sections.push({
           ...base,
+          ...grouped(s),
           type: 'bars',
           unit: text(s.unit, 12),
-          labels,
-          values: list(s.values, labels.length).map(num),
+          ...one(s),
           color: color(s.color, 'home'),
+          ...(ranges.length ? { ranges } : {}),
         });
         break;
       }

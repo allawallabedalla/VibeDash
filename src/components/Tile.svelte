@@ -59,12 +59,27 @@
     info?: { what: string; source: string };
     /** Short marker, e.g. "being checked" until the person confirmed the value. */
     pending?: string;
+    /**
+     * Tap to enlarge: the series behind the tile (ids in the house data), drawn
+     * for 24 h / 7 / 30 days with min, max, mean and n. Without it the enlarged
+     * tile shows the value, the graphic larger and the explanation.
+     */
+    zoom?: TileZoomSpec;
+  }
+
+  export interface TileZoomSpec {
+    lines: { id: string; label: string; color: string; scale?: number }[];
+    unit: string;
+    digits?: number;
+    /** axis around the values instead of from zero */
+    tight?: boolean;
   }
 </script>
 
 <script lang="ts">
   /** Value + 1–2 words + one small graphic. Details behind ⓘ. */
   import Explanation from './Explanation.svelte';
+  import { t } from '../i18n/index.svelte';
   import Icon from './Icon.svelte';
   import InfoButton from './InfoButton.svelte';
   import { flip } from './flip';
@@ -91,12 +106,15 @@
     statusLabel,
     info,
     pending,
+    zoom,
   }: TileProps = $props();
 
   const uid = $props.id();
   let open = $state(false);
   let el = $state<HTMLElement>();
   const toggle = () => flip(el, !open, () => (open = !open));
+  /** enlarged tile (dialog), loaded only when tapped */
+  let zoomed = $state(false);
 </script>
 
 <article class="tile" class:open bind:this={el}>
@@ -184,7 +202,26 @@
       </div>
     {/if}
   {/if}
+  <!-- the whole tile is a tap target for the enlarged view; ⓘ sits above it (last, so ⓘ comes first) -->
+  {#if !open}
+    <button
+      type="button"
+      class="hit"
+      aria-label={t('zoom.open', { label })}
+      aria-haspopup="dialog"
+      onclick={() => (zoomed = true)}
+    ></button>
+  {/if}
 </article>
+
+{#if zoomed}
+  {#await import('./TileZoom.svelte') then { default: TileZoom }}
+    <TileZoom
+      tile={{ label, icon, color, value, unit, approx, sub, graphic, status, info, pending, zoom }}
+      onclose={() => (zoomed = false)}
+    />
+  {/await}
+{/if}
 
 <style>
   .tile {
@@ -206,6 +243,19 @@
     min-height: 20px;
     padding-right: 30px;
   }
+  .hit {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    border-radius: inherit;
+    background: transparent;
+    cursor: zoom-in;
+    z-index: 1;
+  }
+  .hit:focus-visible {
+    outline: 2px solid var(--home);
+    outline-offset: 2px;
+  }
   .icon {
     display: inline-flex;
   }
@@ -225,6 +275,8 @@
     top: 3px;
     right: 3px;
     margin: 0;
+    /* stays tappable above the tile's tap target */
+    z-index: 2;
   }
   .status {
     width: 8px;

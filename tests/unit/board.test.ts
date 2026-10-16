@@ -248,3 +248,49 @@ describe('board list items that take clicks', () => {
     expect(items[2]).toEqual({ text: 'ohne Aktionen' });
   });
 });
+
+describe('board time spans per group', () => {
+  it('keeps a group name and up to 4 ranges with own data, drops broken ones', () => {
+    const b = sanitizeBoard({
+      sections: [
+        {
+          type: 'series',
+          title: 'T',
+          unit: '°C',
+          x: [1, 2],
+          lines: [{ label: 'a', values: [1, 2], color: 'sun' }],
+          group: 'server',
+          ranges: [
+            { id: '24h', label: '24 h', x: [1, 2], lines: [{ label: 'a', values: [1, 2] }] },
+            { id: '24h', label: 'twice', x: [1], lines: [] },
+            { id: '7d', label: '7 Tage', x: ['x'], lines: [] },
+            { id: '30d', x: [5, 6, 7], lines: [{ label: 'a', values: [1, null, 3, 4] }] },
+          ],
+        },
+        {
+          type: 'bars',
+          title: 'B',
+          unit: 'mm',
+          labels: ['a'],
+          values: [1],
+          group: 'Bad Group',
+          ranges: [{ id: '7d', label: '7 Tage', labels: ['a', 'b'], values: [1, 2, 3] }],
+        },
+      ],
+    })!;
+    const s = b.sections[0] as unknown as {
+      group: string;
+      ranges: { id: string; label: string; x: number[]; lines: { values: unknown[] }[] }[];
+    };
+    expect(s.group).toBe('server');
+    // at most 4 ranges are read; broken and repeated ones are dropped
+    expect(s.ranges.map((r) => [r.id, r.label])).toEqual([
+      ['24h', '24 h'],
+      ['30d', '30d'],
+    ]);
+    expect(s.ranges[1]!.lines[0]!.values).toEqual([1, null, 3]);
+    const bars = b.sections[1] as unknown as { group?: string; ranges: { values: unknown[] }[] };
+    expect(bars.group).toBeUndefined();
+    expect(bars.ranges[0]!.values).toEqual([1, 2]);
+  });
+});
