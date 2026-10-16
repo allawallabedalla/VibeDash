@@ -3,6 +3,42 @@
 > Ergänzung zu ANLEITUNG.md (gehört inhaltlich zu M5 „Agenten-Bauanleitung“ und in `AGENT.md`).
 > Frage, die das beantwortet: *„Ich installiere VibeDash auf einem neuen PC – wie werden mein Wechselrichter, meine Wallbox usw. gefunden?“*
 
+## 0. Für wen: maximale Laien (verbindlich)
+
+VibeDash ist für Menschen **ohne Heimserver- und Software-Wissen**. Das Versprechen:
+**Mini-PC kaufen, Claude Code auf dieses Repo zeigen – alles Weitere macht der Agent.**
+Datenbanken, Dienste, Updates, Konfiguration und das ganze Backend richtet der Agent selbst ein; der Mensch muss davon
+nichts verstehen und bekommt keine Anleitungen zu Software-Werkzeugen.
+
+**Der Mensch gibt nur diese Art von Eingaben:**
+
+1. **Klare Ja/Nein-Fragen** – eine Frage auf einmal, in Alltagssprache, mit dem, was danach passiert.
+   Ein „Nein“ (oder keine Antwort) heißt immer: nichts passiert.
+   Beispiel: „Darf ich in deinem Heimnetz nach Geräten suchen? Ich schaue nur, ich verändere nichts. (Ja/Nein)“
+2. **In eine Hersteller-App schauen** und sagen, was dort steht.
+   Beispiel: „Öffne die App deines Wechselrichters. Steht dort gerade ungefähr 3 kW? (Ja/Nein)“
+3. **Ein Foto machen** – Typenschild, Gerätedisplay, Geräteliste im Router.
+   Beispiel: „Fotografiere bitte das Typenschild an der Seite des Wechselrichters.“
+
+**Nie verlangt:** Befehle im Terminal, Konfigurationsdateien, IP-Adressen oder Ports eintippen, Begriffe wie Modbus,
+Datenbank, Container erklären müssen, Passwörter erfinden, Programme selbst installieren.
+
+**Risikofrei – ohne Ausnahme:**
+
+- Der Agent **liest nur**. Er schaltet, lädt und steuert nichts und schreibt nie in ein Gerät (Steuerung nur später
+  nach LADESTEUERUNG.md und mit eigenem Ja).
+- **Nie** etwas öffnen, abschrauben oder am Zählerschrank, Wechselrichter-Gehäuse oder an Leitungen arbeiten.
+  Keine Firmware-Updates an Geräten, keine Werksresets, keine Passwörter raten.
+- Muss in einer Hersteller-App doch eine Einstellung eingeschaltet werden (z. B. lokale Schnittstelle), dann nur:
+  Klick für Klick beschrieben, mit dem, was sie bewirkt, nur wenn sie nichts steuert und rückgängig zu machen ist,
+  und nach einem eigenen Ja. Braucht es einen Installateur-Zugang: **nicht selbst** – „Frag deinen Installateur“.
+- Im Zweifel: **nicht tun** und als offene Frage stehen lassen.
+- RISIKEN.md geht der Agent vor jeder Einrichtung mit dem Menschen durch – ebenfalls als Ja/Nein-Fragen.
+
+**Wie der Agent spricht:** kurze Sätze, keine Fachwörter, ein Schritt auf einmal, Fortschritt sichtbar
+(„Schritt 3 von 7: Wechselrichter gefunden“). Am Ende eine Zusammenfassung in drei Zeilen: läuft · offen · was du
+noch tun kannst (nur Ja/Nein, App, Foto).
+
 ## 1. Ehrliche Ausgangslage
 
 - Nach der Installation zeigt VibeDash **Demo-Daten**. Echte Werte brauchen eine **Datenquelle** und eine **Zuordnung** (`local/mapping.json`).
@@ -51,7 +87,7 @@ Ablauf, den der Agent Schritt für Schritt mit dem Menschen geht:
    - **Nur verbinden und lesen** – keine Schreibbefehle, keine Logins mit geratenen Passwörtern.
 3. **Nachfragen statt raten** – „Auf .114 antwortet ein Gerät von Hersteller X auf Port 502. Ist das dein Wechselrichter?“
 4. **Gegenprobe mit etwas, das der Mensch kennt** – „Ich lese 3,2 kW Erzeugung. Zeigt deine Hersteller-App gerade ungefähr das?“ Vorzeichen und Richtung prüfen (Einspeisung vs. Bezug, Akku laden vs. entladen) – das ist die häufigste Fehlerquelle.
-5. **Handgriffe klar ansagen** – was nur der Mensch kann, als kurze Anleitung: „Trag in der Wallbox-App als OCPP-Server `ws://<VibeDash-Rechner>:<Port>/` ein.“
+5. **Handgriffe klar ansagen** – was nur der Mensch kann, nur in den drei Formen aus Abschnitt 0 (Ja/Nein, App ansehen, Foto). Muss in einer App etwas eingestellt werden, Klick für Klick beschreiben und vorher als Ja/Nein fragen (Abschnitt 0, „Risikofrei“).
 6. **Anbinden** – Adapter-Konfiguration + Eintrag in `local/mapping.json` schreiben (nie ins Repo), Zugangsdaten nur in `.env`.
 7. **Datenwahrheit prüfen** (ANLEITUNG.md Abschnitt 6) – Zähler statt Integral, Status statt Befehl, Lücken, Zeitzone; mindestens 24 h beobachten, Auffälligkeiten als **Frage** an den Menschen.
 8. **Protokoll** – kurze Zusammenfassung „Gefunden · angebunden · offen · vom Menschen zu tun“.
