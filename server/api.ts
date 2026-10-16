@@ -45,6 +45,8 @@ const ADDS_UP = new Set(['energy_counter', 'capacity']);
 
 export interface ApiDeps {
   mode: 'live' | 'demo';
+  /** id of the page build the server ships (pages reload themselves when it changes) */
+  build?: string;
   mapping?: Mapping;
   series?: (m: SeriesMapping, fromMs: number, toMs: number) => Promise<Series>;
   /** Car charging from the house's records (read-only). */
@@ -354,6 +356,7 @@ export async function handleApi(
         ...(actionUrl && deps.boardAction ? { actions: true } : {}),
       })),
       feedback: Boolean(deps.feedback),
+      build: deps.build ?? null,
     });
   }
 

@@ -554,3 +554,13 @@ describe('clicks on board items and the feedback backlog', () => {
     expect((await write('/api/feedback', d, { id, status: 'gone' })).status).toBe(400);
   });
 });
+
+describe('build id for the release check', () => {
+  it('health names the build the server ships', async () => {
+    const h = (await get('/api/health', deps({ build: 'abc123' }))).body as {
+      build: string | null;
+    };
+    expect(h.build).toBe('abc123');
+    expect(((await get('/api/health')).body as { build: unknown }).build).toBeNull();
+  });
+});
