@@ -6,10 +6,12 @@
     gridNowTile,
     humidityTile,
     loadNowTile,
+    roomsNow,
     sunNowTile,
     tempTile,
   } from '../app/tiles';
   import Card from '../components/Card.svelte';
+  import RoomRanges from '../components/RoomRanges.svelte';
   import SourceArc from '../components/SourceArc.svelte';
   import Sparkline from '../components/Sparkline.svelte';
   import Tile from '../components/Tile.svelte';
@@ -28,6 +30,8 @@
     gridNowTile(house),
   ]);
   const climate = $derived([tempTile(house), humidityTile(house)]);
+  const roomTemps = $derived(roomsNow(house, 'temperature'));
+  const roomHumidity = $derived(roomsNow(house, 'humidity'));
 
   const src = sourcesAt(house, house.now - 60_000);
   const band = typicalProfile(house, 'load_power');
@@ -125,4 +129,28 @@
       />
     </Card>
   </div>
+  {#if roomTemps.length > 1 || roomHumidity.length > 1}
+    <div class="cards">
+      {#if roomTemps.length > 1}
+        <Card
+          title={t('now.roomsTemp')}
+          icon="thermometer"
+          color="var(--climate)"
+          note={t('now.roomsNote')}
+        >
+          <RoomRanges rooms={roomTemps} label={t('now.roomsTemp')} />
+        </Card>
+      {/if}
+      {#if roomHumidity.length > 1}
+        <Card
+          title={t('now.roomsHumidity')}
+          icon="droplet"
+          color="var(--climate)"
+          note={t('now.roomsNote')}
+        >
+          <RoomRanges rooms={roomHumidity} unit="%" label={t('now.roomsHumidity')} />
+        </Card>
+      {/if}
+    </div>
+  {/if}
 </div>

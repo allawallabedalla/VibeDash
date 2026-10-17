@@ -286,17 +286,58 @@ export function tempTile(data: DemoData): TileProps {
   });
 }
 
+/**
+ * Every room sensor of one kind over the last 24 hours: coolest/driest and
+ * warmest/most humid value and the current one (null when the sensor is
+ * silent too long). Rooms without a value in the last 24 h are left out.
+ */
+export function roomsNow(
+  data: DemoData,
+  kind: 'temperature' | 'humidity',
+): { id: string; name: string; low: number; high: number; mean: number; now: number | null }[] {
+  const from = data.now - 24 * 3_600_000;
+  return data.entities
+    .filter((e) => e.kind === kind && e.room && data.series[e.id]?.samples.length)
+    .flatMap((e) => {
+      const s = data.series[e.id]!.samples.filter((x) => x.t >= from && x.t <= data.now);
+      if (!s.length) return [];
+      const vals = s.map((x) => x.v);
+      return [
+        {
+          id: e.id,
+          name: e.name,
+          low: Math.min(...vals),
+          high: Math.max(...vals),
+          mean: vals.reduce((a, b) => a + b, 0) / vals.length,
+          now: freshValue(data, e.id),
+        },
+      ];
+    });
+}
+
+/** Humidity tile: the living room when it has a sensor, otherwise the most humid room right now. */
+function humiditySource(data: DemoData): { id: string; room?: string } {
+  if (data.series.living_humidity?.samples.length) return { id: 'living_humidity' };
+  const top = roomsNow(data, 'humidity')
+    .filter((r) => r.now !== null)
+    .sort((a, b) => b.now! - a.now!)[0];
+  return top ? { id: top.id, room: top.name } : { id: 'living_humidity' };
+}
+
 export function humidityTile(data: DemoData): TileProps {
-  const humidity = nowValue(data, 'living_humidity');
-  const notes = sensorNotes(data, 'living_humidity');
-  return staleOr(data, 'living_humidity', {
+  const src = humiditySource(data);
+  const humidity = nowValue(data, src.id);
+  const notes = sensorNotes(data, src.id);
+  return staleOr(data, src.id, {
     label: t('tile.humidity'),
     icon: 'droplet',
     color: 'var(--climate)',
-    zoom: zoomLevel('living_humidity', t('tile.humidity'), 'var(--climate)', '%', 0),
+    zoom: zoomLevel(src.id, t('tile.humidity'), 'var(--climate)', '%', 0),
     value: num(humidity),
     unit: '%',
-    sub: t('sub.comfort', { low: num(40), high: num(60) }),
+    sub: src.room
+      ? t('sub.comfortRoom', { room: src.room, low: num(40), high: num(60) })
+      : t('sub.comfort', { low: num(40), high: num(60) }),
     graphic: {
       kind: 'scale',
       value: humidity,
@@ -309,7 +350,7 @@ export function humidityTile(data: DemoData): TileProps {
       ? { status: 'look' as const, statusLabel: notes.outlier ?? notes.gap }
       : {}),
     info: {
-      what: notes.outlier ?? t('info.humidity.what'),
+      what: notes.outlier ?? (src.room ? t('info.humidity.whatTop') : t('info.humidity.what')),
       source: [t('info.humidity.source'), notes.gap, notes.outlier ? t('info.outlierNote') : '']
         .filter(Boolean)
         .join(' '),

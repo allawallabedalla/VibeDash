@@ -32,6 +32,12 @@ export const en: Record<MessageKey, string> = {
   'info.presence.source': 'The house service (motion and switches inside), every minute.',
   'tile.temp': 'Living room',
   'tile.humidity': 'Humidity',
+  'sub.comfortRoom': '{room} · comfortable {low}–{high}',
+  'info.humidity.whatTop':
+    'Relative humidity in the most humid room right now. The light band is the comfort range; all rooms are listed below under “Rooms”.',
+  'now.roomsTemp': 'Temperature by room',
+  'now.roomsHumidity': 'Humidity by room',
+  'now.roomsNote': 'Number and mark = now, bar = lowest to highest value of the last 24 h.',
   'tile.yield': 'Yield today',
   'tile.tomorrow': 'Tomorrow',
   'tile.autarky': 'Self-supply',

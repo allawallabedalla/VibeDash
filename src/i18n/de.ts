@@ -30,6 +30,12 @@ export const de = {
   'info.presence.source': 'Das Haus-Programm (Bewegung und Taster innen), jede Minute.',
   'tile.temp': 'Wohnzimmer',
   'tile.humidity': 'Luftfeuchte',
+  'sub.comfortRoom': '{room} · angenehm {low}–{high}',
+  'info.humidity.whatTop':
+    'Relative Luftfeuchte im gerade feuchtesten Raum. Der helle Bereich ist der Wohlfühlbereich; alle Räume stehen unten unter „Räume“.',
+  'now.roomsTemp': 'Temperatur je Raum',
+  'now.roomsHumidity': 'Luftfeuchte je Raum',
+  'now.roomsNote': 'Zahl und Strich = jetzt, Balken = tiefster bis höchster Wert der letzten 24 h.',
   'tile.yield': 'Ertrag heute',
   'tile.tomorrow': 'Morgen',
   'tile.autarky': 'Autarkie',

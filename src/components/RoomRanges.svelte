@@ -4,6 +4,8 @@
     low: number;
     high: number;
     mean: number;
+    /** Current value: shown and marked instead of the mean (null = sensor silent). */
+    now?: number | null;
   }
 </script>
 
@@ -11,7 +13,8 @@
   /**
    * Rooms as rows, warmest first: name with the mean, a soft bar from the
    * coolest to the warmest value and a dark mark at the mean, on one shared
-   * scale with a few degree lines.
+   * scale with a few degree lines. With `now` the rows show and mark the
+   * current value instead (a silent sensor gets a dash and no mark).
    */
   import { num } from '../i18n/index.svelte';
 
@@ -21,7 +24,10 @@
     label,
   }: { rooms: RoomRange[]; unit?: string; label: string } = $props();
 
-  const sorted = $derived([...rooms].sort((a, b) => b.mean - a.mean));
+  const key = (r: RoomRange) => (r.now === undefined ? r.mean : (r.now ?? -Infinity));
+  const sorted = $derived([...rooms].sort((a, b) => key(b) - key(a)));
+  const short = $derived(unit === '°C' ? '°' : unit);
+  const mark = (r: RoomRange) => (r.now === undefined ? r.mean : r.now);
   const lo = $derived(Math.floor(Math.min(...rooms.map((r) => r.low)) - 1));
   const hi = $derived(Math.ceil(Math.max(...rooms.map((r) => r.high)) + 1));
   const p = (v: number) => ((v - lo) / Math.max(1, hi - lo)) * 100;
@@ -34,12 +40,20 @@
 
 <div class="rooms" role="img" aria-label={label}>
   {#each sorted as r (r.name)}
-    <span class="name">{r.name} <span class="mean">Ø {num(r.mean, 1)}°</span></span>
+    <span class="name"
+      >{r.name}
+      <span class="mean"
+        >{#if r.now === undefined}Ø {num(r.mean, 1)}{short}{:else if r.now === null}–{:else}{num(
+            r.now,
+            unit === '%' ? 0 : 1,
+          )}{short}{/if}</span
+      ></span
+    >
     <span class="lane">
       {#each ticks as v (v)}<span class="grid" style:left="{p(v)}%"></span>{/each}
       <span class="bar" style:left="{p(r.low)}%" style:width="{Math.max(1, p(r.high) - p(r.low))}%"
       ></span>
-      <span class="tick" style:left="{p(r.mean)}%"></span>
+      {#if mark(r) !== null}<span class="tick" style:left="{p(mark(r)!)}%"></span>{/if}
     </span>
   {/each}
   <span></span>
