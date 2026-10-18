@@ -31,6 +31,7 @@ export const en: Record<MessageKey, string> = {
     'Estimated only from signals inside – motion sensors and light switches: someone (motion or a switch in the last 30 min), quiet (at night, or by day less than an hour without motion – e.g. asleep) or nobody (by day nothing for at least an hour). Rooms without a sensor count only through switches.',
   'info.presence.source': 'The house service (motion and switches inside), every minute.',
   'tile.temp': 'Living room',
+  'pull.refresh': 'Pull to refresh',
   'tile.humidity': 'Humidity',
   'sub.comfortRoom': '{room} · comfortable {low}–{high}',
   'info.humidity.whatTop':

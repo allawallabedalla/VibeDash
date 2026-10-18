@@ -8,8 +8,11 @@
   import { boardOf, router, type Route } from './router.svelte';
   import { iconOf } from '../components/Icon.svelte';
 
+  /** Pull to refresh: only on touch screens, loaded only there (not part of the first page). */
+  let touch = $state(false);
   onMount(() => {
     void load();
+    touch = matchMedia('(pointer: coarse)').matches;
   });
 
   const reasonText = (r: string) =>
@@ -44,6 +47,12 @@
 {#if feedbackOpen}
   {#await import('../components/FeedbackDialog.svelte') then { default: FeedbackDialog }}
     <FeedbackDialog page={router.route} onclose={() => (feedbackOpen = false)} />
+  {/await}
+{/if}
+
+{#if touch}
+  {#await import('../components/PullRefresh.svelte') then { default: PullRefresh }}
+    <PullRefresh />
   {/await}
 {/if}
 
