@@ -11,6 +11,13 @@ export function latest(data: DemoData, id: string): Sample | undefined {
 }
 
 /** Last 24 h on a fixed grid; missing slots stay null (visible gap). */
+/** Time of the first and the last slot of last24h (slot middles), for a time axis. */
+export function last24hSpan(data: DemoData, stepMs = 15 * 60_000): { from: number; to: number } {
+  const from = data.now - 24 * HOUR;
+  const n = Math.floor((24 * HOUR) / stepMs);
+  return { from: from + stepMs / 2, to: from + (n - 1) * stepMs + stepMs / 2 };
+}
+
 export function last24h(data: DemoData, id: string, stepMs = 15 * 60_000): (number | null)[] {
   return toGrid(data.series[id]!.samples, data.now - 24 * HOUR, data.now, stepMs);
 }

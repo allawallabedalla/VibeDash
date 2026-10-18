@@ -27,6 +27,10 @@
         signed?: boolean;
         band?: { low: (number | null)[]; high: (number | null)[] };
         min?: number;
+        /** time (ms) of the first and the last value – the enlarged view shows a time axis and "now" */
+        span?: { from: number; to: number };
+        /** named steps on the value axis in the enlarged view, e.g. 0 nobody / 2 someone */
+        levels?: { value: number; label: string }[];
       }
     /** Sun now as a half arc, share 0–1 of the plant's peak. */
     | { kind: 'arc'; share: number; off?: boolean }

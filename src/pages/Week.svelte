@@ -26,6 +26,9 @@
   const locale = $derived(i18n.locale === 'de' ? 'de-DE' : 'en-GB');
   const w = weekNumbers(house);
   const rooms = roomRanges(house, w.days);
+  /** day tiles: one value per day, at the day's middle (for the enlarged time axis) */
+  const mid = (d: { start: number; end: number }) => (d.start + d.end) / 2;
+  const daySpan = w.days.length ? { from: mid(w.days[0]!), to: mid(w.days.at(-1)!) } : undefined;
   // charts: the seven completed days, then today (lighter, apart from the sums)
   const today = w.days.length;
 
@@ -83,7 +86,7 @@
       value: kwh(w.total.pv?.value ?? null),
       unit: 'kWh',
       sub: subOf(w.total.pv?.n, w.before.pv?.value),
-      graphic: { kind: 'spark', values: w.pv, min: 0 },
+      graphic: { kind: 'spark', values: w.pv, min: 0, span: daySpan },
     },
     {
       label: t('week.own'),
@@ -109,7 +112,7 @@
       value: kwh(w.total.imp?.value ?? null),
       unit: 'kWh',
       sub: subOf(w.total.imp?.n, w.before.imp?.value),
-      graphic: { kind: 'spark', values: w.imp, min: 0 },
+      graphic: { kind: 'spark', values: w.imp, min: 0, span: daySpan },
     },
     {
       label: t('week.night'),
@@ -118,7 +121,7 @@
       value: nightMean === null ? '–' : num(nightMean),
       unit: nightMean === null ? undefined : 'W',
       sub: t('week.nightSub'),
-      graphic: { kind: 'spark', values: w.night, min: 0 },
+      graphic: { kind: 'spark', values: w.night, min: 0, span: daySpan },
     },
     {
       label: t('week.battery'),
