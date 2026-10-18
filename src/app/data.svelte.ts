@@ -159,7 +159,8 @@ let loads = 0;
 
 /**
  * Release check: the build id from /api/health at first load; every 5 minutes
- * (only while the page is visible) the page asks again and reloads itself when
+ * and whenever the page becomes visible again (only while visible) the page
+ * asks again and reloads itself when
  * a new build is live – so a phone tab never keeps old code for hours. Never
  * while a dialog is open or something is being typed.
  */
@@ -174,11 +175,15 @@ export function busyTyping(): boolean {
 function watchBuild(first: unknown) {
   if (typeof first !== 'string' || !first || buildTimer || typeof window === 'undefined') return;
   build = first;
-  buildTimer = setInterval(async () => {
+  const check = async () => {
     if (document.visibilityState !== 'visible' || busyTyping()) return;
     const h = await getJson('/api/health');
     if (newBuild(build, (h?.body as { build?: unknown } | undefined)?.build)) location.reload();
-  }, 5 * 60_000);
+  };
+  buildTimer = setInterval(() => void check(), 5 * 60_000);
+  // A phone app kept in memory comes back without a reload: ask right away
+  // when the page becomes visible again, not only on the next 5-minute tick.
+  document.addEventListener('visibilitychange', () => void check());
 }
 
 export async function load(): Promise<void> {
