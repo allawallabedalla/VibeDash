@@ -11,6 +11,7 @@
  *     { "type": "tiles", "title": "…", "tiles": [
  *         { "label": "Akku", "value": "92", "unit": "%", "sub": "…", "state": "ok",
  *           "icon": "battery", "approx": false, "spark": [1,2,3], "color": "battery",
+ *           "sparkFrom": ms, "sparkTo": ms,   // optional: time of the first / last spark value
  *           "info": { "what": "…", "source": "…" } } ] },
  *     { "type": "series", "title": "…", "unit": "kW", "x": [ms…],
  *       "lines": [ { "label": "…", "values": [1,null,2], "color": "sun", "dashed": false } ] },
@@ -81,6 +82,9 @@ export interface BoardTile {
   icon?: string;
   approx?: boolean;
   spark?: (number | null)[];
+  /** time (ms) of the first and the last spark value: the enlarged tile shows a time axis */
+  sparkFrom?: number;
+  sparkTo?: number;
   color?: BoardColor;
   info?: BoardInfo;
 }
@@ -280,6 +284,11 @@ export function sanitizeBoard(raw: unknown): Board | null {
               ...(opt(t.icon, 20) ? { icon: opt(t.icon, 20) } : {}),
               ...(t.approx === true ? { approx: true } : {}),
               ...(Array.isArray(t.spark) ? { spark: list(t.spark, 300).map(num) } : {}),
+              ...(num(t.sparkFrom) !== null &&
+              num(t.sparkTo) !== null &&
+              num(t.sparkTo)! > num(t.sparkFrom)!
+                ? { sparkFrom: num(t.sparkFrom)!, sparkTo: num(t.sparkTo)! }
+                : {}),
               ...(t.color ? { color: color(t.color) } : {}),
               ...(info(t.info) ? { info: info(t.info) } : {}),
             })),

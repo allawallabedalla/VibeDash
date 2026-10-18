@@ -72,7 +72,16 @@
     ...(x.state === 'open' ? { pending: t('board.open') } : {}),
     ...(x.info ? { info: x.info } : {}),
     ...(x.spark && x.spark.some((v) => v !== null)
-      ? { graphic: { kind: 'spark' as const, values: x.spark, color: C[x.color ?? 'muted'] } }
+      ? {
+          graphic: {
+            kind: 'spark' as const,
+            values: x.spark,
+            color: C[x.color ?? 'muted'],
+            ...(x.sparkFrom !== undefined && x.sparkTo !== undefined
+              ? { span: { from: x.sparkFrom, to: x.sparkTo } }
+              : {}),
+          },
+        }
       : {}),
   });
   const columnsOf = (cols: { key: string; label: string; align?: 'right' }[]): Column[] =>

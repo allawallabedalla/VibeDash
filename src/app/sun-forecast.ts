@@ -48,5 +48,11 @@ export function sunToday(data: DemoData, fc: SunForecast) {
       const k = fc.at.findIndex((a) => t >= a && t < a + fc.stepMs);
       return k < 0 ? null : (vals[k] ?? null);
     });
-  return { values: measured, forecast: pick(fc.p50), low: pick(fc.p10), high: pick(fc.p90) };
+  return {
+    values: measured,
+    forecast: pick(fc.p50),
+    low: pick(fc.p10),
+    high: pick(fc.p90),
+    span: { from: from + SLOT / 2, to: from + (n - 1) * SLOT + SLOT / 2 },
+  };
 }

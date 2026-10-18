@@ -64,7 +64,16 @@
       unit: 'kWh',
       approx: true,
       sub: t('plan.rangeN', { lo: num(plan.range[0]), hi: num(plan.range[1]), n }),
-      graphic: { kind: 'spark', values: plan.carKw, color: 'var(--battery)', min: 0 },
+      graphic: {
+        kind: 'spark',
+        values: plan.carKw,
+        color: 'var(--battery)',
+        min: 0,
+        // hourly slots, each at its middle
+        ...(plan.hours.length > 1
+          ? { span: { from: plan.hours[0]! + 1_800_000, to: plan.hours.at(-1)! + 1_800_000 } }
+          : {}),
+      },
       info: { what: t('plan.info.car.what'), source: t('plan.info.car.source') },
     },
     {

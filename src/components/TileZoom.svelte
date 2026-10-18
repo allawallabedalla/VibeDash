@@ -14,6 +14,7 @@
   import Icon from './Icon.svelte';
   import LineChart from './LineChart.svelte';
   import Segmented from './Segmented.svelte';
+  import SparkZoom from './SparkZoom.svelte';
   import Sparkline from './Sparkline.svelte';
   import type { TileProps } from './Tile.svelte';
 
@@ -106,6 +107,7 @@
       label={tile.label}
       tight={zoom?.tight ?? false}
       legendValues={false}
+      {now}
     />
     <p class="sub">{t('zoom.curve', { step: stepText })}</p>
     {#if late?.covered}
@@ -128,17 +130,34 @@
       {/each}
     </dl>
   {:else if tile.graphic?.kind === 'spark'}
+    {@const g = tile.graphic}
     <div class="spark">
-      <Sparkline
-        values={tile.graphic.values}
-        forecast={tile.graphic.forecast}
-        band={tile.graphic.band}
-        color={tile.graphic.color ?? tile.color}
-        signed={tile.graphic.signed}
-        min={tile.graphic.min}
-        height={120}
-        label={tile.label}
-      />
+      {#if g.span}
+        <SparkZoom
+          values={g.values}
+          forecast={g.forecast}
+          band={g.band}
+          color={g.color ?? tile.color ?? 'var(--text)'}
+          signed={g.signed}
+          min={g.min}
+          label={tile.label}
+          span={g.span}
+          {now}
+          timeZone={data?.timeZone ?? 'Europe/Berlin'}
+          levels={g.levels}
+        />
+      {:else}
+        <Sparkline
+          values={g.values}
+          forecast={g.forecast}
+          band={g.band}
+          color={g.color ?? tile.color}
+          signed={g.signed}
+          min={g.min}
+          height={120}
+          label={tile.label}
+        />
+      {/if}
     </div>
   {/if}
 

@@ -1,4 +1,20 @@
+<script lang="ts" module>
+  /** The drawing's scale, for an axis drawn on top (enlarged view only). */
+  export interface SparkScale {
+    xAt: (i: number) => number;
+    yAt: (v: number) => number;
+    slots: number;
+    width: number;
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+    total: number;
+  }
+</script>
+
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import { runs, smoothPath, type Point } from './path';
 
   interface Props {
@@ -18,6 +34,11 @@
     min?: number;
     max?: number;
     label: string;
+    /** extra room around the curve for axis texts (enlarged view) */
+    inset?: { l: number; r: number; t: number; b: number };
+    /** drawn behind the curve / on top of it, with the scale; replaces the own "now" mark */
+    under?: Snippet<[SparkScale]>;
+    over?: Snippet<[SparkScale]>;
   }
 
   let {
@@ -31,11 +52,19 @@
     min,
     max,
     label,
+    inset,
+    under,
+    over,
   }: Props = $props();
 
   const uid = $props.id();
   let width = $state(240);
   const pad = 3;
+  const L = $derived(inset?.l ?? pad);
+  const R = $derived(inset?.r ?? pad);
+  const T = $derived(inset?.t ?? pad);
+  const total = $derived(inset ? height + inset.t + inset.b - 2 * pad : height);
+  const B = $derived(total - (inset?.b ?? pad));
 
   const domain = $derived.by(() => {
     const all = [
@@ -53,9 +82,19 @@
   });
 
   const slots = $derived(Math.max(values.length, forecast?.length ?? 0));
-  const xAt = (i: number) => pad + (i / Math.max(slots - 1, 1)) * (width - 2 * pad);
-  const yAt = (v: number) =>
-    pad + (1 - (v - domain.lo) / (domain.hi - domain.lo)) * (height - 2 * pad);
+  const xAt = (i: number) => L + (i / Math.max(slots - 1, 1)) * (width - L - R);
+  const yAt = (v: number) => T + (1 - (v - domain.lo) / (domain.hi - domain.lo)) * (B - T);
+  const scale = $derived<SparkScale>({
+    xAt,
+    yAt,
+    slots,
+    width,
+    left: L,
+    right: width - R,
+    top: T,
+    bottom: B,
+    total,
+  });
 
   const segments = $derived(
     runs(values).map(({ start, end }) => {
@@ -65,7 +104,7 @@
     }),
   );
 
-  const baseY = $derived(signed ? yAt(0) : height - pad);
+  const baseY = $derived(signed ? yAt(0) : B);
 
   const lines = $derived(segments.map((pts) => smoothPath(pts)));
   const areas = $derived(
@@ -102,7 +141,7 @@
   );
   /** "Now": after the last actual value, where the forecast takes over. */
   const nowX = $derived.by(() => {
-    if (!forecast) return null;
+    if (!forecast || over) return null;
     let last = values.length - 1;
     while (last >= 0 && values[last] === null) last--;
     return last < 0 ? null : xAt(last);
@@ -121,8 +160,8 @@
   });
 </script>
 
-<div class="spark" bind:clientWidth={width} style:height="{height}px">
-  <svg {width} {height} role="img" aria-label={label}>
+<div class="spark" bind:clientWidth={width} style:height="{total}px">
+  <svg {width} height={total} role="img" aria-label={label}>
     <defs>
       <linearGradient id="{uid}-fill" x1="0" x2="0" y1="0" y2="1">
         <stop offset="0" stop-color={color} stop-opacity="0.28" />
@@ -151,14 +190,15 @@
       </pattern>
       {#if signed}
         <clipPath id="{uid}-above"><rect x="0" y="0" {width} height={baseY} /></clipPath>
-        <clipPath id="{uid}-below"
-          ><rect x="0" y={baseY} {width} height={height - baseY} /></clipPath
+        <clipPath id="{uid}-below"><rect x="0" y={baseY} {width} height={total - baseY} /></clipPath
         >
       {/if}
     </defs>
 
+    {@render under?.(scale)}
+
     {#each gaps as g, i (i)}
-      <rect class="gap" x={g.x} y="0" width={g.w} {height} rx="4" fill="url(#{uid}-hatch)" />
+      <rect class="gap" x={g.x} y={T} width={g.w} height={B - T} rx="4" fill="url(#{uid}-hatch)" />
     {/each}
 
     {#if bandPath}
@@ -166,7 +206,7 @@
     {/if}
 
     {#if signed}
-      <line x1={pad} x2={width - pad} y1={baseY} y2={baseY} stroke="var(--line)" stroke-width="1" />
+      <line x1={L} x2={width - R} y1={baseY} y2={baseY} stroke="var(--line)" stroke-width="1" />
       <g clip-path="url(#{uid}-above)">
         {#each areas as d, i (i)}<path {d} fill="url(#{uid}-fill)" />{/each}
         {#each lines as d, i (i)}<path {d} class="line" stroke={color} />{/each}
@@ -183,6 +223,7 @@
       <line class="now" x1={nowX} x2={nowX} y1="0" y2={height} />
     {/if}
     {#each forecastLines as d, i (i)}<path {d} class="line forecast" stroke={color} />{/each}
+    {@render over?.(scale)}
   </svg>
 </div>
 

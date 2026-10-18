@@ -3,7 +3,15 @@
  * context ($derived) so texts follow the language switch.
  */
 import type { TileProps } from '../components/Tile.svelte';
-import { daily, dayAheadForecasts, last24h, latest, type DemoData, type Period } from '../demo';
+import {
+  daily,
+  dayAheadForecasts,
+  last24h,
+  last24hSpan,
+  latest,
+  type DemoData,
+  type Period,
+} from '../demo';
 import { perDay, sumComplete, weekDays } from './week';
 import { sunToday, type SunForecast } from './sun-forecast';
 
@@ -126,8 +134,14 @@ export function sunTile(data: DemoData, fc?: SunForecast | null): TileProps {
           forecast: today.forecast,
           band: { low: today.low, high: today.high },
           min: 0,
+          span: today.span,
         }
-      : { kind: 'spark', values: last24h(data, 'pv_power').map(kw), min: 0 },
+      : {
+          kind: 'spark',
+          values: last24h(data, 'pv_power').map(kw),
+          min: 0,
+          span: last24hSpan(data),
+        },
     info: {
       what: t('info.sun.what'),
       source: t('info.sun.source') + (today ? ` ${t('info.sun.forecast')}` : ''),
@@ -144,7 +158,12 @@ export function loadTile(data: DemoData): TileProps {
     value: num(nowValue(data, 'load_power') / 1000, 1),
     unit: 'kW',
     sub: t('sub.now'),
-    graphic: { kind: 'spark', values: last24h(data, 'load_power').map(kw), min: 0 },
+    graphic: {
+      kind: 'spark',
+      values: last24h(data, 'load_power').map(kw),
+      min: 0,
+      span: last24hSpan(data),
+    },
     info: { what: t('info.home.what'), source: loadSource(data) },
   });
 }
@@ -240,6 +259,7 @@ export function gridTile(data: DemoData): TileProps {
     graphic: {
       kind: 'spark',
       values: last24h(data, 'grid_power').map(kw),
+      span: last24hSpan(data),
       signed: true,
       color: 'var(--feed)',
     },
@@ -611,7 +631,17 @@ export function presenceTile(data: DemoData): TileProps | null {
     icon: 'home',
     color: 'var(--home)',
     value: '–',
-    graphic: { kind: 'spark', values: last24h(data, 'home_presence'), min: 0 },
+    graphic: {
+      kind: 'spark',
+      values: last24h(data, 'home_presence'),
+      min: 0,
+      span: last24hSpan(data),
+      levels: [
+        { value: 0, label: t('presence.nobody') },
+        { value: 1, label: t('presence.calm') },
+        { value: 2, label: t('presence.someone') },
+      ],
+    },
     info: { what: t('info.presence.what'), source: t('info.presence.source') },
   };
   if (now === null) return staleOr(data, 'home_presence', tile);

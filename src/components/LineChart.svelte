@@ -4,7 +4,8 @@
    * optionally dashed; gaps stay gaps. The drawing width follows the card, so
    * the text keeps its size on the phone.
    */
-  import { num, time } from '../i18n/index.svelte';
+  import { num, t, time } from '../i18n/index.svelte';
+  import { timeTicks } from './timeaxis';
 
   interface Line {
     label: string;
@@ -22,13 +23,24 @@
     tight?: boolean;
     /** legend with the last value of each line (off where the value is shown elsewhere) */
     legendValues?: boolean;
+    /** a fine "now" line with a dot on each line's newest value, round time marks below */
+    now?: number;
   }
-  let { x, lines, unit, timeZone, label, tight = false, legendValues = true }: Props = $props();
+  let {
+    x,
+    lines,
+    unit,
+    timeZone,
+    label,
+    tight = false,
+    legendValues = true,
+    now,
+  }: Props = $props();
 
   let cw = $state(640);
   const VW = $derived(cw < 520 ? 380 : 640);
   const VH = $derived(cw < 520 ? 230 : 200);
-  const PAD = { l: 40, r: 14, t: 10, b: 22 };
+  const PAD = $derived({ l: 40, r: 14, t: now === undefined ? 10 : 24, b: 22 });
 
   const all = $derived(lines.flatMap((l) => l.values).filter((v): v is number => v !== null));
   /** a round step for a tight axis: 0.5, 1, 2, 5, 10 … */
@@ -75,14 +87,42 @@
   };
   const ticksY = $derived([lo, (lo + hi) / 2, hi].filter((v, i, a) => a.indexOf(v) === i));
   const spanDays = $derived((to - from) / 86_400_000);
-  const ticksX = $derived.by(() => {
+  const evenTicks = $derived.by(() => {
     const n = cw < 520 ? 3 : 5;
     return Array.from({ length: n }, (_, i) => from + ((to - from) * i) / (n - 1));
   });
+  /** with "now": round marks (6 h, weekdays, every 7th day), none crowding another */
+  const roundTicks = $derived.by(() => {
+    if (now === undefined) return [];
+    const out: { t: number; label: string }[] = [];
+    for (const k of timeTicks(from, to, timeZone, {
+      hour: (h) => t('axis.hour', { h: String(h) }),
+    })) {
+      const prev = out.at(-1);
+      if (prev && X(k.t) - X(prev.t) < (k.label.length + prev.label.length) * 3.6 + 12) continue;
+      out.push(k);
+    }
+    return out;
+  });
+  const ticksX = $derived(roundTicks.length >= 2 ? roundTicks.map((k) => k.t) : evenTicks);
+  const nowX = $derived(
+    now !== undefined && now >= from && now <= to + (to - from) * 0.02
+      ? X(Math.min(now, to))
+      : null,
+  );
+  const lastPoint = (vals: (number | null)[]) => {
+    for (let i = vals.length - 1; i >= 0; i--)
+      if (vals[i] !== null && x[i] !== undefined) return { x: X(x[i]!), y: Y(vals[i]!) };
+    return null;
+  };
   const fmtX = (t0: number) =>
-    spanDays > 2
-      ? new Intl.DateTimeFormat('de-DE', { timeZone, day: 'numeric', month: 'numeric' }).format(t0)
-      : time(t0, timeZone);
+    roundTicks.length >= 2
+      ? (roundTicks.find((k) => k.t === t0)?.label ?? '')
+      : spanDays > 2
+        ? new Intl.DateTimeFormat('de-DE', { timeZone, day: 'numeric', month: 'numeric' }).format(
+            t0,
+          )
+        : time(t0, timeZone);
   const last = (vals: (number | null)[]) => {
     for (let i = vals.length - 1; i >= 0; i--) if (vals[i] !== null) return vals[i]!;
     return null;
@@ -106,16 +146,44 @@
     >
   {/each}
   {#each ticksX as t0, i (i)}
+    {#if roundTicks.length >= 2}
+      <line class="grid soft" x1={X(t0)} x2={X(t0)} y1={PAD.t} y2={VH - PAD.b} />
+    {/if}
     <text
       class="axis"
       x={X(t0)}
       y={VH - 4}
-      text-anchor={i === 0 ? 'start' : i === ticksX.length - 1 ? 'end' : 'middle'}>{fmtX(t0)}</text
+      text-anchor={X(t0) < PAD.l + 18
+        ? 'start'
+        : X(t0) > VW - PAD.r - 18
+          ? 'end'
+          : roundTicks.length >= 2
+            ? 'middle'
+            : i === 0
+              ? 'start'
+              : i === ticksX.length - 1
+                ? 'end'
+                : 'middle'}>{fmtX(t0)}</text
     >
   {/each}
+  {#if nowX !== null}
+    <line class="now" x1={nowX} x2={nowX} y1={PAD.t - 6} y2={VH - PAD.b} />
+    <text
+      class="axis now-text"
+      x={nowX}
+      y={PAD.t - 10}
+      text-anchor={nowX > VW - PAD.r - 24 ? 'end' : 'middle'}>{t('sub.now')}</text
+    >
+  {/if}
   {#each lines as l (l.label)}
     <path class="ln" class:dashed={l.dashed} d={path(l.values)} style:stroke={l.color} />
   {/each}
+  {#if nowX !== null}
+    {#each lines as l (l.label)}
+      {@const p = lastPoint(l.values)}
+      {#if p && !l.dashed}<circle class="dot" cx={p.x} cy={p.y} r="4" fill={l.color} />{/if}
+    {/each}
+  {/if}
 </svg>
 
 <style>
@@ -157,6 +225,21 @@
     fill: var(--muted);
     font-size: 12px;
     font-variant-numeric: tabular-nums;
+  }
+  .grid.soft {
+    opacity: 0.6;
+  }
+  .now {
+    stroke: var(--muted);
+    stroke-width: 1;
+    stroke-dasharray: 2 3;
+  }
+  .now-text {
+    fill: var(--text-2);
+  }
+  .dot {
+    stroke: var(--surface);
+    stroke-width: 2;
   }
   .ln {
     fill: none;
