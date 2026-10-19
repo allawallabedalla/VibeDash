@@ -17,8 +17,6 @@ export const de = {
   'tile.sun': 'Sonne',
   'tile.home': 'Verbrauch',
   'tile.battery': 'Akku',
-  'tile.feedIn': 'Einspeisung',
-  'tile.import': 'Netzbezug',
   'tile.presence': 'Zuhause',
   'presence.someone': 'jemand',
   'presence.nobody': 'keiner',
@@ -45,7 +43,6 @@ export const de = {
   'sub.now': 'jetzt',
   'sub.full': 'voll',
   'sub.comfort': 'angenehm {low}–{high}',
-  'sub.soFar': 'bisher {value}',
   'sub.range': '{low}–{high} · n = {n}',
   'sub.autarky': 'Netz: {import} von {load} kWh',
 
@@ -72,7 +69,7 @@ export const de = {
   'info.humidity.what': 'Relative Luftfeuchte im Raum. Der helle Bereich ist der Wohlfühlbereich.',
   'info.humidity.source': 'Raumsensor.',
   'info.yield.what':
-    'Erwarteter Solarertrag für heute: Mitte und übliche Spanne. Bisher {soFar} kWh (Punkt).',
+    'Zähler heute: {soFar} kWh (Punkt). Band: erwarteter Tagesertrag, Mitte und Spanne.',
   'info.yield.source':
     'Am Vorabend aus den letzten {n} vollständigen Tagen (Zählerstand): Median, Spanne 10–90 %.',
   'info.tomorrow.what': 'Erwarteter Solarertrag für morgen.',
@@ -585,6 +582,7 @@ export const de = {
   'wd.note': 'PV gemessen = Zähler; ≈ = Prognose, Spanne: 8 von 10 Fällen liegen darin.',
   'sub.span': '{low}–{high} · 8 von 10 Fällen',
   'info.yield.house': 'Prognose des Hauses selbst (eigene Tagesprognose), Spanne 10–90 %.',
+  'sub.yieldExpected': 'Prognose {value} kWh',
   'sub.houseForecast': 'Prognose des Hauses',
   'info.gapNote': '{from}–{to} ohne Meldung – die Lücke bleibt sichtbar.',
   'info.outlier': 'Um {time} kam ein auffälliger Einzelwert. War der Sensor kurz gestört?',

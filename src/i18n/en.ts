@@ -19,8 +19,6 @@ export const en: Record<MessageKey, string> = {
   'tile.sun': 'Solar',
   'tile.home': 'Usage',
   'tile.battery': 'Battery',
-  'tile.feedIn': 'Feed-in',
-  'tile.import': 'Grid import',
   'tile.presence': 'At home',
   'presence.someone': 'someone',
   'presence.nobody': 'nobody',
@@ -47,7 +45,6 @@ export const en: Record<MessageKey, string> = {
   'sub.now': 'now',
   'sub.full': 'full',
   'sub.comfort': 'comfort {low}–{high}',
-  'sub.soFar': 'so far {value}',
   'sub.range': '{low}–{high} · n = {n}',
   'sub.autarky': 'grid: {import} of {load} kWh',
 
@@ -72,8 +69,7 @@ export const en: Record<MessageKey, string> = {
   'info.temp.source': 'Room sensor.',
   'info.humidity.what': 'Relative humidity in the room. The light band is the comfort range.',
   'info.humidity.source': 'Room sensor.',
-  'info.yield.what':
-    'Expected solar yield for today: middle and usual range. So far {soFar} kWh (dot).',
+  'info.yield.what': 'Meter today: {soFar} kWh (dot). Band: expected day, middle and range.',
   'info.yield.source':
     'Made the evening before from the last {n} complete days (meter reading): median, range 10–90 %.',
   'info.tomorrow.what': 'Expected solar yield for tomorrow.',
@@ -576,6 +572,7 @@ export const en: Record<MessageKey, string> = {
   'wd.note': 'PV measured = meter; ≈ = forecast, range: 8 in 10 cases fall inside.',
   'sub.span': '{low}–{high} · 8 in 10 cases',
   'info.yield.house': 'The house’s own daily forecast, span 10–90 %.',
+  'sub.yieldExpected': 'forecast {value} kWh',
   'sub.houseForecast': 'the house’s forecast',
   'info.gapNote': 'Silent {from}–{to} – the gap stays visible.',
   'info.outlier': 'At {time} a single odd value came in. Was the sensor briefly disturbed?',

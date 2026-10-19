@@ -405,7 +405,9 @@ export function yieldTodayTile(data: DemoData): TileProps {
   const fc = own
     ? { ...own, n: 0 }
     : dayAheadForecasts(data).find((f) => f.day === 'today')?.energy;
-  const soFar = daily(data, 'pv_energy').at(-1)?.value;
+  // today's meter value is the headline; the forecast moves to the line below
+  const last = daily(data, 'pv_energy').at(-1);
+  const soFar = last?.day === localDateKey(data.now, data.timeZone) ? last.value : undefined;
   const base: TileProps = {
     label: t('tile.yield'),
     icon: 'forecast',
@@ -421,14 +423,17 @@ export function yieldTodayTile(data: DemoData): TileProps {
     label: t('tile.yield'),
     icon: 'forecast',
     color: 'var(--sun)',
-    approx: true,
-    value: num(fc.value),
+    approx: soFar === undefined,
+    value: num(soFar ?? fc.value),
     unit: 'kWh',
-    sub: own
-      ? fc.high > fc.low
-        ? t('sub.span', { low: num(fc.low), high: num(fc.high) })
-        : t('sub.houseForecast')
-      : t('sub.range', { low: num(fc.low), high: num(fc.high), n: fc.n }),
+    sub:
+      soFar !== undefined
+        ? t('sub.yieldExpected', { value: num(fc.value) })
+        : own
+          ? fc.high > fc.low
+            ? t('sub.span', { low: num(fc.low), high: num(fc.high) })
+            : t('sub.houseForecast')
+          : t('sub.range', { low: num(fc.low), high: num(fc.high), n: fc.n }),
     graphic: {
       kind: 'scale',
       value: soFar ?? 0,
