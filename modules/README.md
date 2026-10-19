@@ -7,12 +7,14 @@ install). Only the VibeDash server talks to it; the browser never does.
 | Module    | Tab     | What it does                                                                                                                                                                                                                                                                           |
 | --------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `wartung` | Wartung | Maintenance plan: maintenance day as a walk through the house (time budget, most urgent first), service appointments with lead time, open one-off items (also with a time), tick off / note / acknowledge / later / undo, calendar subscription for the phone (one event per Saturday) |
+| `raeume`  | Räume   | Floor plan with live values per room (temperature, humidity, valve, light, motion), tap a room for all values, today's light and motion to play back, optional 3D view. Only reads.                                                                                                    |
 
 ## Switch a module on
 
 1. Copy `templates/<name>.json` to `local/modules/<name>.json` (the modules folder, `MODULES_DIR`).
 2. For `wartung` also copy `templates/wartungsplan.json` (a general starter plan) and adapt it with the
-   person (move-in date, places, tasks). Never put a real house's plan into the repo.
+   person (move-in date, places, tasks). For `raeume` draw the house's floor plan in the format of
+   `templates/raeume_haus.json`. Never put a real house's plan into the repo.
 3. Add the tab to `local/mapping.json`:
    `{ "id": "wartung", "title": "Wartung", "icon": "wrench", "module": "wartung" }`.
 
@@ -57,6 +59,18 @@ The VibeDash server finds it at `MODULES_URL` (default `http://127.0.0.1:8091`).
 The plan format (field names in German, as the person reads them) is described at the top of
 `vibedash_modules/wartung/plan.py` and in `templates/wartungsplan.json`. Ticking off writes the plan
 atomically under a file lock (`<plan>.lock`), so a house script may share the file.
+
+## Module `raeume` – config keys
+
+| Key             | Meaning                                                                                                                                                                                                                                                                                |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `grundriss`     | `{haus, waende?, modell3d?}` – plan files (relative to the modules folder or absolute). `haus`: floors with rooms (`id`, `name`, `art`, `polygon` in metres, `zentrum`, `flaeche_m2`, `knx` = the room's names in the series)                                                          |
+| `influx`        | `{url, db}` (+ optional `klima`, `feld`, `tag_typ`, `tag_raum`, `helligkeit`, `helligkeit_feld`) – InfluxDB 1.x, read only: last value per room tag of `raumklima` (`typ` ist, ist_matter, ist_decke, soll, stellgroesse, feuchte, aussen_temp, aussen_feuchte) and `helligkeit` (lux) |
+| `namen`         | `{room_id: [names]}` – more names of a room in the series                                                                                                                                                                                                                              |
+| `gleicher_raum` | `{room_id: room_id}` – a room without own readings shows another room's climate (open-plan rooms, one heating zone)                                                                                                                                                                    |
+| `zeitzone`      | day start of the light/motion timeline, default `Europe/Berlin`                                                                                                                                                                                                                        |
+| `einschub_url`  | optional house service for light and motion of today (`?seit=<ms>`): `{"licht": {"vorher": [[raum, quelle, an]], "wechsel": [[ts, raum, quelle, an]]}, "bewegung": [[ts, raum]], "letzte_bewegung": {room_id: ts}}` (see `raeume/board.py`)                                            |
+| `texte`         | optional wording overrides (keys in `raeume/board.py`, `TEXT`; floor names as `floor_<id>`)                                                                                                                                                                                            |
 
 ## Tests
 

@@ -1,0 +1,14 @@
+{
+  "$comment": "Module raeume – copy to local/modules/raeume.json. Plan files and names stay in local/modules (git-ignored).",
+  "grundriss": { "haus": "raeume_haus.json", "waende": "", "modell3d": "" },
+  "influx": {
+    "url": "http://127.0.0.1:8086",
+    "db": "",
+    "klima": "raumklima",
+    "helligkeit": "helligkeit"
+  },
+  "namen": {},
+  "gleicher_raum": {},
+  "zeitzone": "Europe/Berlin",
+  "einschub_url": ""
+}
