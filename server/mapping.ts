@@ -100,6 +100,11 @@ export interface BoardMapping {
    * house service; its items always take actions, its feeds go out at /feed/<module>/….
    */
   module?: string;
+  /**
+   * Optional: where a calculator section ("calc": slider + button) sends its value – a
+   * POST to the house service that only calculates and answers sections.
+   */
+  calcUrl?: string;
 }
 
 export interface Mapping {
@@ -701,10 +706,11 @@ export function validateMapping(
           !isText(b.title) ||
           (b.module !== undefined && !mod) ||
           (mod ? b.url !== undefined || b.actionUrl !== undefined : !url(b.url)) ||
-          (b.actionUrl !== undefined && !url(b.actionUrl))
+          (b.actionUrl !== undefined && !url(b.actionUrl)) ||
+          (b.calcUrl !== undefined && !url(b.calcUrl))
         ) {
           errors.push(
-            `${at}: { id (a-z0-9_-), title, icon?, and either url (http/https) + actionUrl? (http/https) or module (a-z0-9_-) }`,
+            `${at}: { id (a-z0-9_-), title, icon?, and either url (http/https) + actionUrl? + calcUrl? (http/https) or module (a-z0-9_-) }`,
           );
           return;
         }
@@ -715,6 +721,7 @@ export function validateMapping(
           icon: typeof b.icon === 'string' ? b.icon.slice(0, 20) : 'info',
           ...(mod ? { module: mod } : { url: String(b.url) }),
           ...(b.actionUrl ? { actionUrl: String(b.actionUrl) } : {}),
+          ...(b.calcUrl ? { calcUrl: String(b.calcUrl) } : {}),
         });
       });
   }

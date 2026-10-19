@@ -16,7 +16,7 @@ import type { ResolvedLocation } from './location';
 import { thinBefore } from '../src/model/series';
 import type { Series } from '../src/model/types';
 import { sourcesOf, type BoardMapping, type Mapping, type SeriesMapping } from './mapping';
-import { ITEM_ID, type Board } from '../src/model/board';
+import { ITEM_ID, sanitizeCalcResult, type Board } from '../src/model/board';
 import {
   deviceBody,
   templatesFor,
@@ -97,6 +97,8 @@ export interface ApiDeps {
     b: BoardMapping,
     a: BoardActionRequest,
   ) => Promise<{ status: number; body: unknown }>;
+  /** Calculator value (slider) sent to the board's house service, which only calculates. */
+  boardCalc?: (b: BoardMapping, value: number) => Promise<{ status: number; body: unknown }>;
   /** The local feedback backlog (server/feedback.ts). */
   feedback?: FeedbackStore;
   /** Setup assistant (server/setup.ts): only with the starter pack (EVCC + SETUP_CODE). */
@@ -324,6 +326,36 @@ async function handleBoardAction(id: string, deps: ApiDeps, req: RequestInfo): P
   }
 }
 
+/** A calculation can take a while: at most 6 a minute, one at a time. */
+const calcs: number[] = [];
+let calcBusy = false;
+
+async function handleBoardCalc(id: string, deps: ApiDeps, req: RequestInfo): Promise<ApiResult> {
+  const b = deps.mapping?.boards?.find((x) => x.id === id);
+  if (!b || !b.calcUrl || !deps.boardCalc) return json(404, { error: 'no_calc' });
+  const refused = writeGuard(req, 200);
+  if (refused) return refused;
+  const body = parseBody(req);
+  const value = body?.value;
+  if (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) > 1_000_000)
+    return json(400, { error: 'bad_value' });
+  const now = deps.now();
+  while (calcs.length && now - calcs[0]! > 60_000) calcs.shift();
+  if (calcBusy || calcs.length >= 6) return json(429, { error: 'too_many' });
+  calcs.push(now);
+  calcBusy = true;
+  try {
+    const r = await deps.boardCalc(b, value);
+    const sections = r.status >= 200 && r.status < 300 ? sanitizeCalcResult(r.body) : null;
+    if (!sections) return json(502, { error: 'upstream' });
+    return json(200, { sections });
+  } catch (e) {
+    return timeoutOr(e as Error, deps.log, `board ${b.id} calc`);
+  } finally {
+    calcBusy = false;
+  }
+}
+
 async function handleFeedback(method: string, deps: ApiDeps, req: RequestInfo): Promise<ApiResult> {
   const f = deps.feedback;
   if (!f) return json(404, { error: 'no_feedback' });
@@ -434,6 +466,8 @@ export async function handleApi(
   }
   const ba = /^\/api\/board\/([a-z][a-z0-9_-]{0,31})\/action$/.exec(path);
   if (ba && method === 'POST') return handleBoardAction(ba[1]!, deps, req);
+  const bc = /^\/api\/board\/([a-z][a-z0-9_-]{0,31})\/calc$/.exec(path);
+  if (bc && method === 'POST') return handleBoardCalc(bc[1]!, deps, req);
   if (method !== 'GET') return json(405, { error: 'method_not_allowed' });
 
   if (path === '/api/evcc/now' || path === '/api/evcc/sessions') {
@@ -470,12 +504,15 @@ export async function handleApi(
       pv: Boolean(deps.pv),
       plan: Boolean(deps.plan),
       timeZone: deps.mapping?.timeZone ?? null,
-      boards: (deps.mapping?.boards ?? []).map(({ id, title, icon, actionUrl, module }) => ({
-        id,
-        title,
-        icon,
-        ...((actionUrl || module) && deps.boardAction ? { actions: true } : {}),
-      })),
+      boards: (deps.mapping?.boards ?? []).map(
+        ({ id, title, icon, actionUrl, module, calcUrl }) => ({
+          id,
+          title,
+          icon,
+          ...((actionUrl || module) && deps.boardAction ? { actions: true } : {}),
+          ...(calcUrl && deps.boardCalc ? { calc: true } : {}),
+        }),
+      ),
       feedback: Boolean(deps.feedback),
       build: deps.build ?? null,
       setup: deps.setup ? !deps.setup.state.read().done : false,

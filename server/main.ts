@@ -73,6 +73,9 @@ if (process.argv.includes('--check')) {
   process.exit(0);
 }
 
+/** A calculation on the house service (e.g. a charging plan for many weather cases) may take a while. */
+const CALC_TIMEOUT_MS = 45_000;
+
 // Boards: extra pages whose content a house service supplies; checked and trimmed here.
 const modules = moduleBase(process.env);
 if (deps.mapping?.boards?.length) {
@@ -93,6 +96,18 @@ if (deps.mapping?.boards?.length) {
         headers: { 'Content-Type': 'application/json', ...t.headers },
         body: JSON.stringify(a),
         signal: AbortSignal.timeout(config.timeoutMs),
+      });
+      return { status: r.status, body: await r.json().catch(() => null) };
+    };
+  }
+  // calculators (slider + button): the value goes to the house service, which only calculates
+  if (deps.mapping.boards.some((b) => b.calcUrl)) {
+    deps.boardCalc = async (b, value) => {
+      const r = await fetch(b.calcUrl!, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Haus-Rechnung': '1' },
+        body: JSON.stringify({ board: b.id, value }),
+        signal: AbortSignal.timeout(CALC_TIMEOUT_MS),
       });
       return { status: r.status, body: await r.json().catch(() => null) };
     };

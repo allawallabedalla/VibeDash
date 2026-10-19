@@ -101,7 +101,7 @@
     const at: Record<number, Ranged> = {};
     const seen: string[] = [];
     if (view.s !== 'ready') return at;
-    view.b.sections.forEach((s, i) => {
+    shown.forEach(({ s }, i) => {
       if (isRanged(s) && !seen.includes(s.group!)) {
         seen.push(s.group!);
         at[i] = s;
@@ -116,6 +116,26 @@
     const r = s.ranges!.find((x) => x.id === want) ?? s.ranges![0]!;
     return { ...s, ...r, title: s.title } as S;
   }
+
+  /**
+   * Calculators: the answer to the last calculation (per calculator, by its position)
+   * is shown right below it as ordinary sections; kept across the two-minute reloads.
+   */
+  const results = new SvelteMap<number, { sections: BoardSection[]; label: string }>();
+  type Shown = { s: BoardSection; calc?: number };
+  const shown = $derived.by((): Shown[] => {
+    if (view.s !== 'ready') return [];
+    const out: Shown[] = [];
+    view.b.sections.forEach((s, i) => {
+      if (s.type === 'calc') {
+        if (!tab?.calc) return;
+        out.push({ s, calc: i });
+        const r = results.get(i);
+        if (r) for (const x of r.sections) out.push({ s: x });
+      } else out.push({ s });
+    });
+    return out;
+  });
 
   /** open accordion items (section index | item id), kept across reloads */
   const opened = new SvelteSet<string>();
@@ -140,7 +160,7 @@
     {#if view.b.updated}
       <p class="muted-note">{t('board.updated', { time: time(view.b.updated, house.timeZone) })}</p>
     {/if}
-    {#each view.b.sections as s, i (i)}
+    {#each shown as { s, calc }, i (i)}
       {#if switchAt[i]}
         {@const g = switchAt[i]}
         <div class="span">
@@ -153,7 +173,26 @@
       {/if}
       <!-- tiles get the title as heading; cards carry it themselves -->
       {#if s.title && s.type === 'tiles'}<h2>{s.title}</h2>{/if}
-      {#if s.type === 'plan'}
+      {#if s.type === 'calc'}
+        <Card
+          title={s.title || s.label}
+          icon="clock"
+          color="var(--battery)"
+          note={s.note}
+          info={s.info}
+        >
+          <!-- loaded only where a board has a calculator (first-page budget) -->
+          {#await import('../components/BoardCalc.svelte')}
+            <p class="muted-note" role="status">{t('state.loading')}</p>
+          {:then { default: BoardCalc }}
+            <BoardCalc
+              board={id}
+              calc={s}
+              onresult={(r) => (r ? results.set(calc!, r) : results.delete(calc!))}
+            />
+          {/await}
+        </Card>
+      {:else if s.type === 'plan'}
         <Card
           title={s.title || tab?.title || ''}
           icon="home"

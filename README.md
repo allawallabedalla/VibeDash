@@ -174,6 +174,15 @@ the note field and buttons open below ("later" asks for a date in a small dialog
 service stores the result and shows it on the next load (`done`/`acked` dates,
 `comments`). VibeDash keeps nothing and switches no device.
 
+**Calculators (optional).** A board with `"calcUrl"` in the mapping may carry a section
+`{ "type": "calc", "label", "min", "max", "step", "value", "format": "clock" | "number",
+"button" }`: a slider and a button (`clock` = minutes from today 0:00, from 1440 on
+tomorrow). The button sends `{ value }` to this server (`POST /api/board/<id>/calc`, same
+page only, one at a time, at most 6 a minute), which passes `{ board, value }` with the
+header `X-Haus-Rechnung: 1` to the `calcUrl` (timeout 45 s). The answer
+`{ "sections": [ … ] }` is checked like a board (no calculators or plans inside, at most 8) and shown right below the slider. Meant for "what if" answers only – the house service
+must not change anything on such a call.
+
 ## Modules: tools with their own tab (`modules/`)
 
 Some tools are part of VibeDash itself and make a whole tab: the **maintenance plan**
