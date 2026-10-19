@@ -1,0 +1,17 @@
+{
+  "$comment": "Module wartung – copy to local/modules/wartung.json. House contents stay in local/modules (git-ignored).",
+  "plan": "wartungsplan.json",
+  "notizen": "notizen.json",
+  "sprache": "de",
+  "zeitzone": "Europe/Berlin",
+  "bereiche": [
+    { "id": "pv", "titel": "Wartungsplan: PV-Anlage & Speicher" },
+    { "id": "heizung", "titel": "Wartungsplan: Heizung & Warmwasser" },
+    { "id": "elektro", "titel": "Wartungsplan: Elektro, Smart Home & Auto" },
+    { "id": "haus", "titel": "Wartungsplan: Haus, Garten & Geräte" }
+  ],
+  "layout": ["kern", "plan:*"],
+  "ort_zeigen": ["haus"],
+  "kalender_url": "",
+  "kalender_name": "Hauswartung"
+}

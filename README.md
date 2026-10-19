@@ -174,6 +174,27 @@ the note field and buttons open below ("later" asks for a date in a small dialog
 service stores the result and shows it on the next load (`done`/`acked` dates,
 `comments`). VibeDash keeps nothing and switches no device.
 
+## Modules: tools with their own tab (`modules/`)
+
+Some tools are part of VibeDash itself and make a whole tab: the **maintenance plan**
+(`wartung`: maintenance day as a walk through the house, service appointments, open items,
+tick off / note / later, calendar subscription for the phone) is the first; more follow.
+They run as one small local service (`modules/`, Python standard library only, port 8091,
+only the VibeDash server talks to it). A board names the module instead of a URL; clicks
+go to the module automatically:
+
+```json
+"boards": [{ "id": "wartung", "title": "Wartung", "icon": "wrench", "module": "wartung" }]
+```
+
+Each module is switched on by its config in `local/modules/<name>.json`; the house's own
+contents (plan, notes) live next to it and never in the repo. Templates: `modules/templates/`.
+The calendar goes out at `/feed/wartung/kalender.ics` (only for modules the mapping names).
+Details, config keys and the house extension point (`einschub_url`): [modules/README.md](modules/README.md).
+Run it with `docker compose` (service `modules` in `compose.example.yaml`, already in the
+starter pack) or as a user unit (`deploy/vibedash-modules.service`; `scripts/release.sh`
+ships and restarts it with each release). `MODULES_URL` points the server elsewhere.
+
 ## Feedback button (local backlog)
 
 Every page has a feedback button (top right): idea, bug or question about the page you

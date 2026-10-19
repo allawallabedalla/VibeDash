@@ -223,7 +223,15 @@ the backtest card (grid import via the car ≈ 0, n ≥ 7) before the person rel
 
 Pages that exist today: Overview · Now · Forecasts · Charging (+ the gallery). Further
 pages are **suggestions** to build per home (drop what the home does not have):
-Maintenance · Garden · Device history.
+Garden · Device history.
+
+**Modules first.** Tools that ship with VibeDash as a module (`modules/README.md`) are not
+rebuilt per home – switch them on: copy the template from `modules/templates/` to
+`local/modules/`, fill in the home's contents with the person (e.g. the maintenance plan:
+move-in date, places, tasks – one question at a time), add the tab with `"module": "<name>"`
+to `mapping.boards`. Today: **Wartung** (maintenance plan + calendar subscription; set
+`kalender_url` to the address the phone uses). A new tool that every home could use belongs
+in `modules/` as a new module, not in a house's own scripts.
 
 Per page:
 

@@ -19,6 +19,7 @@ set -euo pipefail
 HOME_DIR="${VIBEDASH_HOME:-$HOME/.local/share/vibedash}"
 CONFIG="${VIBEDASH_CONFIG:-$HOME/.config/vibedash}"
 SERVICE="${VIBEDASH_SERVICE:-vibedash}"
+MODULES_SERVICE="${VIBEDASH_MODULES_SERVICE:-vibedash-modules}"
 KEEP="${VIBEDASH_KEEP:-5}"
 NODE="${NODE:-$(command -v node || echo "$HOME/.local/opt/node/bin/node")}"
 MAPPING="$CONFIG/local/mapping.json"
@@ -37,14 +38,21 @@ check() {
   (cd "$CONFIG" && MAPPING_PATH="${2:-local/mapping.json}" "$NODE" "$1/dist-server/main.js" --check >/dev/null)
 }
 
-healthy() { # /api/health answers ok within 30 s
+healthy() { # /api/health answers ok within 30 s (and the modules service, if installed)
   local url="http://127.0.0.1:$(port)/api/health"
   for _ in $(seq 1 30); do
     sleep 1
     systemctl --user is-active --quiet "$SERVICE" || continue
-    curl -fsS --max-time 3 "$url" 2>/dev/null | grep -q '"ok":true' && return 0
+    curl -fsS --max-time 3 "$url" 2>/dev/null | grep -q '"ok":true' || continue
+    modules_ok && return 0
   done
   return 1
+}
+modules_ok() { # no modules service installed, or a release from before modules = nothing to check
+  systemctl --user cat "$MODULES_SERVICE" >/dev/null 2>&1 || return 0
+  [ -d "$HOME_DIR/current/modules" ] || return 0
+  systemctl --user is-active --quiet "$MODULES_SERVICE" || return 1
+  curl -fsS --max-time 3 "${MODULES_URL:-http://127.0.0.1:8091}/gesund" 2>/dev/null | grep -q '"ok": *true'
 }
 
 # put a release's own mapping copy back in place (current one kept aside)
@@ -61,6 +69,11 @@ point_to() { # atomic: new symlink next to the old one, then rename over it
   # a unit stopped by its start limit must be reset before it starts again
   systemctl --user reset-failed "$SERVICE" 2>/dev/null || true
   systemctl --user restart "$SERVICE" 2>/dev/null || true
+  # the modules service (if installed) runs from the same release
+  if systemctl --user cat "$MODULES_SERVICE" >/dev/null 2>&1 && [ -d "$1/modules" ]; then
+    systemctl --user reset-failed "$MODULES_SERVICE" 2>/dev/null || true
+    systemctl --user restart "$MODULES_SERVICE" 2>/dev/null || true
+  fi
 }
 
 # switch <target> <fallback>: go live, and back to the fallback if unhealthy
@@ -109,6 +122,10 @@ pnpm build >/dev/null
 # vite writes dist/ and dist-server/ in the checkout; the release gets its own copy
 cp -a dist "$tmp/dist"
 cp -a dist-server "$tmp/dist-server"
+# modules (Python, standard library only): sources and templates, no caches
+mkdir -p "$tmp/modules"
+cp -a modules/vibedash_modules modules/templates "$tmp/modules/"
+find "$tmp/modules" -name __pycache__ -type d -prune -exec rm -rf {} +
 # keep the previous release's page parts: a tab opened before the switch still
 # finds the files it asks for (hashed names, never overwritten)
 if [ -n "$now" ] && [ -d "$now/dist/assets" ]; then

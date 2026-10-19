@@ -60,6 +60,23 @@ jobs:
       - run: uv run ruff check .
       - run: uv run pytest -q
 
+  modules:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: modules
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.11.32'
+      - run: uvx ruff@0.16.9 format --check .
+      - run: uvx ruff@0.16.9 check .
+      - run: python -W error::ResourceWarning -m unittest discover -s tests -t . -v
+
   docker:
     runs-on: ubuntu-24.04
     steps:
@@ -81,6 +98,17 @@ jobs:
           curl -fsS localhost:8090/gesund | grep -q '"ok":true'
           test "$(docker exec vdf id -un)" = app
           docker rm -f vdf
+      - run: docker build -t vibedash-modules:ci modules
+      - name: Smoke test modules service
+        run: |
+          mkdir -p /tmp/vdm && cp modules/templates/*.json /tmp/vdm/ && sudo chown -R 1000:1000 /tmp/vdm
+          docker run -d --name vdm -p 8091:8091 -v /tmp/vdm:/data vibedash-modules:ci
+          for i in $(seq 1 30); do curl -fsS localhost:8091/gesund && break; sleep 1; done
+          curl -fsS localhost:8091/gesund | grep -q '"wartung"'
+          curl -fsS localhost:8091/board/wartung | python3 -c "import json,sys; b=json.load(sys.stdin); assert b['sections'][0]['title']=='Haus & Wartung', b"
+          curl -fsS localhost:8091/feed/wartung/kalender.ics | head -1 | grep -q BEGIN:VCALENDAR
+          test "$(docker exec vdm id -u)" = 1000
+          docker rm -f vdm
 
   starter:
     # Starter-Paket auf frischem Ubuntu: Installer, Rechte, dann der Einrichtungs-Assistent über seine API
@@ -123,6 +151,15 @@ jobs:
           curl -fsS localhost:8095/api/health | tee /dev/stderr | grep -q '"source":"live"'
           curl -fsS 'localhost:8095/api/series/pv_power?range=24h' | python3 -c "import json,sys; s=json.load(sys.stdin)['samples']; assert s and abs(s[-1][1]-4000)<1, s[-3:]"
           curl -fsS 'localhost:8095/api/series/grid_power?range=24h' | python3 -c "import json,sys; s=json.load(sys.stdin)['samples']; assert s and abs(s[-1][1]-1500)<1, s[-3:]"
+      - name: Modul Wartung (Reiter, Abhaken, Kalender-Abo)
+        run: |
+          curl -fsS localhost:8095/api/health | python3 -c "import json,sys; b=json.load(sys.stdin)['boards']; assert b==[{'id':'wartung','title':'Wartung','icon':'wrench','actions':True}], b"
+          for i in $(seq 1 30); do curl -fsS localhost:8095/api/board/wartung >/dev/null && break; sleep 2; done
+          curl -fsS localhost:8095/api/board/wartung | python3 -c "import json,sys; b=json.load(sys.stdin); t=[s['title'] for s in b['sections']]; print(t); assert 'Wartungstag: dein Rundgang' in t"
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST localhost:8095/api/board/wartung/action -H 'Content-Type: application/json' -H 'Origin: http://localhost:8095' -d '{"item":"plan:siebe","action":"ack"}')" = 200
+          sudo grep -q '"plan:siebe"' starter/local/modules/notizen.json
+          curl -fsS localhost:8095/feed/wartung/kalender.ics | head -1 | grep -q BEGIN:VCALENDAR
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8095/feed/andere/kalender.ics)" = 404
       - name: Zweiter Lauf ändert keine Zugangsdaten
         run: |
           before=$(sudo sha256sum starter/.env)

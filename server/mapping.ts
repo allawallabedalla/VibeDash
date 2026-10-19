@@ -81,16 +81,25 @@ export interface Note {
   text: string;
 }
 
+/** Name of a VibeDash module (modules/vibedash_modules/<name>). */
+export const MODULE_NAME = /^[a-z][a-z0-9_-]{0,31}$/;
+
 export interface BoardMapping {
   id: string;
   title: string;
   icon: string;
-  url: string;
+  /** a house service that answers the board (http/https) – or `module` instead */
+  url?: string;
   /**
    * Optional: where clicks on the board's items go (done, ack, comment, delete,
    * undo) – a POST to the house service; without it the board stays read-only.
    */
   actionUrl?: string;
+  /**
+   * A VibeDash module (modules/, e.g. "wartung") makes the board instead of a
+   * house service; its items always take actions, its feeds go out at /feed/<module>/….
+   */
+  module?: string;
 }
 
 export interface Mapping {
@@ -683,16 +692,19 @@ export function validateMapping(
     else
       raw.boards.forEach((b, i) => {
         const at = `mapping.boards[${i}]`;
+        const mod =
+          isObj(b) && typeof b.module === 'string' && MODULE_NAME.test(b.module) ? b.module : null;
         if (
           !isObj(b) ||
           typeof b.id !== 'string' ||
           !/^[a-z][a-z0-9_-]{0,31}$/.test(b.id) ||
           !isText(b.title) ||
-          !url(b.url) ||
+          (b.module !== undefined && !mod) ||
+          (mod ? b.url !== undefined || b.actionUrl !== undefined : !url(b.url)) ||
           (b.actionUrl !== undefined && !url(b.actionUrl))
         ) {
           errors.push(
-            `${at}: { id (a-z0-9_-), title, icon?, url (http/https), actionUrl? (http/https) }`,
+            `${at}: { id (a-z0-9_-), title, icon?, and either url (http/https) + actionUrl? (http/https) or module (a-z0-9_-) }`,
           );
           return;
         }
@@ -701,7 +713,7 @@ export function validateMapping(
           id: b.id,
           title: String(b.title).slice(0, 30),
           icon: typeof b.icon === 'string' ? b.icon.slice(0, 20) : 'info',
-          url: String(b.url),
+          ...(mod ? { module: mod } : { url: String(b.url) }),
           ...(b.actionUrl ? { actionUrl: String(b.actionUrl) } : {}),
         });
       });

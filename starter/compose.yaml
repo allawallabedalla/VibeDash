@@ -4,6 +4,7 @@
 #   influxdb  – speichert die Messwerte; kein Port nach außen, nur im internen Netz der Container
 #   evcc      – liest Wechselrichter, Akku, Wallbox (Modbus, OCPP, Hersteller-APIs) und schreibt in die Datenbank
 #   vibedash  – das Dashboard; liest die Datenbank mit einem Benutzer OHNE Schreibrechte
+#   modules   – Werkzeuge mit eigenen Reitern (Wartungsplan …); kein Port nach außen, Inhalte in local/modules
 name: vibedash
 
 services:
@@ -50,6 +51,7 @@ services:
       INFLUX_USER: vibedash
       INFLUX_PASSWORD: ${INFLUX_VIBEDASH_PASSWORD:?fehlt}
       EVCC_URL: http://evcc:7070
+      MODULES_URL: http://modules:8091
       # Einrichtungs-Assistent (/#/einrichten): Code vom Installer, evcc-Admin-Passwort, Heimnetz für die Suche
       EVCC_ADMIN_PASSWORD: ${EVCC_ADMIN_PASSWORD:-}
       SETUP_CODE: ${SETUP_CODE:-}
@@ -66,6 +68,16 @@ services:
     depends_on:
       - influxdb
       - evcc
+      - modules
+
+  modules:
+    build: ../modules
+    image: vibedash-modules:local
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      - ./local/modules:/data
 
 volumes:
   influxdb-data:

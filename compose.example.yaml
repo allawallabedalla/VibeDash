@@ -10,12 +10,14 @@ services:
     env_file: .env
     environment:
       FORECAST_URL: http://forecast:8090
+      MODULES_URL: http://modules:8091
       # names your browser uses for this server, e.g. its LAN address (DNS-rebinding protection)
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost}
     volumes:
       - ./local:/app/local
     depends_on:
       - forecast
+      - modules
 
   # Forecasting service: no published port – only the VibeDash server talks to it.
   forecast:
@@ -24,6 +26,15 @@ services:
     restart: unless-stopped
     volumes:
       - forecast-data:/data
+
+  # Modules (maintenance plan, …): no published port – only the VibeDash server talks to it.
+  # Their configs and house contents live in ./local/modules (e.g. wartung.json, wartungsplan.json).
+  modules:
+    build: ./modules
+    image: vibedash-modules:local
+    restart: unless-stopped
+    volumes:
+      - ./local/modules:/data
 
 volumes:
   forecast-data:

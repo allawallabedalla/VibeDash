@@ -1,0 +1,45 @@
+# User unit for the VibeDash modules (maintenance plan, …). Install next to vibedash.service:
+#   cp deploy/vibedash-modules.service ~/.config/systemd/user/ && systemctl --user daemon-reload
+#   systemctl --user enable --now vibedash-modules
+# Code comes from the live release (~/.local/share/vibedash/current/modules, scripts/release.sh);
+# configs and house contents from ~/.config/vibedash/local/modules (wartung.json, wartungsplan.json, notes).
+# Python 3.11+ from the system, standard library only. The VibeDash server finds it at MODULES_URL
+# (default http://127.0.0.1:8091).
+[Unit]
+Description=VibeDash modules (maintenance plan, …)
+After=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+WorkingDirectory=%h/.local/share/vibedash/current/modules
+Environment=MODULES_DIR=%h/.config/vibedash/local/modules MODULES_HOST=127.0.0.1 MODULES_PORT=8091
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 -m vibedash_modules
+Restart=on-failure
+RestartSec=10
+MemoryMax=256M
+TasksMax=32
+UMask=0077
+
+# Hardening like vibedash.service: the home is hidden; only the releases (read-only) and the
+# modules folder (writable: ticking off, notes) are mounted in.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateUsers=yes
+ProtectSystem=strict
+ProtectHome=tmpfs
+BindReadOnlyPaths=%h/.local/share/vibedash
+BindPaths=%h/.config/vibedash/local/modules
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=default.target
