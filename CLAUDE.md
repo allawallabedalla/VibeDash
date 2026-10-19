@@ -26,5 +26,6 @@ Vollständiger Hintergrund, Architektur und Fahrplan: **ANLEITUNG.md** (zuerst l
 - Nach jeder sichtbaren Änderung: Playwright-Screenshots **Mac 1440×900 und iPhone 390×844, hell und dunkel**, selbst ansehen, gegen die Prüfliste (ANLEITUNG.md Abschnitt 9) prüfen, nachbessern.
 - Leistungsbudget: erste Seite < 200 KB JS; keine CDNs, alles lokal gebündelt.
 - Kleine Commits mit klaren Nachrichten. **Nicht pushen ohne Nachfrage.**
+- **Vor jedem Push `scripts/check.sh`** (Lint, Typen, Tests, Budget, Python-Module) – rote CI auf Zwischenständen schickt dem Menschen Fehler-Mails.
 - Unsicherheiten und Grenzen im Chat offen nennen (n, Spanne, „nicht geprüft“).
 - Antworten an den Menschen: kurz, gegliedert, ADHS-tauglich – Kernaussage zuerst.

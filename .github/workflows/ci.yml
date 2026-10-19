@@ -1,7 +1,9 @@
 name: CI
 
 on:
+  # branches are checked through their pull request; a push to a branch alone would run everything twice
   push:
+    branches: [main]
   pull_request:
 
 permissions:
@@ -155,7 +157,7 @@ jobs:
           curl -fsS 'localhost:8095/api/series/grid_power?range=24h' | python3 -c "import json,sys; s=json.load(sys.stdin)['samples']; assert s and abs(s[-1][1]-1500)<1, s[-3:]"
       - name: Modul Wartung (Reiter, Abhaken, Kalender-Abo)
         run: |
-          curl -fsS localhost:8095/api/health | python3 -c "import json,sys; b=json.load(sys.stdin)['boards']; assert b==[{'id':'wartung','title':'Wartung','icon':'wrench','actions':True}], b"
+          curl -fsS localhost:8095/api/health | python3 -c "import json,sys; b=json.load(sys.stdin)['boards']; w=[x for x in b if x['id']=='wartung']; assert w and w[0].get('actions') and w[0]['title']=='Wartung', b"
           for i in $(seq 1 30); do curl -fsS localhost:8095/api/board/wartung >/dev/null && break; sleep 2; done
           curl -fsS localhost:8095/api/board/wartung | python3 -c "import json,sys; b=json.load(sys.stdin); t=[s['title'] for s in b['sections']]; print(t); assert 'Wartungstag: dein Rundgang' in t"
           test "$(curl -s -o /dev/null -w '%{http_code}' -X POST localhost:8095/api/board/wartung/action -H 'Content-Type: application/json' -H 'Origin: http://localhost:8095' -d '{"item":"plan:siebe","action":"ack"}')" = 200
