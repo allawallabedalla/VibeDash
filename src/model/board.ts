@@ -22,9 +22,19 @@
  *     { "type": "accuracy", "title": "…", "models": [ { "label": "…", "pct": 82, "n": 31,
  *         "history": [80, 82], "note": "…", "collecting": { "have": 12, "need": 30 },
  *         "details": [ { "label": "Daten seit", "value": "1.9." } ] } ] },
- *     { "type": "text", "title": "…", "text": "…" }
+ *     { "type": "text", "title": "…", "text": "…" },
+ *     { "type": "calc", "title": "…", "label": "…", "min": 960, "max": 1425, "step": 15,
+ *       "value": 960, "format": "clock", "days": 7, "button": "…" }
  *   ]
  * }
+ * "calc" (only if the board has a calcUrl in the mapping): a slider and a button. The
+ * button sends the slider value to POST /api/board/<id>/calc; the house service answers
+ * { "sections": [ … ] } with ordinary sections (no "calc"), shown right below. Only a
+ * calculation – it must not change anything. format "clock": minutes from today 0:00
+ * (local), from 1440 on tomorrow; "number": the value itself with "unit". With "days"
+ * (clock only, 2–7): weekday buttons side by side, today first and chosen; the slider is
+ * the time of day (today from "min", other days from 0:00 up to "max" < 1440) and the
+ * value sent is day × 1440 + minutes.
  * Every section may carry "note" (one line under it) and "info" ({ what, source } behind ⓘ).
  */
 export type BoardColor =
@@ -127,7 +137,22 @@ export type BoardSection =
       }[];
     })
   | (Base & { type: 'text'; text: string })
+  | (Base & BoardCalc)
   | (Base & BoardPlan);
+
+export interface BoardCalc {
+  type: 'calc';
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+  format: 'clock' | 'number';
+  unit?: string;
+  /** weekday buttons (today first), see above */
+  days?: number;
+  button: string;
+}
 
 /**
  * A floor plan with live values per room (section type "plan"). Coordinates in
@@ -437,11 +462,51 @@ export function sanitizeBoard(raw: unknown): Board | null {
       case 'text':
         sections.push({ ...base, type: 'text', text: text(s.text, 3000) });
         break;
+      case 'calc': {
+        const c = sanitizeCalc(s);
+        if (c) sections.push({ ...base, ...c });
+        break;
+      }
       default:
         break;
     }
   }
   return { updated: num(raw.updated), sections };
+}
+
+const CALC_LIMIT = 1_000_000;
+/** Check a calculator (slider + button); null without a sensible range. */
+function sanitizeCalc(s: O): BoardCalc | null {
+  const min = num(s.min);
+  const max = num(s.max);
+  const step = num(s.step) ?? 1;
+  if (min === null || max === null || max <= min || step <= 0) return null;
+  if (Math.abs(min) > CALC_LIMIT || Math.abs(max) > CALC_LIMIT || (max - min) / step > 2000)
+    return null;
+  const v = num(s.value) ?? min;
+  const d = num(s.days);
+  const days =
+    s.format === 'clock' && d !== null && d >= 2 && max < 1440 && min >= 0
+      ? Math.min(7, Math.round(d))
+      : null;
+  return {
+    type: 'calc',
+    label: text(s.label, 40),
+    min,
+    max,
+    step,
+    value: Math.min(max, Math.max(min, v)),
+    format: s.format === 'clock' ? 'clock' : 'number',
+    ...(opt(s.unit, 12) ? { unit: opt(s.unit, 12) } : {}),
+    ...(days ? { days } : {}),
+    button: text(s.button, 20) || 'OK',
+  };
+}
+
+/** A calculator's answer: ordinary sections, at most 8, no calculator inside. */
+export function sanitizeCalcResult(raw: unknown): BoardSection[] | null {
+  const b = sanitizeBoard(raw);
+  return b ? b.sections.filter((x) => x.type !== 'calc' && x.type !== 'plan').slice(0, 8) : null;
 }
 
 const VIEW_KINDS: PlanViewKind[] = ['temp', 'humidity', 'valve', 'light', 'presence'];

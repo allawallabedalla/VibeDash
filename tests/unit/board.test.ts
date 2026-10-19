@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sanitizeBoard } from '../../src/model/board';
+import { sanitizeBoard, sanitizeCalcResult } from '../../src/model/board';
 
 describe('board from a house service: checked and trimmed', () => {
   it('rejects what is not a board', () => {
@@ -292,5 +292,43 @@ describe('board time spans per group', () => {
     const bars = b.sections[1] as unknown as { group?: string; ranges: { values: unknown[] }[] };
     expect(bars.group).toBeUndefined();
     expect(bars.ranges[0]!.values).toEqual([1, 2]);
+  });
+});
+
+describe('board calculator (slider + button)', () => {
+  it('keeps a sensible range, clamps the value, drops broken ones', () => {
+    const b = sanitizeBoard({
+      sections: [
+        {
+          type: 'calc',
+          title: 'Anstecken um',
+          label: 'Anstecken um',
+          min: 960,
+          max: 2040,
+          step: 15,
+          value: 5000,
+          format: 'clock',
+          button: 'Rechnen',
+        },
+        { type: 'calc', title: 'leer', min: 5, max: 5 },
+        { type: 'calc', title: 'zu fein', min: 0, max: 100_000, step: 1 },
+      ],
+    })!;
+    expect(b.sections).toHaveLength(1);
+    expect(b.sections[0]).toMatchObject({ type: 'calc', value: 2040, format: 'clock', step: 15 });
+    expect(sanitizeCalcResult({ sections: [{ type: 'calc', min: 0, max: 1 }] })).toEqual([]);
+    const d = sanitizeBoard({
+      sections: [
+        { type: 'calc', min: 900, max: 1425, step: 15, format: 'clock', days: 9 },
+        { type: 'calc', min: 900, max: 2040, step: 15, format: 'clock', days: 7 },
+        { type: 'calc', min: 0, max: 10, format: 'number', days: 7 },
+      ],
+    })!;
+    expect(d.sections.map((x) => (x.type === 'calc' ? (x.days ?? null) : 'x'))).toEqual([
+      7,
+      null,
+      null,
+    ]);
+    expect(sanitizeCalcResult('x')).toBeNull();
   });
 });

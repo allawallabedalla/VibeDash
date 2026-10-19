@@ -41,6 +41,8 @@ export interface BoardTab {
   icon: string;
   /** the board's items take clicks (done, ack, comment …) */
   actions?: boolean;
+  /** the board's calculators (slider + button) may send values */
+  calc?: boolean;
 }
 let boards = $state<BoardTab[]>([]);
 /** the server keeps a local feedback backlog (button on every page) */
@@ -214,6 +216,7 @@ export async function load(): Promise<void> {
           title: b.title,
           icon: typeof b.icon === 'string' ? b.icon : 'info',
           ...((b as { actions?: unknown }).actions === true ? { actions: true } : {}),
+          ...((b as { calc?: unknown }).calc === true ? { calc: true } : {}),
         }))
     : [];
   feedback = (body as { feedback?: boolean } | undefined)?.feedback === true;

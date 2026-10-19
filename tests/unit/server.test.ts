@@ -550,6 +550,57 @@ describe('clicks on board items and the feedback backlog', () => {
     expect(h.boards[0]!.actions).toBe(true);
   });
 
+  it('passes a calculator value on, returns only checked sections, refuses the rest', async () => {
+    const r0 = validateMapping({
+      ...example,
+      boards: [
+        {
+          id: 'car',
+          title: 'Auto',
+          url: 'http://127.0.0.1:9/car',
+          calcUrl: 'http://127.0.0.1:9/c',
+        },
+      ],
+    });
+    if (!r0.ok) throw new Error(r0.errors.join());
+    const sent: number[] = [];
+    const d = deps({
+      mapping: r0.mapping,
+      boardCalc: async (_b, value) => {
+        sent.push(value);
+        return {
+          status: 200,
+          body: {
+            sections: [
+              { type: 'text', title: 'Ergebnis', text: 'ok' },
+              { type: 'calc', title: 'nested', min: 0, max: 1 },
+            ],
+          },
+        };
+      },
+    });
+    const r = await write('/api/board/car/calc', d, { value: 990 });
+    expect(r.status).toBe(200);
+    expect(sent).toEqual([990]);
+    expect((r.body as { sections: { type: string }[] }).sections.map((x) => x.type)).toEqual([
+      'text',
+    ]);
+    expect((await write('/api/board/car/calc', d, { value: '990' })).status).toBe(400);
+    expect(
+      (await write('/api/board/car/calc', d, { value: 1 }, 'http://evil.example')).status,
+    ).toBe(403);
+    expect((await write('/api/board/care/calc', d, { value: 1 })).status).toBe(404);
+    expect(sent).toEqual([990]);
+    const h = (await get('/api/health', d)).body as { boards: { calc?: boolean }[] };
+    expect(h.boards[0]!.calc).toBe(true);
+    expect(
+      validateMapping({
+        ...example,
+        boards: [{ id: 'a', title: 'A', url: 'http://h/a', calcUrl: 'ftp://x' }],
+      }).ok,
+    ).toBe(false);
+  });
+
   it('keeps feedback in a local file: add, list, mark done', async () => {
     const { fileStore } = await import('../../server/feedback');
     const dir = mkdtempSync(join(tmpdir(), 'vd-fb-'));
