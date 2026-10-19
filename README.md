@@ -181,7 +181,13 @@ tomorrow). The button sends `{ value }` to this server (`POST /api/board/<id>/ca
 page only, one at a time, at most 6 a minute), which passes `{ board, value }` with the
 header `X-Haus-Rechnung: 1` to the `calcUrl` (timeout 45 s). The answer
 `{ "sections": [ … ] }` is checked like a board (no calculators or plans inside, at most 8) and shown right below the slider. Meant for "what if" answers only – the house service
-must not change anything on such a call.
+must not change anything on such a call. A module board's calculator goes to its module
+(`POST /board/<module>/calc`).
+
+**A board on the charging page (optional).** With `"onPage": "charging"` a board has no tab
+of its own: the charging tab carries its title and icon, and the charging page shows its
+sections – those with `"slot": "top"` above the page's own tiles, `"slot": "plan"` after the
+plan, the rest at the end. The car module uses this: one tab "Auto" for car and wallbox.
 
 ## Modules: tools with their own tab (`modules/`)
 

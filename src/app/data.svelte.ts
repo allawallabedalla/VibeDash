@@ -43,6 +43,8 @@ export interface BoardTab {
   actions?: boolean;
   /** the board's calculators (slider + button) may send values */
   calc?: boolean;
+  /** shown on that page instead of a tab of its own */
+  onPage?: 'charging';
 }
 let boards = $state<BoardTab[]>([]);
 /** the server keeps a local feedback backlog (button on every page) */
@@ -211,13 +213,8 @@ export async function load(): Promise<void> {
         .filter(
           (b): b is BoardTab => !!b && typeof b.id === 'string' && typeof b.title === 'string',
         )
-        .map((b) => ({
-          id: b.id,
-          title: b.title,
-          icon: typeof b.icon === 'string' ? b.icon : 'info',
-          ...((b as { actions?: unknown }).actions === true ? { actions: true } : {}),
-          ...((b as { calc?: unknown }).calc === true ? { calc: true } : {}),
-        }))
+        // the flags (actions, calc, onPage) come from this server's own answer, already checked
+        .map((b) => ({ ...b, icon: typeof b.icon === 'string' ? b.icon : 'info' }))
     : [];
   feedback = (body as { feedback?: boolean } | undefined)?.feedback === true;
   setupOpen = (body as { setup?: boolean } | undefined)?.setup === true;

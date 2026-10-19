@@ -105,6 +105,11 @@ export interface BoardMapping {
    * POST to the house service that only calculates and answers sections.
    */
   calcUrl?: string;
+  /**
+   * Optional: "charging" – the board is shown on the charging page (its tab then
+   * carries the board's title and icon) instead of a tab of its own.
+   */
+  onPage?: 'charging';
 }
 
 export interface Mapping {
@@ -705,12 +710,15 @@ export function validateMapping(
           !/^[a-z][a-z0-9_-]{0,31}$/.test(b.id) ||
           !isText(b.title) ||
           (b.module !== undefined && !mod) ||
-          (mod ? b.url !== undefined || b.actionUrl !== undefined : !url(b.url)) ||
+          (mod
+            ? b.url !== undefined || b.actionUrl !== undefined || b.calcUrl !== undefined
+            : !url(b.url)) ||
           (b.actionUrl !== undefined && !url(b.actionUrl)) ||
-          (b.calcUrl !== undefined && !url(b.calcUrl))
+          (b.calcUrl !== undefined && !url(b.calcUrl)) ||
+          (b.onPage !== undefined && b.onPage !== 'charging')
         ) {
           errors.push(
-            `${at}: { id (a-z0-9_-), title, icon?, and either url (http/https) + actionUrl? + calcUrl? (http/https) or module (a-z0-9_-) }`,
+            `${at}: { id (a-z0-9_-), title, icon?, and either url (http/https) + actionUrl? + calcUrl? (http/https) or module (a-z0-9_-), onPage? ("charging") }`,
           );
           return;
         }
@@ -721,6 +729,7 @@ export function validateMapping(
           icon: typeof b.icon === 'string' ? b.icon.slice(0, 20) : 'info',
           ...(mod ? { module: mod } : { url: String(b.url) }),
           ...(b.actionUrl ? { actionUrl: String(b.actionUrl) } : {}),
+          ...(b.onPage === 'charging' ? { onPage: 'charging' as const } : {}),
           ...(b.calcUrl ? { calcUrl: String(b.calcUrl) } : {}),
         });
       });

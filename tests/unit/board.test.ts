@@ -332,3 +332,16 @@ describe('board calculator (slider + button)', () => {
     expect(sanitizeCalcResult('x')).toBeNull();
   });
 });
+
+describe('board section slots (placement on an embedding page)', () => {
+  it('keeps top and plan, drops anything else', () => {
+    const b = sanitizeBoard({
+      sections: [
+        { type: 'text', title: 'a', text: 'x', slot: 'top' },
+        { type: 'text', title: 'b', text: 'x', slot: 'plan' },
+        { type: 'text', title: 'c', text: 'x', slot: 'side' },
+      ],
+    })!;
+    expect(b.sections.map((x) => x.slot ?? null)).toEqual(['top', 'plan', null]);
+  });
+});

@@ -601,6 +601,33 @@ describe('clicks on board items and the feedback backlog', () => {
     ).toBe(false);
   });
 
+  it('sends the calculator of a module board to the module and lists boards shown on the charging page', async () => {
+    const { calcTarget } = await import('../../server/modules');
+    const r0 = validateMapping({
+      ...example,
+      boards: [{ id: 'car', title: 'Auto', icon: 'plugCar', module: 'auto', onPage: 'charging' }],
+    });
+    if (!r0.ok) throw new Error(r0.errors.join());
+    expect(calcTarget(r0.mapping.boards![0]!, 'http://m')).toEqual({
+      url: 'http://m/board/auto/calc',
+      headers: { 'X-VibeDash-Action': '1' },
+    });
+    const d = deps({
+      mapping: r0.mapping,
+      boardCalc: async () => ({ status: 200, body: { sections: [] } }),
+    });
+    expect((await write('/api/board/car/calc', d, { value: 1 })).status).toBe(200);
+    const h = (await get('/api/health', d)).body as {
+      boards: { calc?: boolean; onPage?: string }[];
+    };
+    expect(h.boards[0]).toMatchObject({ calc: true, onPage: 'charging' });
+    for (const bad of [
+      { id: 'a', title: 'A', module: 'auto', calcUrl: 'http://h/c' },
+      { id: 'a', title: 'A', url: 'http://h/a', onPage: 'overview' },
+    ])
+      expect(validateMapping({ ...example, boards: [bad] }).ok).toBe(false);
+  });
+
   it('keeps feedback in a local file: add, list, mark done', async () => {
     const { fileStore } = await import('../../server/feedback');
     const dir = mkdtempSync(join(tmpdir(), 'vd-fb-'));
