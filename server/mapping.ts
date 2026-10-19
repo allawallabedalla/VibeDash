@@ -32,6 +32,11 @@ export type SeriesMapping = (
 ) & {
   /** Only an input for other series: not listed in /api/entities. */
   helper?: boolean;
+  /**
+   * Energy counter that reports only while it moves (e.g. a wallbox meter during a
+   * charge): the same reading before and after a gap means nothing was counted in it.
+   */
+  quietWhenIdle?: boolean;
   /** Also read this far into the future (forecasts stored ahead of time). */
   aheadMs?: number;
 };
@@ -154,6 +159,7 @@ const COMMON_KEYS = [
   'maxPerDay',
   'helper',
   'aheadMs',
+  'quietWhenIdle',
 ];
 const INFLUX_KEYS = [
   ...COMMON_KEYS,
@@ -246,6 +252,12 @@ export function validateMapping(
       errors.push(`${at}.helper: true or false`);
     }
     if (
+      entry.quietWhenIdle !== undefined &&
+      (typeof entry.quietWhenIdle !== 'boolean' || entry.kind !== 'energy_counter')
+    ) {
+      errors.push(`${at}.quietWhenIdle: true or false, only for energy_counter`);
+    }
+    if (
       entry.maxPerDay !== undefined &&
       (entry.kind !== 'energy_counter' ||
         typeof entry.maxPerDay !== 'number' ||
@@ -297,6 +309,7 @@ export function validateMapping(
     const common = {
       entity,
       ...(entry.helper === true ? { helper: true } : {}),
+      ...(entry.quietWhenIdle === true ? { quietWhenIdle: true } : {}),
       ...(typeof entry.aheadMs === 'number' && entry.aheadMs > 0 ? { aheadMs: entry.aheadMs } : {}),
       ...(entry.scale !== undefined ? { scale: entry.scale as number } : {}),
       stepMs: entry.stepMs as number,

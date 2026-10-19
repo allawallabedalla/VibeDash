@@ -102,7 +102,11 @@ export function planBridge(deps: PlanBridgeDeps) {
     });
     const house = hourlyFromCounter(await get(plan.load, from, now), now);
     const car = plan.carEnergy
-      ? hourlyFromCounter(await get(plan.carEnergy, from, now), now)
+      ? hourlyFromCounter(
+          await get(plan.carEnergy, from, now),
+          now,
+          deps.mapping.series[plan.carEnergy]?.quietWhenIdle === true,
+        )
       : null;
     const soc = socAtHours(await get(plan.soc, from, now), from, now);
     const past = await fetchTemperature(deps.fetchFn, l, true, timeout);
