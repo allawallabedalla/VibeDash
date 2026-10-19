@@ -80,7 +80,7 @@ atomically under a file lock (`<plan>.lock`), so a house script may share the fi
 | `wetter`   | `influx` (the house keeps daily weather in InfluxDB) or `open-meteo` (fetched by the module, cached 1 h); default `influx` when `influx.db` is set                                                |
 | `influx`   | `{url, db, measurement?}` – daily weather, read only: tag `art` = `gemessen` / `prognose`, fields `tmax`, `tmin`, `regen_mm`, `sonne_h`, time = local midnight (default measurement `wetter_tag`) |
 | `standort` | `{lat, lon}` – location for `open-meteo`                                                                                                                                                          |
-| `tipps`    | optional tip history `[{"date": "YYYY-MM-DD", "tip": "- …\n- …"}]`, newest last – written by a tip writer (e.g. an LLM job of the house)                                                         |
+| `tipps`    | optional tip history `[{"date": "YYYY-MM-DD", "tip": "- …\n- …"}]`, newest last – written by a tip writer (e.g. an LLM job of the house)                                                          |
 | `zeitzone` | default `Europe/Berlin`                                                                                                                                                                           |
 | `texte`    | optional wording overrides (keys in `garten/board.py`, `TEXT`)                                                                                                                                    |
 
