@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadWithoutCar, planBridge, socAtHours } from '../../server/plan-bridge';
 import { validateMapping } from '../../server/mapping';
+import { hourlyFromCounter } from '../../server/pv-bridge';
 import type { Series } from '../../src/model/types';
 
 const H = 3_600_000;
@@ -110,5 +111,57 @@ describe('plan bridge', () => {
     expect(urls.at(-1)).toBe('http://svc/plan/haus?soc_kwh=5&geladen_kwh=12.5');
     soc = [{ t: now - 3 * H, v: 50 }];
     expect((await b.read()).body).toEqual({ zustand: 'fehlt', was: 'akku_jetzt' });
+  });
+});
+
+describe('a counter that reports only while it moves (quietWhenIdle)', () => {
+  const H = 3_600_000;
+  const t0 = Date.UTC(2026, 9, 19, 0);
+  const s = (pts: [number, number][]): Series =>
+    ({ stepMs: 5_000, samples: pts.map(([h, v]) => ({ t: t0 + h * H, v })) }) as unknown as Series;
+
+  it('counts a gap with the same reading as zero and holds the last reading until now', () => {
+    // reading 10 at 00:10, a charge 05:00–05:30 (10 -> 12), nothing after
+    const series = s([
+      [0.17, 10],
+      [5, 10],
+      [5.5, 12],
+    ]);
+    const now = t0 + 9 * H;
+    const quiet = hourlyFromCounter(series, now, true);
+    const get = (h: number) =>
+      quiet.find((r) => r.zeit === new Date(t0 + h * H).toISOString())?.wert;
+    expect([1, 2, 3, 4].map(get)).toEqual([0, 0, 0, 0]);
+    expect(get(5)).toBe(2);
+    expect([6, 7, 8].map(get)).toEqual([0, 0, 0]);
+    // without the option: only hours with readings at both ends
+    expect(hourlyFromCounter(series, now).length).toBeLessThan(quiet.length);
+  });
+
+  it('leaves a gap with a changed reading unknown', () => {
+    const series = s([
+      [0.5, 10],
+      [3.5, 14],
+    ]);
+    const r = hourlyFromCounter(series, t0 + 4 * H, true);
+    expect(r.map((x) => x.zeit)).not.toContain(new Date(t0 + 1 * H).toISOString());
+  });
+
+  it('is allowed only for energy counters in the mapping', () => {
+    const base = {
+      timeZone: 'Europe/Berlin',
+      series: {
+        car: {
+          name: 'Wallbox',
+          kind: 'power',
+          unit: 'W',
+          measurement: 'wb',
+          field: 'w',
+          stepMs: 5000,
+          quietWhenIdle: true,
+        },
+      },
+    };
+    expect(validateMapping(base).ok).toBe(false);
   });
 });

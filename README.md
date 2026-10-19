@@ -119,7 +119,7 @@ Optional keys per series: `device` groups the questions (e.g. "inverter"), `maxP
 leaves out implausible days of a meter, `helper: true` makes a series only an input for
 others (a meter that a page shows, e.g. `battery_charge_energy`,
 `battery_discharge_energy` or `direct_energy` for the week's energy flows,
-must not be a helper), `maxHoldMs` (Influx too) keeps the last value of a sensor that reports only on change valid that long before it counts as a gap, `aheadMs` also reads values stored ahead of time (forecasts, at most 7 days).
+must not be a helper), `maxHoldMs` (Influx too) keeps the last value of a sensor that reports only on change valid that long before it counts as a gap, `aheadMs` also reads values stored ahead of time (forecasts, at most 7 days), `quietWhenIdle: true` marks an energy counter that reports only while it moves (e.g. a wallbox meter during a charge): the same reading before and after a gap counts as nothing used in it, and the last reading holds until now – without it, the charge plan loses every hour without a wallbox reading.
 A house that keeps its own hourly PV forecast maps it as `pv_forecast` (kind `power`,
 mean power of the hour starting at the timestamp), optionally `pv_forecast_low` /
 `pv_forecast_high` for the 10–90 % span; the "today" curve then uses it instead of the

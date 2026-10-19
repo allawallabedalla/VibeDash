@@ -21,13 +21,30 @@ const DAY = 24 * H;
  * kWh per UTC hour from a meter: reading at the hour end minus at the start;
  * read errors and resets dropped.
  */
-export function hourlyFromCounter(s: Series, now: number): { zeit: string; wert: number }[] {
+export function hourlyFromCounter(
+  s: Series,
+  now: number,
+  quietWhenIdle = false,
+): { zeit: string; wert: number }[] {
   const boundary = new Map<number, number>();
   const maxAge = Math.max(s.stepMs * 2.5, 15 * 60_000);
-  for (const x of dropCounterGlitches(s.samples)) {
+  const samples = dropCounterGlitches(s.samples);
+  for (const x of samples) {
     const h = Math.ceil(x.t / H) * H; // the next hour boundary at or after the sample
     // the latest sample before (or at) the boundary is the reading at the boundary
     if (h - x.t <= maxAge) boundary.set(h, x.v);
+  }
+  // A counter that reports only while it moves: the same reading before and after a gap
+  // means it stood still – every hour boundary in the gap has that reading. After the last
+  // reading it stands still until now (it would report if it moved).
+  if (quietWhenIdle) {
+    samples.forEach((a, i) => {
+      const b = samples[i + 1];
+      if (b && b.v !== a.v) return;
+      const end = b ? b.t : now;
+      for (let h = Math.ceil(a.t / H) * H; h <= end; h += H)
+        if (!boundary.has(h)) boundary.set(h, a.v);
+    });
   }
   const out: { zeit: string; wert: number }[] = [];
   for (const [h, v] of boundary) {
