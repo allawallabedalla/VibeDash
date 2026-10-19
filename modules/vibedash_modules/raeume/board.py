@@ -141,11 +141,12 @@ def model3d(m: dict) -> dict:
             }
             for s in m.get("treppen") or []
         ],
-        "blocks": [
-            {"base": 0, "height": m["scheune"].get("hoehe", 5.5), "walls": solids(m["scheune"].get("waende") or [])}
-        ]
-        if m.get("scheune")
-        else [],
+        "blocks": (
+            [{"base": 0, "height": m["scheune"].get("hoehe", 5.5), "walls": solids(m["scheune"].get("waende") or [])}]
+            if m.get("scheune")
+            else []
+        )
+        + [b for b in m.get("bloecke") or [] if isinstance(b, dict)],  # from tools/grundriss (already in board shape)
     }
 
 

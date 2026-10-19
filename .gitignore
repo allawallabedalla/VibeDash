@@ -15,6 +15,7 @@ local/*
 dist-server/
 /compose.yaml
 forecast/.venv/
+tools/grundriss/.venv/
 __pycache__/
 *.sqlite
 .pytest_cache/

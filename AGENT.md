@@ -233,6 +233,31 @@ to `mapping.boards`. Today: **Wartung** (maintenance plan + calendar subscriptio
 `kalender_url` to the address the phone uses). A new tool that every home could use belongs
 in `modules/` as a new module, not in a house's own scripts.
 
+### Floor plan (tab Räume, module `raeume`)
+
+The Räume tab shows the home's floor plan with live values per room, 2D and 3D. It needs one file, the
+**house plan** `local/modules/raeume_haus.json` (format at the top of `tools/grundriss/vibedash_grundriss/plan.py`,
+example `tools/grundriss/demo/haus.json`). Plans, PDFs, room names and measurements of a real home stay in
+`local/` – **never in the repo, never in a commit, never in a screenshot you share.**
+
+1. Ask the person one question: "Do you have a building plan – a PDF from the architect or a photo?" No plan:
+   offer to measure 2–3 rooms together, or skip the tab.
+2. Read the plan yourself, the person does nothing technical:
+   - **Vector PDF** (architect, CAD): rooms are filled areas or closed lines. Read the drawings with
+     `uvx --with pymupdf python` (`page.get_drawings()`), never the text (plans carry names and addresses).
+     At 1:100 one PDF point is 0.0352778 m. Room areas printed in the plan check your scale.
+   - **Scan or photo**: take the dimension chains, ask for the room areas from the plan, draw rectangles.
+   - Coordinates in metres, x to the right, y down; one entry per room with `id` (short, lowercase), `name`,
+     `art` (raum, aussen, nutz, dach, luftraum, treppe) and `polygon`; floor heights from a section if there is one.
+3. Run the tool (it needs shapely, so it has its own environment – nothing to install for the dashboard):
+   `cd tools/grundriss && uv sync && uv run python -m vibedash_grundriss pruefen ../../local/modules/raeume_haus.json`,
+   then `ergaenzen` (areas, label points, visible area), `modell` (walls + 3D model next to the plan; walls read
+   from the drawing can be put into `waende_plan.json` first – they are kept) and `vorschau` (an SVG).
+4. Show the preview to the person: "Does this look like your house?" Fix what they point at, run again.
+5. Fill `knx` per room with the names the room has in the measurement series (section 2 inventory), copy
+   `modules/templates/raeume.json` to `local/modules/raeume.json` with the three file names, add the tab
+   `{ "id": "raeume", "title": "Räume", "icon": "floorplan", "module": "raeume" }`.
+
 Per page:
 
 1. Start with a `TileRow` of 2–6 `Tile`s: value large, 1–2 words, one graphic
