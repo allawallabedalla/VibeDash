@@ -7,10 +7,11 @@ echo "== pnpm lint / check / test / build / budget"
 pnpm lint && pnpm check && pnpm test && pnpm build >/dev/null && pnpm budget
 echo "== visual tests (pages, states: overflow, contrast, ≈ with n, touch targets)"
 pnpm test:visual 2>&1 | tail -3
-echo "== forecast + modules (Python)"
+echo "== forecast + modules + tools/grundriss (Python)"
 if command -v uvx >/dev/null 2>&1; then
   (cd modules && uvx ruff@0.16.9 format --check . && uvx ruff@0.16.9 check .)
   (cd forecast && uv run ruff format --check . && uv run ruff check . && uv run pytest -q)
+  (cd tools/grundriss && uv run ruff format --check . && uv run ruff check . && uv run pytest -q)
 elif command -v ruff >/dev/null 2>&1; then
   (cd modules && ruff format --check . && ruff check .)
 else

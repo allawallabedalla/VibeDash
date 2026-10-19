@@ -1,0 +1,168 @@
+{
+  "quelle": "Demo-Grundriss (erfunden) für Tests und Vorschau",
+  "einheit": "m",
+  "achsen": "x nach rechts, y nach unten",
+  "lichte_hoehe_m": { "EG": 2.6, "OG": 2.5 },
+  "modell": {
+    "dach": { "form": "sattel", "neigung": 35, "traufe": 5.4, "ueberstand": 0.4 },
+    "offen": [["kueche", "wohnen"]],
+    "gelaender": [["flur_og", "luftraum"]],
+    "bloecke": [{ "raum": "garage", "hoehe": 3.0 }]
+  },
+  "geschosse": [
+    {
+      "id": "EG",
+      "hoehe_fussboden_m": 0.0,
+      "raeume": [
+        {
+          "id": "wohnen",
+          "name": "Wohnen",
+          "art": "raum",
+          "polygon": [
+            [0, 0],
+            [6, 0],
+            [6, 5],
+            [0, 5]
+          ],
+          "knx": ["Wohnen"]
+        },
+        {
+          "id": "kueche",
+          "name": "Küche",
+          "art": "raum",
+          "polygon": [
+            [6.12, 0],
+            [9, 0],
+            [9, 3.5],
+            [6.12, 3.5]
+          ],
+          "knx": ["Küche"]
+        },
+        {
+          "id": "flur",
+          "name": "Flur",
+          "art": "raum",
+          "polygon": [
+            [6.12, 3.62],
+            [9, 3.62],
+            [9, 7],
+            [6.12, 7]
+          ],
+          "knx": ["Flur"]
+        },
+        {
+          "id": "bad",
+          "name": "Bad",
+          "art": "raum",
+          "polygon": [
+            [0, 5.12],
+            [3, 5.12],
+            [3, 7],
+            [0, 7]
+          ],
+          "knx": ["Bad"]
+        },
+        {
+          "id": "treppe",
+          "name": "Treppe",
+          "art": "treppe",
+          "polygon": [
+            [3.12, 5.12],
+            [6, 5.12],
+            [6, 7],
+            [3.12, 7]
+          ]
+        },
+        {
+          "id": "terrasse",
+          "name": "Terrasse",
+          "art": "aussen",
+          "polygon": [
+            [0, -3],
+            [6, -3],
+            [6, -0.3],
+            [0, -0.3]
+          ],
+          "knx": ["Terrasse"]
+        },
+        {
+          "id": "garage",
+          "name": "Garage",
+          "art": "nutz",
+          "polygon": [
+            [9.5, 0],
+            [13, 0],
+            [13, 7],
+            [9.5, 7]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "OG",
+      "hoehe_fussboden_m": 2.9,
+      "raeume": [
+        {
+          "id": "schlafen",
+          "name": "Schlafen",
+          "art": "raum",
+          "polygon": [
+            [0, 0],
+            [5, 0],
+            [5, 5],
+            [0, 5]
+          ],
+          "knx": ["Schlafen"]
+        },
+        {
+          "id": "kind",
+          "name": "Kind",
+          "art": "raum",
+          "polygon": [
+            [5.12, 0],
+            [9, 0],
+            [9, 3.5],
+            [5.12, 3.5]
+          ],
+          "knx": ["Kind"]
+        },
+        {
+          "id": "flur_og",
+          "name": "Flur",
+          "art": "raum",
+          "polygon": [
+            [5.12, 3.62],
+            [9, 3.62],
+            [9, 7],
+            [6.12, 7],
+            [6.12, 5.0],
+            [5.12, 5.0]
+          ]
+        },
+        {
+          "id": "bad_og",
+          "name": "Bad",
+          "art": "raum",
+          "polygon": [
+            [0, 5.12],
+            [3, 5.12],
+            [3, 7],
+            [0, 7]
+          ],
+          "knx": ["Bad OG"]
+        },
+        {
+          "id": "luftraum",
+          "name": "Luftraum",
+          "art": "luftraum",
+          "polygon": [
+            [3.12, 5.12],
+            [6, 5.12],
+            [6, 7],
+            [3.12, 7]
+          ]
+        }
+      ]
+    }
+  ]
+}

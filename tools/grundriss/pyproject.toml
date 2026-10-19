@@ -1,0 +1,28 @@
+[project]
+name = "vibedash-grundriss"
+version = "0.0.0"
+description = "VibeDash floor plan tool: checks a house plan (haus.json), fills derived fields, builds walls and the 3D model. Run by the setup agent, not by the dashboard."
+license = "MIT"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "shapely==2.2.0",
+]
+
+[dependency-groups]
+dev = [
+  "pytest==9.1.1",
+  "ruff==0.16.9",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

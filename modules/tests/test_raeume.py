@@ -141,6 +141,13 @@ class TestRaeume(unittest.TestCase):
             json.dump({}, f)
         self.assertIn("raeume", load_modules(self.base)["errors"])
 
+    def test_model3d_blocks_from_the_tool(self):
+        from vibedash_modules.raeume.board import model3d
+
+        block = {"base": 0, "height": 3.0, "walls": [{"outer": [[0, 0], [1, 0], [1, 1]], "holes": []}]}
+        m = model3d({"geschosse": [], "bloecke": [block], "scheune": {"hoehe": 5, "waende": []}})
+        self.assertEqual([b["height"] for b in m["blocks"]], [5, 3.0])  # old key "scheune" first, then the tool's
+
     def test_norm(self):
         self.assertEqual(norm("Gäste-WC"), norm("gaeste wc"))
 
