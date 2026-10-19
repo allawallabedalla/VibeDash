@@ -72,7 +72,7 @@ export const de = {
   'info.humidity.what': 'Relative Luftfeuchte im Raum. Der helle Bereich ist der Wohlfühlbereich.',
   'info.humidity.source': 'Raumsensor.',
   'info.yield.what':
-    'Erwarteter Solarertrag für heute: Mitte und übliche Spanne. Bisher {soFar} kWh (Punkt).',
+    'Heute erzeugter Solarstrom laut Zähler: {soFar} kWh (Punkt). Darunter die Erwartung für den ganzen Tag: Mitte und übliche Spanne (Band).',
   'info.yield.source':
     'Am Vorabend aus den letzten {n} vollständigen Tagen (Zählerstand): Median, Spanne 10–90 %.',
   'info.tomorrow.what': 'Erwarteter Solarertrag für morgen.',
@@ -585,6 +585,7 @@ export const de = {
   'wd.note': 'PV gemessen = Zähler; ≈ = Prognose, Spanne: 8 von 10 Fällen liegen darin.',
   'sub.span': '{low}–{high} · 8 von 10 Fällen',
   'info.yield.house': 'Prognose des Hauses selbst (eigene Tagesprognose), Spanne 10–90 %.',
+  'sub.yieldExpected': 'erwartet ≈ {value} kWh',
   'sub.houseForecast': 'Prognose des Hauses',
   'info.gapNote': '{from}–{to} ohne Meldung – die Lücke bleibt sichtbar.',
   'info.outlier': 'Um {time} kam ein auffälliger Einzelwert. War der Sensor kurz gestört?',

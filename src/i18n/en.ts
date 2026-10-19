@@ -73,7 +73,7 @@ export const en: Record<MessageKey, string> = {
   'info.humidity.what': 'Relative humidity in the room. The light band is the comfort range.',
   'info.humidity.source': 'Room sensor.',
   'info.yield.what':
-    'Expected solar yield for today: middle and usual range. So far {soFar} kWh (dot).',
+    'Solar energy made today, from the meter: {soFar} kWh (dot). Below it the expectation for the whole day: middle and usual range (band).',
   'info.yield.source':
     'Made the evening before from the last {n} complete days (meter reading): median, range 10–90 %.',
   'info.tomorrow.what': 'Expected solar yield for tomorrow.',
@@ -576,6 +576,7 @@ export const en: Record<MessageKey, string> = {
   'wd.note': 'PV measured = meter; ≈ = forecast, range: 8 in 10 cases fall inside.',
   'sub.span': '{low}–{high} · 8 in 10 cases',
   'info.yield.house': 'The house’s own daily forecast, span 10–90 %.',
+  'sub.yieldExpected': 'expected ≈ {value} kWh',
   'sub.houseForecast': 'the house’s forecast',
   'info.gapNote': 'Silent {from}–{to} – the gap stays visible.',
   'info.outlier': 'At {time} a single odd value came in. Was the sensor briefly disturbed?',
