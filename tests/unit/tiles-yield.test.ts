@@ -17,7 +17,7 @@ describe('yield today: the meter first, the forecast below', () => {
   it("shows today's metered yield as the value and the expectation as the sub line", () => {
     const data = generateDemo();
     const tile = yieldTodayTile(data);
-    expect(tile.approx).toBeFalsy();
+    expect(tile.approx).toBe(false);
     expect(tile.value).toBe(String(Math.round(daily(data, 'pv_energy').at(-1)!.value)));
     expect(tile.sub).toMatch(/^sub\.yieldExpected:\d+$/);
   });

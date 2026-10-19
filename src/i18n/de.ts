@@ -17,8 +17,6 @@ export const de = {
   'tile.sun': 'Sonne',
   'tile.home': 'Verbrauch',
   'tile.battery': 'Akku',
-  'tile.feedIn': 'Einspeisung',
-  'tile.import': 'Netzbezug',
   'tile.presence': 'Zuhause',
   'presence.someone': 'jemand',
   'presence.nobody': 'keiner',
@@ -45,7 +43,6 @@ export const de = {
   'sub.now': 'jetzt',
   'sub.full': 'voll',
   'sub.comfort': 'angenehm {low}–{high}',
-  'sub.soFar': 'bisher {value}',
   'sub.range': '{low}–{high} · n = {n}',
   'sub.autarky': 'Netz: {import} von {load} kWh',
 
@@ -72,7 +69,7 @@ export const de = {
   'info.humidity.what': 'Relative Luftfeuchte im Raum. Der helle Bereich ist der Wohlfühlbereich.',
   'info.humidity.source': 'Raumsensor.',
   'info.yield.what':
-    'Heute erzeugter Solarstrom laut Zähler: {soFar} kWh (Punkt). Darunter die Erwartung für den ganzen Tag: Mitte und übliche Spanne (Band).',
+    'Zähler heute: {soFar} kWh (Punkt). Band: erwarteter Tagesertrag, Mitte und Spanne.',
   'info.yield.source':
     'Am Vorabend aus den letzten {n} vollständigen Tagen (Zählerstand): Median, Spanne 10–90 %.',
   'info.tomorrow.what': 'Erwarteter Solarertrag für morgen.',

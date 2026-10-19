@@ -19,8 +19,6 @@ export const en: Record<MessageKey, string> = {
   'tile.sun': 'Solar',
   'tile.home': 'Usage',
   'tile.battery': 'Battery',
-  'tile.feedIn': 'Feed-in',
-  'tile.import': 'Grid import',
   'tile.presence': 'At home',
   'presence.someone': 'someone',
   'presence.nobody': 'nobody',
@@ -47,7 +45,6 @@ export const en: Record<MessageKey, string> = {
   'sub.now': 'now',
   'sub.full': 'full',
   'sub.comfort': 'comfort {low}–{high}',
-  'sub.soFar': 'so far {value}',
   'sub.range': '{low}–{high} · n = {n}',
   'sub.autarky': 'grid: {import} of {load} kWh',
 
@@ -72,8 +69,7 @@ export const en: Record<MessageKey, string> = {
   'info.temp.source': 'Room sensor.',
   'info.humidity.what': 'Relative humidity in the room. The light band is the comfort range.',
   'info.humidity.source': 'Room sensor.',
-  'info.yield.what':
-    'Solar energy made today, from the meter: {soFar} kWh (dot). Below it the expectation for the whole day: middle and usual range (band).',
+  'info.yield.what': 'Meter today: {soFar} kWh (dot). Band: expected day, middle and range.',
   'info.yield.source':
     'Made the evening before from the last {n} complete days (meter reading): median, range 10–90 %.',
   'info.tomorrow.what': 'Expected solar yield for tomorrow.',
