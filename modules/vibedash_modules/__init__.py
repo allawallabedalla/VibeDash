@@ -5,4 +5,4 @@ Each module lives in its own package with a Module class (name, board(), action(
 local/modules/<name>.json. No config = module off. House contents (plan, notes) live only in that folder.
 """
 
-KNOWN = ("wartung", "raeume", "garten")
+KNOWN = ("wartung", "raeume", "garten", "auto")

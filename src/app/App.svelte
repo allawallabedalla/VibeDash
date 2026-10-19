@@ -18,6 +18,8 @@
   const reasonText = (r: string) =>
     t(`reason.${r as 'timeout' | 'upstream' | 'network' | 'not_mapped'}`);
 
+  /** a board shown on the charging page names the charging tab */
+  const cb = $derived(store.boards.find((b) => b.onPage));
   const tabs = $derived([
     { id: 'overview', label: t('page.overview'), icon: 'overview' as const },
     { id: 'week', label: t('page.week'), icon: 'calendar' as const },
@@ -26,10 +28,19 @@
     ...(store.evcc ||
     store.plan ||
     store.charging ||
+    cb ||
     (store.state.status === 'ready' && currentSource() === 'demo')
-      ? [{ id: 'charging', label: t('page.charging'), icon: 'plugCar' as const }]
+      ? [
+          {
+            id: 'charging',
+            label: cb?.title ?? t('page.charging'),
+            icon: iconOf(cb?.icon ?? 'plugCar'),
+          },
+        ]
       : []),
-    ...store.boards.map((b) => ({ id: `b/${b.id}`, label: b.title, icon: iconOf(b.icon) })),
+    ...store.boards
+      .filter((b) => !b.onPage)
+      .map((b) => ({ id: `b/${b.id}`, label: b.title, icon: iconOf(b.icon) })),
   ]);
 
   function toggleTheme() {

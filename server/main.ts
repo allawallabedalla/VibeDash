@@ -27,7 +27,7 @@ import { readConfig } from './config';
 import { sourcesOf, validateMapping } from './mapping';
 import { staticFile } from './static';
 import { sanitizeBoard } from '../src/model/board';
-import { actionTarget, boardUrl, moduleBase, moduleFeed } from './modules';
+import { actionTarget, boardUrl, calcTarget, moduleBase, moduleFeed } from './modules';
 
 const log = (msg: string) => console.log(`[vibedash] ${msg}`);
 
@@ -82,7 +82,11 @@ if (deps.mapping?.boards?.length) {
   deps.board = async (b) => {
     const r = await fetch(boardUrl(b, modules), { signal: AbortSignal.timeout(config.timeoutMs) });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return sanitizeBoard(await r.json());
+    const board = sanitizeBoard(await r.json());
+    // a calculator only where its value has somewhere to go (module or calcUrl)
+    if (board && !calcTarget(b, modules))
+      board.sections = board.sections.filter((s) => s.type !== 'calc');
+    return board;
   };
   log(
     `boards: ${deps.mapping.boards.map((b) => (b.module ? `${b.id} (module)` : b.id)).join(', ')}`,
@@ -100,12 +104,13 @@ if (deps.mapping?.boards?.length) {
       return { status: r.status, body: await r.json().catch(() => null) };
     };
   }
-  // calculators (slider + button): the value goes to the house service, which only calculates
-  if (deps.mapping.boards.some((b) => b.calcUrl)) {
+  // calculators (slider + button): the value goes to the module or house service, which only calculates
+  if (deps.mapping.boards.some((b) => b.calcUrl || b.module)) {
     deps.boardCalc = async (b, value) => {
-      const r = await fetch(b.calcUrl!, {
+      const c = calcTarget(b, modules)!;
+      const r = await fetch(c.url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Haus-Rechnung': '1' },
+        headers: { 'Content-Type': 'application/json', ...c.headers },
         body: JSON.stringify({ board: b.id, value }),
         signal: AbortSignal.timeout(CALC_TIMEOUT_MS),
       });

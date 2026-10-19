@@ -332,7 +332,7 @@ let calcBusy = false;
 
 async function handleBoardCalc(id: string, deps: ApiDeps, req: RequestInfo): Promise<ApiResult> {
   const b = deps.mapping?.boards?.find((x) => x.id === id);
-  if (!b || !b.calcUrl || !deps.boardCalc) return json(404, { error: 'no_calc' });
+  if (!b || !(b.calcUrl || b.module) || !deps.boardCalc) return json(404, { error: 'no_calc' });
   const refused = writeGuard(req, 200);
   if (refused) return refused;
   const body = parseBody(req);
@@ -505,12 +505,13 @@ export async function handleApi(
       plan: Boolean(deps.plan),
       timeZone: deps.mapping?.timeZone ?? null,
       boards: (deps.mapping?.boards ?? []).map(
-        ({ id, title, icon, actionUrl, module, calcUrl }) => ({
+        ({ id, title, icon, actionUrl, module, calcUrl, onPage }) => ({
           id,
           title,
           icon,
           ...((actionUrl || module) && deps.boardAction ? { actions: true } : {}),
           ...(calcUrl && deps.boardCalc ? { calc: true } : {}),
+          ...(onPage ? { onPage } : {}),
         }),
       ),
       feedback: Boolean(deps.feedback),

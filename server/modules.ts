@@ -32,6 +32,17 @@ export function actionTarget(
   return null;
 }
 
+/** where a calculator's value goes: the module, else the board's calcUrl */
+export function calcTarget(
+  b: BoardMapping,
+  base: string,
+): { url: string; headers: Record<string, string> } | null {
+  if (b.module)
+    return { url: `${base}/board/${b.module}/calc`, headers: { 'X-VibeDash-Action': '1' } };
+  if (b.calcUrl) return { url: b.calcUrl, headers: { 'X-Haus-Rechnung': '1' } };
+  return null;
+}
+
 export interface FeedAnswer {
   status: number;
   type: string;

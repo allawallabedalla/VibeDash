@@ -4,11 +4,12 @@ Tools that make a whole tab in VibeDash – shipped with VibeDash, switched on p
 file. They run as one small local service (Python 3.11+, **standard library only**, nothing to
 install). Only the VibeDash server talks to it; the browser never does.
 
-| Module    | Tab     | What it does                                                                                                                                                                                                                                                                           |
-| --------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `wartung` | Wartung | Maintenance plan: maintenance day as a walk through the house (time budget, most urgent first), service appointments with lead time, open one-off items (also with a time), tick off / note / acknowledge / later / undo, calendar subscription for the phone (one event per Saturday) |
-| `raeume`  | Räume   | Floor plan with live values per room (temperature, humidity, valve, light, motion), tap a room for all values, today's light and motion to play back, optional 3D view. Only reads.                                                                                                    |
-| `garten`  | Garten  | Garden weather (today, tomorrow, frost in the next 3 days, rain of the week), rain per day (7/30 days back, 3 ahead), garden tips with history. Weather from the house's InfluxDB or straight from Open-Meteo. Only reads.                                                             |
+| Module    | Tab     | What it does                                                                                                                                                                                                                                                                                                                                                |
+| --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `wartung` | Wartung | Maintenance plan: maintenance day as a walk through the house (time budget, most urgent first), service appointments with lead time, open one-off items (also with a time), tick off / note / acknowledge / later / undo, calendar subscription for the phone (one event per Saturday)                                                                      |
+| `raeume`  | Räume   | Floor plan with live values per room (temperature, humidity, valve, light, motion), tap a room for all values, today's light and motion to play back, optional 3D view. Only reads.                                                                                                                                                                         |
+| `garten`  | Garten  | Garden weather (today, tomorrow, frost in the next 3 days, rain of the week), rain per day (7/30 days back, 3 ahead), garden tips with history. Weather from the house's InfluxDB or straight from Open-Meteo. Only reads.                                                                                                                                  |
+| `auto`    | Auto    | The car: state of charge, when to plug in, course without charging, sun for the car, driving profile, charges seen by the car, model accuracy, the car's own data, and a calculator "plug in at …" (weekday + time) that asks the house's charge planner. Only reads and calculates. Shown on the charging page with `onPage: "charging"` (one tab "Auto"). |
 
 ## Switch a module on
 
@@ -83,6 +84,18 @@ atomically under a file lock (`<plan>.lock`), so a house script may share the fi
 | `tipps`    | optional tip history `[{"date": "YYYY-MM-DD", "tip": "- …\n- …"}]`, newest last – written by a tip writer (e.g. an LLM job of the house)                                                          |
 | `zeitzone` | default `Europe/Berlin`                                                                                                                                                                           |
 | `texte`    | optional wording overrides (keys in `garten/board.py`, `TEXT`)                                                                                                                                    |
+
+## Module `auto` – config keys
+
+| Key        | Meaning                                                                                                                                                                                                                    |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prognose` | the car forecast file the house writes every 15 min (format at the top of `vibedash_modules/auto/board.py`)                                                                                                                |
+| `zeitzone` | e.g. `Europe/Berlin` (day start of the calculator)                                                                                                                                                                         |
+| `rechner`  | optional `{url, tage}` – the house's charge planner: `POST {board, value}` (value = day × 1440 + minutes, local) with header `X-Haus-Rechnung: 1` answers `{"sections": [...]}` and changes nothing; empty = no calculator |
+| `texte`    | optional wording overrides (keys in `auto/board.py` `TEXT` and `auto/__init__.py` `CALC`), e.g. the maker's account and app name                                                                                           |
+
+Sections carry `slot` (`top`, `plan`): the charging page shows them above its own tiles, after its plan,
+the rest at the end. Mapping: `{ "id": "auto", "title": "Auto", "icon": "plugCar", "module": "auto", "onPage": "charging" }`.
 
 ## Tests
 

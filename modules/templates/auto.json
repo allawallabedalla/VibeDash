@@ -1,0 +1,7 @@
+{
+  "$comment": "Module auto – copy to local/modules/auto.json. The forecast file is written by the house (car account + driving profile); rechner.url is the house's charge planner (only calculates).",
+  "prognose": "/path/to/auto_prognose/prognose.json",
+  "zeitzone": "Europe/Berlin",
+  "rechner": { "url": "", "tage": 7 },
+  "texte": { "konto": "Hersteller-Konto", "app": "Hersteller-App" }
+}

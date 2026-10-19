@@ -3,6 +3,7 @@
   GET  /gesund                        {ok, modules, errors}
   GET  /board/<module>                board JSON (src/model/board.ts)
   POST /board/<module>/action         {board, item, action, text?, date?}; header X-VibeDash-Action: 1
+  POST /board/<module>/calc           {board, value} (calculator section); header X-VibeDash-Action: 1
   GET  /feed/<module>/<name>          e.g. /feed/wartung/kalender.ics (passed on by the server at /feed/…)
 
 Binds to 127.0.0.1 by default (MODULES_HOST, MODULES_PORT=8091). Configs are read again on every request, so a
@@ -79,7 +80,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):  # noqa: N802
         path = self.path.split("?", 1)[0]
         parts = path.strip("/").split("/")
-        if not (len(parts) == 3 and parts[0] == "board" and parts[2] == "action" and NAME.match(parts[1])):
+        if not (len(parts) == 3 and parts[0] == "board" and parts[2] in ("action", "calc") and NAME.match(parts[1])):
             return self._send(404, {"error": "not_found"})
         if self.headers.get("X-VibeDash-Action") != "1":
             return self._send(403, {"ok": False, "error": "only from the VibeDash server"})
@@ -94,9 +95,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, {"ok": False, "error": "bad_json"})
         try:
             mod = self._mods()["modules"].get(parts[1])
-            if not mod or not hasattr(mod, "action"):
-                return self._send(404, {"ok": False, "error": "no_actions"})
-            status, body = mod.action(d)
+            if not mod or not hasattr(mod, parts[2]):
+                return self._send(404, {"ok": False, "error": f"no_{parts[2]}"})
+            status, body = mod.action(d) if parts[2] == "action" else mod.calc(d)
             return self._send(status, body)
         except Exception as e:  # noqa: BLE001
             print(f"POST {path}: {type(e).__name__}: {e}", file=sys.stderr, flush=True)

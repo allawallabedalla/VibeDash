@@ -35,7 +35,9 @@
  * (clock only, 2–7): weekday buttons side by side, today first and chosen; the slider is
  * the time of day (today from "min", other days from 0:00 up to "max" < 1440) and the
  * value sent is day × 1440 + minutes.
- * Every section may carry "note" (one line under it) and "info" ({ what, source } behind ⓘ).
+ * Every section may carry "note" (one line under it) and "info" ({ what, source } behind ⓘ), and
+ * "slot": "top" | "plan" – where a page that embeds the board (the charging page, mapping
+ * boards[].onPage) puts it: above its own content, after its plan; without slot at the end.
  */
 export type BoardColor =
   'sun' | 'battery' | 'home' | 'grid' | 'import' | 'feed' | 'climate' | 'muted';
@@ -68,6 +70,7 @@ interface Base {
   title: string;
   note?: string;
   info?: BoardInfo;
+  slot?: 'top' | 'plan';
 }
 export interface SeriesLine {
   label: string;
@@ -292,6 +295,7 @@ export function sanitizeBoard(raw: unknown): Board | null {
       title: text(s.title, 80),
       ...(opt(s.note, 400) ? { note: opt(s.note, 400) } : {}),
       ...(info(s.info) ? { info: info(s.info) } : {}),
+      ...(s.slot === 'top' || s.slot === 'plan' ? { slot: s.slot as 'top' | 'plan' } : {}),
     };
     switch (s.type) {
       case 'tiles':

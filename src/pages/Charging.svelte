@@ -16,6 +16,7 @@
   import { currentData, currentSource, store } from '../app/data.svelte';
   import { planFromApi, planFromDemo, type PlanApi, type PlanView } from '../app/plan';
   import ChargePlan from './ChargePlan.svelte';
+  import BoardSections, { chargingBoard } from './BoardSections.svelte';
 
   const demo = currentSource() === 'demo';
   const timeZone = currentData().timeZone;
@@ -113,6 +114,7 @@
     };
   }
 
+  const emb = chargingBoard();
   onMount(() => {
     void loadPlan();
     if (store.evcc) void load();
@@ -224,7 +226,11 @@
 </script>
 
 <div class="page">
-  <h1>{t('page.charging')}</h1>
+  <h1>{emb.tab?.title ?? t('page.charging')}</h1>
+
+  {#if emb.tab && emb.board}
+    <BoardSections id={emb.tab.id} sections={emb.board.sections} slot="top" onchanged={emb.load} />
+  {/if}
 
   {#if planState.s !== 'off'}
     <p class="lead">{demo ? t('plan.leadDemo') : t('plan.lead')}</p>
@@ -292,6 +298,15 @@
         {/if}
       </Card>
     {/if}
+  {/if}
+  {#if emb.tab && emb.board}
+    <div class="row-gap"></div>
+    <!-- no own plan slot here: the plan sits at the top of this page -->
+    <BoardSections
+      id={emb.tab.id}
+      sections={emb.board.sections.filter((x) => x.slot !== 'top')}
+      onchanged={emb.load}
+    />
   {/if}
 </div>
 

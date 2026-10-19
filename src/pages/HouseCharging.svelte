@@ -2,10 +2,13 @@
   /**
    * "Laden" from the house's own records (read-only): the charge now, the plan
    * of the house's charge planner (today, tomorrow, blocks) and past charges
-   * per day with a table below. Nothing here switches anything.
+   * per day with a table below. Nothing here switches anything. A board with
+   * onPage "charging" (e.g. the car module) is shown here too, its sections
+   * placed by slot: top above, plan after the plan, the rest at the end.
    */
   import { onMount } from 'svelte';
   import { currentData } from '../app/data.svelte';
+  import BoardSections, { chargingBoard } from './BoardSections.svelte';
   import Card from '../components/Card.svelte';
   import DataTable, { type Column, type Row } from '../components/DataTable.svelte';
   import DayBars from '../components/DayBars.svelte';
@@ -71,6 +74,10 @@
       view = { s: 'error' };
     }
   });
+
+  // the embedded board (if any)
+  const emb = chargingBoard();
+  const cb = $derived(emb.tab);
 
   const who = (s: Session['source']) =>
     s === 'auto'
@@ -252,14 +259,18 @@
 </script>
 
 <div class="page">
-  <PageHead title={t('page.charging')} />
+  <PageHead title={cb?.title ?? t('page.charging')} />
+
+  {#if cb && emb.board}
+    <BoardSections id={cb.id} sections={emb.board.sections} slot="top" onchanged={emb.load} />
+  {/if}
 
   {#if view.s === 'loading'}
     <p class="muted-note">{t('state.loading')}</p>
   {:else if view.s === 'error'}
     <p class="muted-note">{t('hc.error')}</p>
   {:else}
-    <h2>{t('hc.nowTitle')}</h2>
+    <h2>{cb ? t('charge.wallbox') : t('hc.nowTitle')}</h2>
     <TileRow count={4}>
       {#each tiles as tile (tile.label)}<Tile {...tile} />{/each}
     </TileRow>
@@ -315,6 +326,11 @@
       </Card>
     {/if}
 
+    {#if cb && emb.board}
+      <div class="row-gap"></div>
+      <BoardSections id={cb.id} sections={emb.board.sections} slot="plan" onchanged={emb.load} />
+    {/if}
+
     <h2>{t('hc.pastTitle')}</h2>
     <Card title={t('hc.perDay')} icon="battery" color="var(--battery)" note={t('hc.gridNote')}>
       <DayBars
@@ -334,6 +350,11 @@
         <p class="muted-note">{t('hc.noSessions')}</p>
       {/if}
     </Card>
+  {/if}
+
+  {#if cb && emb.board}
+    <div class="row-gap"></div>
+    <BoardSections id={cb.id} sections={emb.board.sections} slot="rest" onchanged={emb.load} />
   {/if}
 </div>
 
