@@ -1,0 +1,190 @@
+"""Board of the module "korrelation": the weekly correlation atlas – robust signal pairs, what is worth a look,
+what is new or gone since last week, a ranking without technically coupled pairs. Pure function:
+
+  build(data, now_ms, t, tz)
+
+data (house service, config "einschub_url"): {"stand_ms", "aktuell": {"statistik": [{ebene: h|d, signale,
+paare_getestet, zeitraum}], "paare": [{ebene: Stunden|Tage, a, b, r, rb, einordnung, nur_tagesgang}]},
+"vorwoche": same | null, "namen": {signal: readable name}}. einordnung: prüfen | erwartet | gleicher Sensor |
+technisch gekoppelt.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime
+
+from ..fmt import clean
+
+KINDS = (
+    ("prüfen", "prüfen"),
+    ("erwartet", "erwartet"),
+    ("gleicher Sensor", "gl. Sensor"),
+    ("technisch gekoppelt", "technisch"),
+)
+
+TEXT = {
+    "none_title": "Noch kein Ergebnis",
+    "none_text": "Der Wochenlauf des Korrelationsatlas hat noch nichts geschrieben.",
+    "source": "Korrelationsatlas des Hauses",
+    "robust_what": "Signalpaare mit |r| ≥ 0,5, signifikant nach Autokorrelation und Mehrfachtest, Spearman-"
+    "Gegenprobe und stabil in beiden Hälften des Zeitraums.",
+    "stand_what": "Wird jede Woche neu gerechnet.",
+    "kinds_note": "Technisch gekoppelt = Kanäle desselben Geräts; prüfen = nicht erklärbar.",
+    "kinds_what": "Einordnung nach Regeln: technisch gekoppelt, gleicher Sensor auf zwei Wegen, physikalisch erwartet, "
+    "sonst prüfen.",
+    "check_what": "Paare, die weder technisch noch physikalisch naheliegen. Korrelation ist keine Ursache – "
+    "Hinweis, wo man hinschauen kann.",
+    "rank_note": "r roh / ohne Tagesgang bzw. Saison. Stärkste 150; alles mit Filter im Korrelationsatlas.",
+    "rank_what": "Ohne technisch gekoppelte Kanäle und ohne Paare aus demselben Sensor.",
+}
+
+
+def de(x, nd=2) -> str:
+    return "–" if x is None else f"{x:.{nd}f}".replace(".", ",").replace("-", "−")
+
+
+def _key(p):
+    return (p["ebene"],) + tuple(sorted((p["a"], p["b"])))
+
+
+def build(data: dict, now_ms: int, t: dict, tz) -> dict:
+    e = data.get("aktuell")
+    if not isinstance(e, dict) or not e.get("statistik"):
+        return {"updated": now_ms, "sections": [{"type": "text", "title": t["none_title"], "text": t["none_text"]}]}
+    v = data.get("vorwoche") if isinstance(data.get("vorwoche"), dict) else None
+    names = data.get("namen") or {}
+    pairs = e.get("paare") or []
+    st = {s["ebene"]: s for s in e["statistik"]}
+    stand_ms = int(data.get("stand_ms") or now_ms)
+    stand = datetime.fromtimestamp(stand_ms / 1000, tz).strftime("%d.%m. %H:%M")
+
+    def name(sig):
+        return names.get(sig, sig)
+
+    def pair(p):
+        return clean(f"{name(p['a'])} ~ {name(p['b'])}", 160)
+
+    def rtext(p):
+        part = [f"r {de(p['r'])}"]
+        if p.get("rb") is not None:
+            part.append(f"ohne Tagesgang {de(p['rb'])}")
+        part.append("Stunden" if p["ebene"] == "Stunden" else "Tage")
+        return " · ".join(part)
+
+    # compare with last week (only once last week comes from an earlier run)
+    cmp = None
+    if v and v.get("statistik") and [s["zeitraum"] for s in v["statistik"]] != [s["zeitraum"] for s in e["statistik"]]:
+        old = {_key(p): p for p in v.get("paare") or []}
+        new = {_key(p): p for p in pairs}
+        cmp = {
+            "neu": [new[k] for k in new if k not in old and new[k]["einordnung"] != "technisch gekoppelt"],
+            "weg": [old[k] for k in old if k not in new and old[k]["einordnung"] != "technisch gekoppelt"],
+        }
+    check = [p for p in pairs if p["einordnung"] == "prüfen"]
+    tested = st.get("h", {}).get("paare_getestet", 0) + st.get("d", {}).get("paare_getestet", 0)
+    tiles = [
+        {
+            "label": "Robust",
+            "value": f"{len(pairs):,}".replace(",", "."),
+            "icon": "target",
+            "color": "home",
+            "sub": "|r| ≥ 0,5 von " + f"{tested:,}".replace(",", ".") + " getesteten",
+            "info": {"what": t["robust_what"], "source": t["source"]},
+        },
+        {
+            "label": "Prüfen",
+            "value": str(len(check)),
+            "icon": "lookCircle" if check else "okCircle",
+            "state": "look" if check else "ok",
+            "sub": "nicht von vornherein erklärbar",
+        },
+        {
+            "label": "Neu",
+            "value": str(len(cmp["neu"])) if cmp else "–",
+            "icon": "eye",
+            "sub": "seit Vorwoche (ohne Technik)" if cmp else "Vergleich ab nächster Woche",
+        },
+        {
+            "label": "Entfallen",
+            "value": str(len(cmp["weg"])) if cmp else "–",
+            "icon": "undo",
+            "sub": "seit Vorwoche (ohne Technik)" if cmp else "Vergleich ab nächster Woche",
+        },
+        {
+            "label": "Signale",
+            "value": f"{st.get('h', {}).get('signale', '–')}/{st.get('d', {}).get('signale', '–')}",
+            "icon": "overview",
+            "sub": "Stunden / Tage",
+        },
+        {
+            "label": "Stand",
+            "value": stand.split()[0],
+            "icon": "calendar",
+            "sub": f"Lauf {stand.split()[1]} Uhr",
+            "info": {"what": t["stand_what"], "source": t["source"]},
+        },
+    ]
+    sections = [{"type": "tiles", "title": "Zusammenhänge diese Woche", "tiles": tiles}]
+    sections.append(
+        {
+            "type": "bars",
+            "title": "Paare je Einordnung",
+            "unit": "",
+            "labels": [k[1] for k in KINDS],
+            "values": [sum(1 for p in pairs if p["einordnung"] == k[0]) for k in KINDS],
+            "color": "home",
+            "note": t["kinds_note"],
+            "info": {"what": t["kinds_what"], "source": t["source"]},
+        }
+    )
+    sections.append(
+        {
+            "type": "list",
+            "title": "Prüfen",
+            "items": [{"text": pair(p), "meta": clean(rtext(p), 60), "state": "look"} for p in check[:20]],
+            "note": f"Die {min(20, len(check))} stärksten von {len(check)}. „Nur Tagesgang“: "
+            "beides folgt nur dem Tagesrhythmus."
+            if check
+            else "Keine.",
+            "info": {"what": t["check_what"], "source": t["source"]},
+        }
+    )
+    if cmp:
+        for title, items in (("Neu diese Woche", cmp["neu"]), ("Weggefallen", cmp["weg"])):
+            items = sorted(items, key=lambda p: -max(abs(p["r"]), abs(p.get("rb") or 0)))
+            sections.append(
+                {
+                    "type": "list",
+                    "title": title,
+                    "items": [{"text": pair(p), "meta": clean(rtext(p), 60)} for p in items[:15]],
+                    "note": f"{len(items)} Paare (ohne technisch gekoppelte)" if items else "Keine Änderung.",
+                }
+            )
+    rank = [p for p in pairs if p["einordnung"] not in ("technisch gekoppelt", "gleicher Sensor")][:150]
+    sections.append(
+        {
+            "type": "table",
+            "title": "Rangliste ohne Technik",
+            "columns": [
+                {"key": "p", "label": "Paar"},
+                {"key": "r", "label": "r", "align": "right"},
+                {"key": "k", "label": "Art"},
+            ],
+            "rows": [
+                {
+                    "cells": {
+                        "p": pair(p),
+                        "r": f"{de(p['r'])} / {de(p.get('rb'))}",
+                        "k": ("prüfen" if p["einordnung"] == "prüfen" else "erwartet")
+                        + (" · Tag" if p["ebene"] == "Tage" else "")
+                        + (" · nur Tagesgang" if p["nur_tagesgang"] else ""),
+                    },
+                    **({"state": "look"} if p["einordnung"] == "prüfen" else {}),
+                }
+                for p in rank
+            ],
+            "note": t["rank_note"],
+            "info": {"what": t["rank_what"], "source": t["source"]},
+        }
+    )
+    return {"updated": stand_ms, "sections": sections}

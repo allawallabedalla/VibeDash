@@ -1,0 +1,4 @@
+{
+  "$comment": "Module ml – copy to local/modules/ml.json. The model results come from the house service (einschub_url).",
+  "einschub_url": "http://127.0.0.1:8090/vibedash/board/ml/haus"
+}
