@@ -1,0 +1,9 @@
+{
+  "$comment": "Example device list and group address names (made up). The house exports its own from the ETS project into local/modules/knx_inventar.json.",
+  "geraete": {
+    "1.1.1": ["Präsenz Flur", "Flur", "Präsenzmelder"],
+    "1.1.2": ["Dimmer 1", "Verteiler", "Dimmaktor 2-fach"],
+    "1.1.3": ["Taster Wohnen", "Wohnen", "Tastsensor 4-fach"]
+  },
+  "ga_namen": { "1/1/1": "Licht Flur", "1/0/1": "Helligkeit Flur", "2/1/1": "Präsenz Flur" }
+}
