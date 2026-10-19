@@ -16,6 +16,8 @@ import json
 import os
 import re
 import sys
+import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from .config import load_modules, modules_dir
@@ -102,6 +104,38 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:  # noqa: BLE001
             print(f"POST {path}: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
             return self._send(500, {"ok": False, "error": "module_failed"})
+
+
+def ticker(base: str, stop: threading.Event, clock=time.time, every: float = 30.0) -> None:
+    """Modules with a period (takt() -> (seconds, offset)) run lauf() once per slot, one after another, outside the
+    request threads. The first slot after a start is skipped (no burst of work on every restart). A failing run is
+    logged; the next slot tries again."""
+    last: dict[str, int] = {}
+    while not stop.is_set():
+        try:
+            mods = load_modules(base)["modules"]
+        except Exception as e:  # noqa: BLE001
+            print(f"ticker: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+            mods = {}
+        now = clock()
+        for name, mod in mods.items():
+            t = mod.takt() if hasattr(mod, "takt") else None
+            if not t:
+                last.pop(name, None)
+                continue
+            period, offset = t
+            slot = int((now - offset) // period)
+            if name not in last:
+                last[name] = slot
+                continue
+            if slot == last[name]:
+                continue
+            last[name] = slot
+            try:
+                print(f"{name}: {mod.lauf(now)}", file=sys.stderr, flush=True)
+            except Exception as e:  # noqa: BLE001 – reported, retried next slot
+                print(f"{name}: run failed: {type(e).__name__}: {str(e)[:200]}", file=sys.stderr, flush=True)
+        stop.wait(every)
 
 
 def serve(host: str | None = None, port: int | None = None, base: str | None = None) -> ThreadingHTTPServer:

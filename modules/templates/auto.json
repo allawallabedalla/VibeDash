@@ -1,7 +1,34 @@
 {
-  "$comment": "Module auto – copy to local/modules/auto.json. The forecast file is written by the house (car account + driving profile); rechner.url is the house's charge planner (only calculates).",
-  "prognose": "/path/to/auto_prognose/prognose.json",
+  "$comment": "Module auto – copy to local/modules/auto.json. betrieb: aus (only show the forecast file), schatten (compute into schatten_prognose, no call to the maker), an (fetch every takt_min, compute, write). Keys and token stay in local/modules (git-ignored). First sign-in: see vibedash_modules/auto/hersteller.py.",
+  "betrieb": "aus",
+  "prognose": "auto/prognose.json",
+  "schatten_prognose": "auto/prognose.schatten.json",
+  "konto": {
+    "app": "auto/app.json",
+    "token": "auto/token.json",
+    "status": "auto/status.json",
+    "fahrten": "auto/fahrten.json"
+  },
+  "plan": "",
+  "influx": {
+    "url": "http://127.0.0.1:8086",
+    "db": "",
+    "wallbox": {
+      "measurement": "wallbox",
+      "feld": "energie_wh"
+    },
+    "schreiben": false
+  },
+  "takt_min": 15,
+  "versatz_min": 9,
+  "herzschlag": {},
   "zeitzone": "Europe/Berlin",
-  "rechner": { "url": "", "tage": 7 },
-  "texte": { "konto": "Hersteller-Konto", "app": "Hersteller-App" }
+  "rechner": {
+    "url": "",
+    "tage": 7
+  },
+  "texte": {
+    "konto": "Hersteller-Konto",
+    "app": "Hersteller-App"
+  }
 }

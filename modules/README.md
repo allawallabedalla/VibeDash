@@ -90,12 +90,23 @@ atomically under a file lock (`<plan>.lock`), so a house script may share the fi
 
 ## Module `auto` – config keys
 
-| Key        | Meaning                                                                                                                                                                                                                    |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `prognose` | the car forecast file the house writes every 15 min (format at the top of `vibedash_modules/auto/board.py`)                                                                                                                |
-| `zeitzone` | e.g. `Europe/Berlin` (day start of the calculator)                                                                                                                                                                         |
-| `rechner`  | optional `{url, tage}` – the house's charge planner: `POST {board, value}` (value = day × 1440 + minutes, local) with header `X-Haus-Rechnung: 1` answers `{"sections": [...]}` and changes nothing; empty = no calculator |
-| `texte`    | optional wording overrides (keys in `auto/board.py` `TEXT` and `auto/__init__.py` `CALC`), e.g. the maker's account and app name                                                                                           |
+| Key                       | Meaning                                                                                                                                                                                                                         |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `betrieb`                 | `aus` (default: only show the forecast file), `schatten` (compute the forecast from the account files into `schatten_prognose`, no call to the maker, nothing else written) or `an` (fetch, compute and write every `takt_min`) |
+| `prognose`                | the forecast file the board shows (written in `an`; format at the top of `vibedash_modules/auto/board.py`)                                                                                                                      |
+| `konto`                   | `{app, token, status, fahrten}` – the maker's account (`auto/hersteller.py`, Stellantis first): app keys, token (rewritten, mode 600), status and trips without location                                                        |
+| `plan`                    | optional charge plan of the house (`{tage: [{tag, kwh, kwh_p90, pv_kwh, bloecke}]}`) – sun for the car                                                                                                                          |
+| `influx`                  | optional `{url, db, wallbox: {measurement, feld}, schreiben}` – wallbox meter (read); with `schreiben` the history `auto_cloud`, `auto_fahrt`, `auto_prognose` is written (`an` only)                                           |
+| `takt_min`, `versatz_min` | default 15 and 9 (runs at :09, :24, :39, :54); the service skips the first slot after a start                                                                                                                                   |
+| `herzschlag`              | optional `{abruf, prognose}` – files touched after a good run (for the house's watchdogs)                                                                                                                                       |
+| `zeitzone`                | e.g. `Europe/Berlin` (day start of the calculator)                                                                                                                                                                              |
+| `rechner`                 | optional `{url, tage}` – the house's charge planner: `POST {board, value}` (value = day × 1440 + minutes, local) with header `X-Haus-Rechnung: 1` answers `{"sections": [...]}` and changes nothing; empty = no calculator      |
+| `texte`                   | optional wording overrides (keys in `auto/board.py` `TEXT` and `auto/__init__.py` `CALC`), e.g. the maker's account and app name                                                                                                |
+
+First sign-in to the maker's account (once, by hand; the person opens the address and pastes back the
+redirect address): `python3 -m vibedash_modules.auto.hersteller login-url <app.json>`, then
+`… code <app.json> <token.json> <redirect address>`. Modules with a period run in their own thread of the
+service (`app.ticker`), never in a request.
 
 Sections carry `slot` (`top`, `plan`): the charging page shows them above its own tiles, after its plan,
 the rest at the end. Mapping: `{ "id": "auto", "title": "Auto", "icon": "plugCar", "module": "auto", "onPage": "charging" }`.
