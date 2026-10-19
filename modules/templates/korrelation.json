@@ -1,0 +1,5 @@
+{
+  "$comment": "Module korrelation – copy to local/modules/korrelation.json. The weekly atlas comes from the house service (einschub_url).",
+  "einschub_url": "http://127.0.0.1:8090/vibedash/board/korrelation/haus",
+  "zeitzone": "Europe/Berlin"
+}
