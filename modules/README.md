@@ -4,12 +4,13 @@ Tools that make a whole tab in VibeDash – shipped with VibeDash, switched on p
 file. They run as one small local service (Python 3.11+, **standard library only**, nothing to
 install). Only the VibeDash server talks to it; the browser never does.
 
-| Module    | Tab     | What it does                                                                                                                                                                                                                                                                                                                                                |
-| --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `wartung` | Wartung | Maintenance plan: maintenance day as a walk through the house (time budget, most urgent first), service appointments with lead time, open one-off items (also with a time), tick off / note / acknowledge / later / undo, calendar subscription for the phone (one event per Saturday)                                                                      |
-| `raeume`  | Räume   | Floor plan with live values per room (temperature, humidity, valve, light, motion), tap a room for all values, today's light and motion to play back, optional 3D view. Only reads.                                                                                                                                                                         |
-| `garten`  | Garten  | Garden weather (today, tomorrow, frost in the next 3 days, rain of the week), rain per day (7/30 days back, 3 ahead), garden tips with history. Weather from the house's InfluxDB or straight from Open-Meteo. Only reads.                                                                                                                                  |
-| `auto`    | Auto    | The car: state of charge, when to plug in, course without charging, sun for the car, driving profile, charges seen by the car, model accuracy, the car's own data, and a calculator "plug in at …" (weekday + time) that asks the house's charge planner. Only reads and calculates. Shown on the charging page with `onPage: "charging"` (one tab "Auto"). |
+| Module     | Tab     | What it does                                                                                                                                                                                                                                                                                                                                                |
+| ---------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `wartung`  | Wartung | Maintenance plan: maintenance day as a walk through the house (time budget, most urgent first), service appointments with lead time, open one-off items (also with a time), tick off / note / acknowledge / later / undo, calendar subscription for the phone (one event per Saturday)                                                                      |
+| `raeume`   | Räume   | Floor plan with live values per room (temperature, humidity, valve, light, motion), tap a room for all values, today's light and motion to play back, optional 3D view. Only reads.                                                                                                                                                                         |
+| `garten`   | Garten  | Garden weather (today, tomorrow, frost in the next 3 days, rain of the week), rain per day (7/30 days back, 3 ahead), garden tips with history. Weather from the house's InfluxDB or straight from Open-Meteo. Only reads.                                                                                                                                  |
+| `auto`     | Auto    | The car: state of charge, when to plug in, course without charging, sun for the car, driving profile, charges seen by the car, model accuracy, the car's own data, and a calculator "plug in at …" (weekday + time) that asks the house's charge planner. Only reads and calculates. Shown on the charging page with `onPage: "charging"` (one tab "Auto"). |
+| `gebaeude` | Gebäude | What the measurements say about the building: cooling down (τ), heat storage, sun gain, heat pump per degree and time of day, hot water in the PV time, tilted window, front door, PV forecast per weather – each with range and n – and the levers that follow. Shows the result of a daily analysis. Only reads.                                          |
 
 ## Switch a module on
 
@@ -96,6 +97,18 @@ atomically under a file lock (`<plan>.lock`), so a house script may share the fi
 
 Sections carry `slot` (`top`, `plan`): the charging page shows them above its own tiles, after its plan,
 the rest at the end. Mapping: `{ "id": "auto", "title": "Auto", "icon": "plugCar", "module": "auto", "onPage": "charging" }`.
+
+## Module `gebaeude` – config keys
+
+| Key         | Meaning                                                                                                                                                                     |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ergebnis`  | path of the result file the daily building analysis writes (relative to the modules folder or absolute); its modification time is the board's "as of"                       |
+| `kennwerte` | building data the analysis uses: `h_wk` (heat loss W/K, energy certificate), `flaechen` {room: m²}, `ventile` {room: [valve series]}, `raum_namen`, `haus_raeume`, `og_ref` |
+| `texte`     | optional wording overrides (keys in `gebaeude/board.py`, `TEXT`)                                                                                                            |
+
+Result file: `{"auskuehlen", "sonne", "wp_tageszeit", "warmwasser", "pv_prognose", "kippfenster", "haustuer"}`, each
+`{status: ok | sammelt | fehler, text: method, …values}` – the fields per part are listed in `gebaeude/board.py`
+and `tests/test_gebaeude.py`. A part that is not `ok` shows as "collecting" or is left out.
 
 ## Tests
 
