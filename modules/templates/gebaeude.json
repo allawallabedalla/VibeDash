@@ -1,0 +1,12 @@
+{
+  "$comment": "Module gebaeude – copy to local/modules/gebaeude.json. ergebnis = the file the daily building analysis writes; kennwerte = the building's data (from the energy certificate / plan), made up here.",
+  "ergebnis": "gebaeude_ergebnis.json",
+  "kennwerte": {
+    "h_wk": 150,
+    "flaechen": { "Wohnen": 40, "Schlafen": 15, "Bad": 8 },
+    "ventile": { "Wohnen": ["Wohnen"], "Schlafen": ["Schlafen"], "Bad": ["Bad"] },
+    "raum_namen": {},
+    "haus_raeume": ["Wohnen", "Bad"],
+    "og_ref": ["Bad"]
+  }
+}

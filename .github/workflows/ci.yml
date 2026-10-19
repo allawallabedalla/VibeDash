@@ -108,6 +108,7 @@ jobs:
           curl -fsS localhost:8091/board/wartung | python3 -c "import json,sys; b=json.load(sys.stdin); assert b['sections'][0]['title']=='Haus & Wartung', b"
           curl -fsS localhost:8091/feed/wartung/kalender.ics | head -1 | grep -q BEGIN:VCALENDAR
           curl -fsS localhost:8091/gesund | grep -q '"garten"'
+          curl -fsS localhost:8091/board/gebaeude | python3 -c "import json,sys; s=json.load(sys.stdin)['sections']; assert s[0]['title']=='Noch kein Ergebnis', s"
           curl -fsS localhost:8091/board/raeume | python3 -c "import json,sys; s=json.load(sys.stdin)['sections'][0]; assert s['type']=='plan' and s['floors'][0]['rooms'], s"
           test "$(docker exec vdm id -u)" = 1000
           docker rm -f vdm
