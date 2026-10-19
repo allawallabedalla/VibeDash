@@ -8,6 +8,7 @@ Config (local/modules/raeume.json, template modules/templates/raeume.json):
                   readings are (InfluxDB 1.x, read only); empty db = no readings
   namen           {room_id: [series names]} – extra names a room has in the series (besides "knx" in the plan)
   gleicher_raum   {room_id: room_id} – rooms without own readings that share another room's climate
+  zeitzone        day start of the timeline, default "Europe/Berlin"
   einschub_url    optional house service with light/motion events of today (format in board.py)
   texte           optional wording overrides (keys of board.TEXT; floor names as floor_<id>)
 """
@@ -17,6 +18,7 @@ from __future__ import annotations
 import time
 import urllib.parse
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from . import board, source
 
@@ -45,7 +47,8 @@ class Module:
     def board(self) -> dict:
         floors, rooms, model = self._plan()
         now = self.clock()
-        start = datetime.fromtimestamp(now).replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+        tz = ZoneInfo(self.cfg.get("zeitzone") or "Europe/Berlin")
+        start = datetime.fromtimestamp(now, tz).replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
         start_ms, now_ms = int(start * 1000), int(now * 1000)
         ic = self.cfg.get("influx") or {}
         readings = source.Influx(ic, self.fetch).readings() if ic.get("db") else {}
