@@ -572,7 +572,7 @@ export const en: Record<MessageKey, string> = {
   'wd.note': 'PV measured = meter; ≈ = forecast, range: 8 in 10 cases fall inside.',
   'sub.span': '{low}–{high} · 8 in 10 cases',
   'info.yield.house': 'The house’s own daily forecast, span 10–90 %.',
-  'sub.yieldExpected': 'expected ≈ {value} kWh',
+  'sub.yieldExpected': 'forecast {value} kWh',
   'sub.houseForecast': 'the house’s forecast',
   'info.gapNote': 'Silent {from}–{to} – the gap stays visible.',
   'info.outlier': 'At {time} a single odd value came in. Was the sensor briefly disturbed?',

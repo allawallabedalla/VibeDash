@@ -5,6 +5,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 echo "== pnpm lint / check / test / build / budget"
 pnpm lint && pnpm check && pnpm test && pnpm build >/dev/null && pnpm budget
+echo "== visual tests (pages, states: overflow, contrast, ≈ with n, touch targets)"
+pnpm test:visual 2>&1 | tail -3
 echo "== forecast + modules (Python)"
 if command -v uvx >/dev/null 2>&1; then
   (cd modules && uvx ruff@0.16.9 format --check . && uvx ruff@0.16.9 check .)
