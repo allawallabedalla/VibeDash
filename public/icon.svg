@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <!-- VibeDash: doodle house (same pencil style as the energy-flow card) -->
+  <defs>
+    <filter id="wobble" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="7" result="n" />
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" />
+    </filter>
+  </defs>
+  <rect width="180" height="180" fill="#f5f5f7" />
+  <g filter="url(#wobble)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- sun -->
+    <g stroke="#e0a100" stroke-width="5">
+      <circle cx="136" cy="44" r="13" fill="#ffd166" fill-opacity="0.55" />
+      <path d="M136,20 L136,25 M136,63 L136,68 M112,44 L117,44 M155,44 L160,44 M119,27 L122,30 M150,58 L153,61 M119,61 L122,58 M150,30 L153,27" />
+    </g>
+    <g stroke="#1d1d1f" stroke-width="6">
+      <!-- chimney + smoke -->
+      <path d="M58,62 L58,44 L70,44 L70,54" />
+      <path d="M64,36 Q58,30 65,25 Q72,20 66,13" stroke-width="3.5" stroke="#6c6c70" />
+      <!-- roof, drawn twice like a quick sketch -->
+      <path d="M26,94 L90,42 L154,94" />
+      <path d="M33,92 L90,47 L148,91" stroke-width="2.6" />
+      <!-- body -->
+      <path d="M42,88 L42,150 L138,150 L138,88" />
+      <!-- door -->
+      <path d="M76,150 L76,116 Q76,110 82,110 L94,110 Q100,110 100,116 L100,150" />
+      <circle cx="94" cy="131" r="1.6" fill="#1d1d1f" />
+      <!-- window -->
+      <rect x="110" y="104" width="20" height="18" rx="2" />
+      <path d="M120,104 L120,122 M110,113 L130,113" stroke-width="3.5" />
+      <!-- ground -->
+      <path d="M20,152 Q90,160 160,151" stroke-width="3.5" />
+    </g>
+    <!-- a little green: battery-coloured bush -->
+    <path d="M48,150 Q46,138 56,138 Q60,130 68,138 Q76,138 72,150" stroke="#34c77b" stroke-width="4.5" fill="#34c77b" fill-opacity="0.25" />
+  </g>
+</svg>
