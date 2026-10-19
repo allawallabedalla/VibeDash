@@ -317,6 +317,18 @@ describe('board calculator (slider + button)', () => {
     expect(b.sections).toHaveLength(1);
     expect(b.sections[0]).toMatchObject({ type: 'calc', value: 2040, format: 'clock', step: 15 });
     expect(sanitizeCalcResult({ sections: [{ type: 'calc', min: 0, max: 1 }] })).toEqual([]);
+    const d = sanitizeBoard({
+      sections: [
+        { type: 'calc', min: 900, max: 1425, step: 15, format: 'clock', days: 9 },
+        { type: 'calc', min: 900, max: 2040, step: 15, format: 'clock', days: 7 },
+        { type: 'calc', min: 0, max: 10, format: 'number', days: 7 },
+      ],
+    })!;
+    expect(d.sections.map((x) => (x.type === 'calc' ? (x.days ?? null) : 'x'))).toEqual([
+      7,
+      null,
+      null,
+    ]);
     expect(sanitizeCalcResult('x')).toBeNull();
   });
 });

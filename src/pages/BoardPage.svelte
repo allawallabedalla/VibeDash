@@ -188,6 +188,8 @@
             <BoardCalc
               board={id}
               calc={s}
+              timeZone={house.timeZone}
+              hideLabel={s.label === s.title}
               onresult={(r) => (r ? results.set(calc!, r) : results.delete(calc!))}
             />
           {/await}

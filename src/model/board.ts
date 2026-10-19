@@ -23,15 +23,18 @@
  *         "history": [80, 82], "note": "…", "collecting": { "have": 12, "need": 30 },
  *         "details": [ { "label": "Daten seit", "value": "1.9." } ] } ] },
  *     { "type": "text", "title": "…", "text": "…" },
- *     { "type": "calc", "title": "…", "label": "…", "min": 960, "max": 2040, "step": 15,
- *       "value": 960, "format": "clock", "button": "…" }
+ *     { "type": "calc", "title": "…", "label": "…", "min": 960, "max": 1425, "step": 15,
+ *       "value": 960, "format": "clock", "days": 7, "button": "…" }
  *   ]
  * }
  * "calc" (only if the board has a calcUrl in the mapping): a slider and a button. The
  * button sends the slider value to POST /api/board/<id>/calc; the house service answers
  * { "sections": [ … ] } with ordinary sections (no "calc"), shown right below. Only a
  * calculation – it must not change anything. format "clock": minutes from today 0:00
- * (local), from 1440 on tomorrow; "number": the value itself with "unit".
+ * (local), from 1440 on tomorrow; "number": the value itself with "unit". With "days"
+ * (clock only, 2–7): weekday buttons side by side, today first and chosen; the slider is
+ * the time of day (today from "min", other days from 0:00 up to "max" < 1440) and the
+ * value sent is day × 1440 + minutes.
  * Every section may carry "note" (one line under it) and "info" ({ what, source } behind ⓘ).
  */
 export type BoardColor =
@@ -146,6 +149,8 @@ export interface BoardCalc {
   value: number;
   format: 'clock' | 'number';
   unit?: string;
+  /** weekday buttons (today first), see above */
+  days?: number;
   button: string;
 }
 
@@ -479,6 +484,11 @@ function sanitizeCalc(s: O): BoardCalc | null {
   if (Math.abs(min) > CALC_LIMIT || Math.abs(max) > CALC_LIMIT || (max - min) / step > 2000)
     return null;
   const v = num(s.value) ?? min;
+  const d = num(s.days);
+  const days =
+    s.format === 'clock' && d !== null && d >= 2 && max < 1440 && min >= 0
+      ? Math.min(7, Math.round(d))
+      : null;
   return {
     type: 'calc',
     label: text(s.label, 40),
@@ -488,6 +498,7 @@ function sanitizeCalc(s: O): BoardCalc | null {
     value: Math.min(max, Math.max(min, v)),
     format: s.format === 'clock' ? 'clock' : 'number',
     ...(opt(s.unit, 12) ? { unit: opt(s.unit, 12) } : {}),
+    ...(days ? { days } : {}),
     button: text(s.button, 20) || 'OK',
   };
 }
