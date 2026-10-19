@@ -1,0 +1,52 @@
+{
+  "$comment": "Example floor plan (made up): metres, x to the right, y down. art: raum | aussen | nutz | dach | luftraum | treppe. knx = names of the room in the series (tag raum).",
+  "ausschnitt": [0, 0, 10, 8],
+  "geschosse": [
+    {
+      "id": "EG",
+      "raeume": [
+        {
+          "id": "wohnen",
+          "name": "Wohnen",
+          "art": "raum",
+          "polygon": [
+            [0, 0],
+            [6, 0],
+            [6, 5],
+            [0, 5]
+          ],
+          "zentrum": [3, 2.5],
+          "flaeche_m2": 30,
+          "knx": ["Wohnen"]
+        },
+        {
+          "id": "kueche",
+          "name": "Küche",
+          "art": "raum",
+          "polygon": [
+            [6, 0],
+            [10, 0],
+            [10, 5],
+            [6, 5]
+          ],
+          "zentrum": [8, 2.5],
+          "flaeche_m2": 20,
+          "knx": ["Küche"]
+        },
+        {
+          "id": "terrasse",
+          "name": "Terrasse",
+          "art": "aussen",
+          "polygon": [
+            [0, 5],
+            [10, 5],
+            [10, 8],
+            [0, 8]
+          ],
+          "zentrum": [5, 6.5],
+          "knx": ["Aussen"]
+        }
+      ]
+    }
+  ]
+}
