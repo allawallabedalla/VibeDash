@@ -1,6 +1,8 @@
 """Run with `python3 -m vibedash_modules` from the modules folder (localhost only by default)."""
 
-from .app import serve
+import threading
+
+from .app import serve, ticker
 from .config import load_modules, modules_dir
 
 srv = serve()
@@ -10,4 +12,6 @@ print(
     f"modules: {', '.join(sorted(m['modules'])) or 'none'}" + (f" · errors: {m['errors']}" if m["errors"] else ""),
     flush=True,
 )
+# modules with a period (e.g. the car's account every 15 min) run in their own thread
+threading.Thread(target=ticker, args=(modules_dir(), threading.Event()), daemon=True, name="ticker").start()
 srv.serve_forever()

@@ -1,10 +1,20 @@
 """Module "auto": the car's tab – state of charge, when to plug in, sun for the car, driving profile – and a
 calculator "plug in at …" (day + time). Only reads and calculates; switches nothing. On a house with a charging
-page (mapping.charging.board = this board) the sections are shown there, placed by "slot".
+page (mapping boards[].onPage = "charging") the sections are shown there, placed by "slot".
 
 Config (local/modules/auto.json, template modules/templates/auto.json):
-  prognose     the car forecast file the house writes (format in board.py), relative to the modules folder or
-               absolute
+  prognose     the car forecast file (format in board.py) the board shows – written by this module ("betrieb":
+               "an") or by the house; relative to the modules folder or absolute
+  betrieb      "aus" (default: only show), "schatten" (compute the forecast from the account files into
+               "schatten_prognose", no call to the maker, nothing else written) or "an" (every "takt_min": fetch
+               from the maker's account, compute, write files, history and heartbeats)
+  konto        {app, token, status, fahrten} – maker's account (hersteller.py): app keys, token (rewritten),
+               status and trips files (written in "an", read in "schatten")
+  plan         optional charge plan of the house ({tage: [{tag, kwh, kwh_p90, pv_kwh, bloecke}]}) – sun for the car
+  influx       optional {url, db, wallbox?: {measurement, feld}, schreiben?: true} – wallbox meter (read);
+               with schreiben the history auto_cloud / auto_fahrt / auto_prognose is written ("an" only)
+  takt_min, versatz_min   default 15 and 9 (runs at :09, :24, :39, :54)
+  herzschlag   optional {abruf, prognose} – files touched after a good run (house watchdogs)
   zeitzone     e.g. "Europe/Berlin" (day start of the calculator)
   rechner      optional {url, tage?} – the house's charge planner answers "what if plugged in at …":
                POST {board, value} (value = day × 1440 + minutes, local), header X-Haus-Rechnung: 1 ->
@@ -16,12 +26,14 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import time
 import urllib.request
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from . import board
+from . import board, hersteller, prognose
+from .quellen import Influx, zeile
 
 STEP_MIN = 15
 CALC = {
@@ -92,6 +104,55 @@ class Module:
             "info": {"what": t["rechner_was"], "source": t["rechner_quelle"]},
         }
 
+    # ── Takt (called by the modules service, see app.py) ──────────────────────────────────────────────────────
+    def takt(self) -> tuple[int, int] | None:
+        """(period, offset) in seconds, or None when the module only shows."""
+        if (self.cfg.get("betrieb") or "aus") not in ("schatten", "an"):
+            return None
+        return int(self.cfg.get("takt_min") or 15) * 60, int(self.cfg.get("versatz_min", 9)) * 60
+
+    def lauf(self, now: float | None = None) -> str:
+        """One run: "an" fetches from the maker, computes and writes; "schatten" only computes into its own file."""
+        now = now or self.clock()
+        modus = self.cfg.get("betrieb") or "aus"
+        k = self.cfg.get("konto") or {}
+        st_p, fa_p = self.path(k["status"]), self.path(k["fahrten"])
+        ic = self.cfg.get("influx") or {}
+        influx = Influx(ic) if ic.get("db") else None
+        text = ""
+        if modus == "an":
+            konto = hersteller.Konto(self.path(k["app"]), self.path(k["token"]), clock=self.clock)
+            st, alle, neu = konto.abruf(st_p, fa_p)
+            text = f"abruf: {st.get('soc')} % Stand {st.get('meldung')}, {len(neu)} neue Fahrten ({len(alle)} gesamt)"
+            self._herz("abruf")
+            if influx is not None and ic.get("schreiben"):
+                influx.schreibe(_verlauf_auto(st, neu))
+        else:
+            st, alle = _load(st_p), _load(fa_p)
+        plan = _load(self.path(self.cfg["plan"])) if self.cfg.get("plan") else None
+        try:
+            out = prognose.rechne(alle, st, plan, influx, jetzt=now)
+        except Exception as e:  # noqa: BLE001 – without the meter: only the report (as the house script)
+            if influx is None:
+                raise
+            out = prognose.rechne(alle, st, plan, None, jetzt=now)
+            text += f" · Influx: {type(e).__name__}"
+        ziel = self.path(self.cfg["schatten_prognose"] if modus == "schatten" else self.cfg["prognose"])
+        hersteller.schreib(ziel, out, mode=0o644)
+        if modus == "an":
+            self._herz("prognose")
+            if influx is not None and ic.get("schreiben"):
+                influx.schreibe([_verlauf_prognose(out)])
+        e = out.get("entscheidung") or {}
+        return f"{text} · {out.get('soc_jetzt')} % · {e.get('wort')}".strip(" ·")
+
+    def _herz(self, was: str) -> None:
+        p = (self.cfg.get("herzschlag") or {}).get(was)
+        if p:
+            with open(self.path(p), "a"):
+                pass
+            os.utime(self.path(p))
+
     def board(self) -> dict:
         now = self.clock()
         return board.build(_load(self.path(self.cfg["prognose"])), now, self.t, self._calc_section(now))
@@ -108,3 +169,59 @@ class Module:
         if not (200 <= status < 300) or not isinstance(body, dict) or not isinstance(body.get("sections"), list):
             return 502, {"error": "upstream"}
         return 200, {"sections": body["sections"]}
+
+
+def _verlauf_auto(s: dict, neu: list) -> list:
+    """History points as the house wrote them: auto_cloud at the car's report time, auto_fahrt per new trip."""
+    out = []
+    felder = {
+        k: float(s[k])
+        for k in (
+            "soc",
+            "reichweite_km",
+            "restzeit_min",
+            "kapazitaet_kwh",
+            "gesundheit_kap_pct",
+            "gesundheit_widerstand_pct",
+            "km_stand",
+            "batterie_12v",
+            "aussen_c",
+        )
+        if isinstance(s.get(k), (int, float)) and not isinstance(s.get(k), bool)
+    }
+    for k in ("lade_status", "lademodus", "zuendung", "vorklima"):
+        if s.get(k) is not None:
+            felder[k] = str(s[k])
+    if s.get("angesteckt") is not None:
+        felder["angesteckt"] = bool(s["angesteckt"])
+    if s.get("meldung") and felder:
+        out.append(zeile("auto_cloud", felder, hersteller.epoch(s["meldung"])))
+    for f in neu:
+        ff = {
+            k: float(f[k])
+            for k in ("km", "soc_start", "soc_ende", "km_stand", "v_mittel")
+            if isinstance(f.get(k), (int, float))
+        }
+        ff["dauer_min"] = round((f["ende"] - f["start"]) / 60, 1)
+        out.append(zeile("auto_fahrt", ff, f["start"]))
+    return out
+
+
+def _verlauf_prognose(out: dict) -> str | None:
+    vh, ent = out.get("vorhersage"), out.get("entscheidung") or {}
+    if not vh or out.get("soc_jetzt") is None:
+        return None
+    return zeile(
+        "auto_prognose",
+        {
+            "soc_jetzt": float(out["soc_jetzt"]),
+            "tage_frueh": float(vh["tage_bis_reserve"]["frueh"]),
+            "tage_mitte": float(vh["tage_bis_reserve"]["mitte"]),
+            "soc_morgen_p50": float(vh["soc_p50"][1]),
+            "soc_morgen_p10": float(vh["soc_p10"][1]),
+            "soc_morgen_p90": float(vh["soc_p90"][1]),
+            "stufe": str(ent.get("stufe") or ""),
+            "wort": str(ent.get("wort") or ""),
+        },
+        out["jetzt"],
+    )
