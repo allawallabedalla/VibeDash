@@ -11,6 +11,8 @@ install). Only the VibeDash server talks to it; the browser never does.
 | `garten`   | Garten  | Garden weather (today, tomorrow, frost in the next 3 days, rain of the week), rain per day (7/30 days back, 3 ahead), garden tips with history. Weather from the house's InfluxDB or straight from Open-Meteo. Only reads.                                                                                                                                  |
 | `auto`     | Auto    | The car: state of charge, when to plug in, course without charging, sun for the car, driving profile, charges seen by the car, model accuracy, the car's own data, and a calculator "plug in at …" (weekday + time) that asks the house's charge planner. Only reads and calculates. Shown on the charging page with `onPage: "charging"` (one tab "Auto"). |
 | `gebaeude` | Gebäude | What the measurements say about the building: cooling down (τ), heat storage, sun gain, heat pump per degree and time of day, hot water in the PV time, tilted window, front door, PV forecast per weather – each with range and n – and the levers that follow. Shows the result of a daily analysis. Only reads.                                          |
+| `knx`      | KNX     | Light and operation over 7 days, defects, reports per kind, light per day, daily rhythm, night activity, best light ideas, light per room – the KNX results of the house program. Only reads.                                                                                                                                                               |
+| `knxlog`   | KNX-Log | The last 24 hours on the bus: telegrams (values decoded), devices with their last sign of life, light, presence, doors, defects, traffic per 15 min. Only reads.                                                                                                                                                                                            |
 
 ## Switch a module on
 
@@ -109,6 +111,28 @@ the rest at the end. Mapping: `{ "id": "auto", "title": "Auto", "icon": "plugCar
 Result file: `{"auskuehlen", "sonne", "wp_tageszeit", "warmwasser", "pv_prognose", "kippfenster", "haustuer"}`, each
 `{status: ok | sammelt | fehler, text: method, …values}` – the fields per part are listed in `gebaeude/board.py`
 and `tests/test_gebaeude.py`. A part that is not `ok` shows as "collecting" or is left out.
+
+## Module `knx` – config keys
+
+| Key            | Meaning                                                                                                                                                                           |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `einschub_url` | house service with the KNX results (`?bis=<ms>`): `{kopf, defekte, arten, tage: {7d, 30d, 90d}, alltag, profil, nacht: {7d, 30d, 90d}, karten, licht}` (fields in `knx/board.py`) |
+| `zeitzone`     | default `Europe/Berlin`                                                                                                                                                           |
+
+## Module `knxlog` – config keys
+
+| Key                                  | Meaning                                                                                                                                                                               |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `einschub_url`                       | house service with the raw data of the last 24 h (`?von=&bis=` in ms): `{telegramme: [[ms, ga, name, source, raw]], tueren: [[ms, name, open]], protokoll: [{zeit, raum, was, wie}]}` |
+| `inventar`                           | device list and group address names (`templates/knx_inventar.json`), default `knx_inventar.json` – exported from the house's ETS project, never into the repo                         |
+| `gruppen`                            | `[{label, color, prefix: [main groups]}]` – lines of "traffic per 15 min"                                                                                                             |
+| `messwerte`, `stellgroessen`         | group address prefixes of cyclic readings and valve values (left out of lists)                                                                                                        |
+| `tuer_prefix`, `prozent_prefix`      | 1 bit shown as open/closed; 1 byte shown as %                                                                                                                                         |
+| `bridge`                             | optional `{adresse, name}` of a bridge/visualisation that sends on the bus                                                                                                            |
+| `ohne_anlass`, `ohne_anlass_name`    | devices (addresses, name beginnings) that only send on occasion – not marked when silent                                                                                              |
+| `arten`                              | `[[name beginning, kind]]` – device kinds for "telegrams per kind"                                                                                                                    |
+| `raum_namen`, `tueren`, `tuer_sonst` | room renames; door names (`{enthaelt, name}`)                                                                                                                                         |
+| `zeitzone`                           | default `Europe/Berlin`                                                                                                                                                               |
 
 ## Tests
 

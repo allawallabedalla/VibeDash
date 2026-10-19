@@ -1,0 +1,21 @@
+{
+  "$comment": "Module knxlog – copy to local/modules/knxlog.json and fill in the house's rules from its ETS project (example values). Device list in knx_inventar.json.",
+  "einschub_url": "http://127.0.0.1:8090/vibedash/board/knxlog/haus",
+  "inventar": "knx_inventar.json",
+  "zeitzone": "Europe/Berlin",
+  "gruppen": [
+    { "label": "Heizung", "color": "import", "prefix": ["3/"] },
+    { "label": "Licht und Schalten", "color": "home", "prefix": ["1/"] },
+    { "label": "Präsenz und Türen", "color": "sun", "prefix": ["2/"] }
+  ],
+  "messwerte": ["1/0/"],
+  "stellgroessen": [],
+  "tuer_prefix": [],
+  "prozent_prefix": ["1/"],
+  "bridge": null,
+  "ohne_anlass": [],
+  "ohne_anlass_name": ["Taster"],
+  "raum_namen": { "–": "" },
+  "tueren": [],
+  "tuer_sonst": "Tür"
+}
