@@ -620,7 +620,8 @@ describe('clicks on board items and the feedback backlog', () => {
     const h = (await get('/api/health', d)).body as {
       boards: { calc?: boolean; onPage?: string }[];
     };
-    expect(h.boards[0]).toMatchObject({ calc: true, onPage: 'charging' });
+    expect(h.boards[0]).toMatchObject({ onPage: 'charging' });
+    expect(h.boards[0]!.calc).toBeUndefined();
     for (const bad of [
       { id: 'a', title: 'A', module: 'auto', calcUrl: 'http://h/c' },
       { id: 'a', title: 'A', url: 'http://h/a', onPage: 'overview' },

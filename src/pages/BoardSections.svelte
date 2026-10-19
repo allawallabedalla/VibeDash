@@ -154,8 +154,8 @@
     const out: Shown[] = [];
     sections.forEach((s, i) => {
       if (!inSlot(s)) return;
+      // calculators reach the page only where the server has a way for their value
       if (s.type === 'calc') {
-        if (!tab?.calc) return;
         out.push({ s, calc: i });
         const r = results.get(i);
         if (r) for (const x of r.sections) out.push({ s: x });

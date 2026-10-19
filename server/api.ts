@@ -510,7 +510,7 @@ export async function handleApi(
           title,
           icon,
           ...((actionUrl || module) && deps.boardAction ? { actions: true } : {}),
-          ...((calcUrl || module) && deps.boardCalc ? { calc: true } : {}),
+          ...(calcUrl && deps.boardCalc ? { calc: true } : {}),
           ...(onPage ? { onPage } : {}),
         }),
       ),

@@ -82,7 +82,11 @@ if (deps.mapping?.boards?.length) {
   deps.board = async (b) => {
     const r = await fetch(boardUrl(b, modules), { signal: AbortSignal.timeout(config.timeoutMs) });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return sanitizeBoard(await r.json());
+    const board = sanitizeBoard(await r.json());
+    // a calculator only where its value has somewhere to go (module or calcUrl)
+    if (board && !calcTarget(b, modules))
+      board.sections = board.sections.filter((s) => s.type !== 'calc');
+    return board;
   };
   log(
     `boards: ${deps.mapping.boards.map((b) => (b.module ? `${b.id} (module)` : b.id)).join(', ')}`,
