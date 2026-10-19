@@ -1,0 +1,178 @@
+{
+  "_info": "Starter-Wartungsplan (allgemein, kein echtes Haus). 'zuletzt' = JJJJ-MM-TT der letzten Erledigung (null = noch nicht erfasst; setzt VibeDash beim Abhaken). 'service' = Fachbetrieb nötig, 'ort' = Station im Rundgang, 'monat' = jährliche Aufgabe gehört in diesen Monat, 'saison' = nur Winter (Okt–Apr) bzw. Sommer (Apr–Okt), 'daten' = Messwert-Schlüssel, den ein Haus-Dienst daneben zeigen kann. 'erstbezug' gilt als letzte Erledigung, solange 'zuletzt' fehlt.",
+  "erstbezug": null,
+  "intervalle_tage": {
+    "wöchtl.": 7,
+    "monatl.": 30,
+    "qrtl.": 91,
+    "½-jährl.": 182,
+    "jährl.": 365,
+    "2-j": 730,
+    "5-j": 1826,
+    "10-j": 3652
+  },
+  "orte": ["Technik", "Küche", "Bad & WC", "Wohnräume", "Dachboden", "Außen", "Digital"],
+  "wartungstag_minuten": 240,
+  "service_vorlauf_tage": 42,
+  "offen": [],
+  "gruppen": [
+    {
+      "id": "sicherheit",
+      "titel": "Sicherheit",
+      "bereich": "haus",
+      "aufgaben": [
+        {
+          "id": "rauchmelder",
+          "intervall": "½-jährl.",
+          "text": "Rauchmelder testen (Prüftaste je Melder)",
+          "minuten": 10,
+          "ort": "Wohnräume",
+          "werkzeug": "Prüftaste",
+          "zuletzt": null
+        },
+        {
+          "id": "fi_test",
+          "intervall": "½-jährl.",
+          "text": "FI-Schutzschalter: Prüftaste drücken",
+          "minuten": 10,
+          "ort": "Technik",
+          "werkzeug": "–",
+          "hinweis": "Schaltet Stromkreise kurz ab.",
+          "zuletzt": null
+        }
+      ]
+    },
+    {
+      "id": "heizung",
+      "titel": "Heizung & Warmwasser",
+      "bereich": "heizung",
+      "aufgaben": [
+        {
+          "id": "heizung_druck",
+          "intervall": "qrtl.",
+          "text": "Heizungsdruck ablesen (Anzeige am Verteiler oder Gerät)",
+          "minuten": 5,
+          "ort": "Technik",
+          "werkzeug": "–",
+          "zuletzt": null
+        },
+        {
+          "id": "heizung_service",
+          "intervall": "jährl.",
+          "text": "Heizung: Inspektion durch den Fachbetrieb",
+          "service": true,
+          "minuten": 60,
+          "ort": "Service",
+          "werkzeug": "Fachbetrieb",
+          "zuletzt": null
+        }
+      ]
+    },
+    {
+      "id": "pv",
+      "titel": "PV-Anlage & Speicher",
+      "bereich": "pv",
+      "aufgaben": [
+        {
+          "id": "pv_sicht",
+          "intervall": "½-jährl.",
+          "text": "PV-Module vom Boden aus ansehen (Schmutz, Laub, Schäden)",
+          "minuten": 10,
+          "ort": "Außen",
+          "werkzeug": "Fernglas",
+          "zuletzt": null
+        },
+        {
+          "id": "pv_protokoll",
+          "intervall": "2-j",
+          "text": "PV-Anlage: Prüfung durch den Fachbetrieb",
+          "service": true,
+          "minuten": 60,
+          "ort": "Service",
+          "werkzeug": "Fachbetrieb",
+          "zuletzt": null
+        }
+      ]
+    },
+    {
+      "id": "elektro",
+      "titel": "Elektro & Smart Home",
+      "bereich": "elektro",
+      "aufgaben": [
+        {
+          "id": "backup_probe",
+          "intervall": "qrtl.",
+          "text": "Backup-Probe: eine Datei aus der Sicherung zurückholen",
+          "minuten": 10,
+          "ort": "Digital",
+          "werkzeug": "Laptop",
+          "zuletzt": null
+        }
+      ]
+    },
+    {
+      "id": "haus",
+      "titel": "Haus & Garten",
+      "bereich": "haus",
+      "aufgaben": [
+        {
+          "id": "siebe",
+          "intervall": "qrtl.",
+          "text": "Siphons und Haarsiebe reinigen",
+          "minuten": 20,
+          "ort": "Bad & WC",
+          "werkzeug": "Eimer, Handschuhe",
+          "zuletzt": null
+        },
+        {
+          "id": "spueler",
+          "intervall": "monatl.",
+          "text": "Geschirrspüler: Sieb reinigen",
+          "minuten": 5,
+          "ort": "Küche",
+          "werkzeug": "–",
+          "zuletzt": null
+        },
+        {
+          "id": "dunstabzug",
+          "intervall": "monatl.",
+          "text": "Dunstabzug: Fettfilter in die Spülmaschine",
+          "minuten": 5,
+          "ort": "Küche",
+          "werkzeug": "–",
+          "zuletzt": null
+        },
+        {
+          "id": "rinnen",
+          "intervall": "½-jährl.",
+          "text": "Regenrinnen und Fallrohre reinigen",
+          "minuten": 60,
+          "ort": "Außen",
+          "werkzeug": "Leiter, Handschuhe",
+          "monat": 11,
+          "zuletzt": null
+        },
+        {
+          "id": "aussenhahn",
+          "intervall": "jährl.",
+          "text": "Außenwasserhahn vor Frost: Schlauch ab, ggf. entleeren",
+          "minuten": 15,
+          "ort": "Außen",
+          "werkzeug": "Eimer",
+          "monat": 10,
+          "zuletzt": null
+        },
+        {
+          "id": "dachboden",
+          "intervall": "jährl.",
+          "text": "Dachboden: Sichtprüfung auf Feuchte und Schädlinge",
+          "minuten": 20,
+          "ort": "Dachboden",
+          "werkzeug": "Taschenlampe",
+          "saison": "Winter",
+          "zuletzt": null
+        }
+      ]
+    }
+  ]
+}

@@ -96,6 +96,10 @@ fi
 mkdir -p local
 [ -f local/mapping.json ] || cp mapping.evcc.json local/mapping.json
 chmod 644 local/mapping.json
+# Module (Wartungsplan …): Vorlagen nur beim ersten Mal, danach gehören sie dem Haus
+mkdir -p local/modules
+[ -f local/modules/wartung.json ] || cp ../modules/templates/wartung.json local/modules/wartung.json
+[ -f local/modules/wartungsplan.json ] || cp ../modules/templates/wartungsplan.json local/modules/wartungsplan.json
 chown -R 1000:1000 local 2>/dev/null || true
 
 # ── 5. Starten ─────────────────────────────────────────────────────────────────────────────────────────

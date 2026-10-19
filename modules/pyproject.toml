@@ -1,0 +1,15 @@
+[project]
+name = "vibedash-modules"
+version = "0.0.0"
+description = "VibeDash modules: tools that make whole boards (maintenance plan, …). Python standard library only."
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["SIM108"]  # if/else blocks with a comment read better than long ternaries

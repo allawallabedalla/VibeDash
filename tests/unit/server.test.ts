@@ -529,6 +529,27 @@ describe('clicks on board items and the feedback backlog', () => {
     ).toBe(false);
   });
 
+  it('passes clicks on a module board on (no actionUrl needed) and lists it with actions', async () => {
+    const r = validateMapping({
+      ...example,
+      boards: [{ id: 'wartung', title: 'Wartung', icon: 'wrench', module: 'wartung' }],
+    });
+    if (!r.ok) throw new Error(r.errors.join());
+    const sent: unknown[] = [];
+    const d = deps({
+      mapping: r.mapping,
+      boardAction: async (b, a) => {
+        sent.push([b.module, a]);
+        return { status: 200, body: { ok: true } };
+      },
+    });
+    const w = await write('/api/board/wartung/action', d, { item: 'plan:siebe', action: 'done' });
+    expect(w.status).toBe(200);
+    expect(sent).toEqual([['wartung', { board: 'wartung', item: 'plan:siebe', action: 'done' }]]);
+    const h = (await get('/api/health', d)).body as { boards: { actions?: boolean }[] };
+    expect(h.boards[0]!.actions).toBe(true);
+  });
+
   it('keeps feedback in a local file: add, list, mark done', async () => {
     const { fileStore } = await import('../../server/feedback');
     const dir = mkdtempSync(join(tmpdir(), 'vd-fb-'));

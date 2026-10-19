@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **Modules (`modules/`):** tools that make a whole tab, shipped with VibeDash and switched on by a
+  config in `local/modules/`. First module **Wartung** (maintenance plan): maintenance day as a walk,
+  service appointments with lead time, open items with appointments, tick off / note / later / undo,
+  calendar subscription (`/feed/wartung/kalender.ics`), starter plan as a template. Python standard
+  library only; Docker image, user unit, starter pack, release script and CI include it. Boards may
+  name a `module` instead of a `url`.
+
 ## 0.1.0 – first usable version
 
 Display only: VibeDash reads and shows; it never switches a device.

@@ -50,7 +50,11 @@
       "kind": "energy_counter",
       "unit": "kWh",
       "stepMs": 300000,
-      "terms": [{ "integrate": "pv_power" }]
+      "terms": [
+        {
+          "integrate": "pv_power"
+        }
+      ]
     },
     "load_energy": {
       "source": "derived",
@@ -58,7 +62,19 @@
       "kind": "energy_counter",
       "unit": "kWh",
       "stepMs": 300000,
-      "terms": [{ "integrate": "load_power" }]
+      "terms": [
+        {
+          "integrate": "load_power"
+        }
+      ]
     }
-  }
+  },
+  "boards": [
+    {
+      "id": "wartung",
+      "title": "Wartung",
+      "icon": "wrench",
+      "module": "wartung"
+    }
+  ]
 }

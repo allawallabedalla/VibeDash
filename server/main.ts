@@ -27,6 +27,7 @@ import { readConfig } from './config';
 import { sourcesOf, validateMapping } from './mapping';
 import { staticFile } from './static';
 import { sanitizeBoard } from '../src/model/board';
+import { actionTarget, boardUrl, moduleBase, moduleFeed } from './modules';
 
 const log = (msg: string) => console.log(`[vibedash] ${msg}`);
 
@@ -73,19 +74,23 @@ if (process.argv.includes('--check')) {
 }
 
 // Boards: extra pages whose content a house service supplies; checked and trimmed here.
+const modules = moduleBase(process.env);
 if (deps.mapping?.boards?.length) {
   deps.board = async (b) => {
-    const r = await fetch(b.url, { signal: AbortSignal.timeout(config.timeoutMs) });
+    const r = await fetch(boardUrl(b, modules), { signal: AbortSignal.timeout(config.timeoutMs) });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return sanitizeBoard(await r.json());
   };
-  log(`boards: ${deps.mapping.boards.map((b) => b.id).join(', ')}`);
-  // clicks on board items go to the house service that made the board – only to the address in the mapping
-  if (deps.mapping.boards.some((b) => b.actionUrl)) {
+  log(
+    `boards: ${deps.mapping.boards.map((b) => (b.module ? `${b.id} (module)` : b.id)).join(', ')}`,
+  );
+  // clicks on board items go to whoever made the board (house service or module) – only to that address
+  if (deps.mapping.boards.some((b) => b.actionUrl || b.module)) {
     deps.boardAction = async (b, a) => {
-      const r = await fetch(b.actionUrl!, {
+      const t = actionTarget(b, modules)!;
+      const r = await fetch(t.url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Haus-Aktion': '1' },
+        headers: { 'Content-Type': 'application/json', ...t.headers },
         body: JSON.stringify(a),
         signal: AbortSignal.timeout(config.timeoutMs),
       });
@@ -333,6 +338,19 @@ const server = createServer(async (req, res) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.writeHead(405, SECURITY_HEADERS).end();
       return;
+    }
+    // feeds of modules (e.g. the maintenance calendar to subscribe to on a phone)
+    if (url.pathname.startsWith('/feed/')) {
+      const f = await moduleFeed(url.pathname, deps.mapping, modules, fetch, config.timeoutMs);
+      if (f) {
+        res.writeHead(f.status, {
+          ...SECURITY_HEADERS,
+          'Content-Type': f.type,
+          'Cache-Control': 'no-cache',
+        });
+        res.end(req.method === 'HEAD' ? undefined : f.body);
+        return;
+      }
     }
     const file = await staticFile(config.distDir, url.pathname);
     if (!file) {

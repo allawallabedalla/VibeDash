@@ -290,7 +290,8 @@ function tooMany(now: number): boolean {
 
 async function handleBoardAction(id: string, deps: ApiDeps, req: RequestInfo): Promise<ApiResult> {
   const b = deps.mapping?.boards?.find((x) => x.id === id);
-  if (!b || !b.actionUrl || !deps.boardAction) return json(404, { error: 'no_actions' });
+  if (!b || !(b.actionUrl || b.module) || !deps.boardAction)
+    return json(404, { error: 'no_actions' });
   const refused = writeGuard(req);
   if (refused) return refused;
   const body = parseBody(req);
@@ -469,11 +470,11 @@ export async function handleApi(
       pv: Boolean(deps.pv),
       plan: Boolean(deps.plan),
       timeZone: deps.mapping?.timeZone ?? null,
-      boards: (deps.mapping?.boards ?? []).map(({ id, title, icon, actionUrl }) => ({
+      boards: (deps.mapping?.boards ?? []).map(({ id, title, icon, actionUrl, module }) => ({
         id,
         title,
         icon,
-        ...(actionUrl && deps.boardAction ? { actions: true } : {}),
+        ...((actionUrl || module) && deps.boardAction ? { actions: true } : {}),
       })),
       feedback: Boolean(deps.feedback),
       build: deps.build ?? null,
