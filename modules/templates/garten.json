@@ -1,0 +1,8 @@
+{
+  "$comment": "Module garten – copy to local/modules/garten.json and set the house's location (standort). Weather from InfluxDB when the house keeps daily weather there (wetter: influx), else straight from Open-Meteo.",
+  "wetter": "open-meteo",
+  "standort": { "lat": 52.52, "lon": 13.405 },
+  "influx": { "url": "http://127.0.0.1:8086", "db": "", "measurement": "wetter_tag" },
+  "tipps": "garden_history.json",
+  "zeitzone": "Europe/Berlin"
+}

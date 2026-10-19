@@ -8,6 +8,7 @@ install). Only the VibeDash server talks to it; the browser never does.
 | --------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `wartung` | Wartung | Maintenance plan: maintenance day as a walk through the house (time budget, most urgent first), service appointments with lead time, open one-off items (also with a time), tick off / note / acknowledge / later / undo, calendar subscription for the phone (one event per Saturday) |
 | `raeume`  | Räume   | Floor plan with live values per room (temperature, humidity, valve, light, motion), tap a room for all values, today's light and motion to play back, optional 3D view. Only reads.                                                                                                    |
+| `garten`  | Garten  | Garden weather (today, tomorrow, frost in the next 3 days, rain of the week), rain per day (7/30 days back, 3 ahead), garden tips with history. Weather from the house's InfluxDB or straight from Open-Meteo. Only reads.                                                             |
 
 ## Switch a module on
 
@@ -71,6 +72,17 @@ atomically under a file lock (`<plan>.lock`), so a house script may share the fi
 | `zeitzone`      | day start of the light/motion timeline, default `Europe/Berlin`                                                                                                                                                                                                                        |
 | `einschub_url`  | optional house service for light and motion of today (`?seit=<ms>`): `{"licht": {"vorher": [[raum, quelle, an]], "wechsel": [[ts, raum, quelle, an]]}, "bewegung": [[ts, raum]], "letzte_bewegung": {room_id: ts}}` (see `raeume/board.py`)                                            |
 | `texte`         | optional wording overrides (keys in `raeume/board.py`, `TEXT`; floor names as `floor_<id>`)                                                                                                                                                                                            |
+
+## Module `garten` – config keys
+
+| Key        | Meaning                                                                                                                                                                                           |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `wetter`   | `influx` (the house keeps daily weather in InfluxDB) or `open-meteo` (fetched by the module, cached 1 h); default `influx` when `influx.db` is set                                                |
+| `influx`   | `{url, db, measurement?}` – daily weather, read only: tag `art` = `gemessen` / `prognose`, fields `tmax`, `tmin`, `regen_mm`, `sonne_h`, time = local midnight (default measurement `wetter_tag`) |
+| `standort` | `{lat, lon}` – location for `open-meteo`                                                                                                                                                          |
+| `tipps`    | optional tip history `[{"date": "YYYY-MM-DD", "tip": "- …\n- …"}]`, newest last – written by a tip writer (e.g. an LLM job of the house)                                                          |
+| `zeitzone` | default `Europe/Berlin`                                                                                                                                                                           |
+| `texte`    | optional wording overrides (keys in `garten/board.py`, `TEXT`)                                                                                                                                    |
 
 ## Tests
 
