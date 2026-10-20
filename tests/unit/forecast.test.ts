@@ -181,3 +181,33 @@ describe('three days back to three days ahead (span)', () => {
     expect(s.forecast.some((v) => v !== null)).toBe(true);
   });
 });
+
+describe("the house's own day-ahead forecast", () => {
+  it('is judged instead of the rule when the house has one (G-13)', async () => {
+    const { houseDayForecasts } = await import('../../src/demo');
+    const { localMidnight } = await import('../../src/model/time');
+    const days = completeDays(demo, 'pv_energy').slice(-5);
+    const series = (k: number) =>
+      days.map((d) => {
+        const t = localMidnight(Date.parse(d.day + 'T12:00:00Z'), demo.timeZone);
+        return { t, v: d.value * k };
+      });
+    const data = {
+      ...demo,
+      series: {
+        ...demo.series,
+        pv_forecast_day: { id: 'pv_forecast_day', samples: series(1) },
+        pv_forecast_day_low: { id: 'pv_forecast_day_low', samples: series(0.8) },
+        pv_forecast_day_high: { id: 'pv_forecast_day_high', samples: series(1.2) },
+      },
+    } as typeof demo;
+    const own = houseDayForecasts(data);
+    expect(own.map((f) => f.day)).toEqual(days.map((d) => d.day));
+    expect(own[0]!.energy.low).toBeCloseTo(days[0]!.value * 0.8);
+    // a perfect house forecast is judged perfect – the rule would not be
+    const checks = checkForecasts(data, own, 'pv_energy');
+    expect(checks.length).toBe(5);
+    expect(checks.every((c) => c.correct)).toBe(true);
+    expect(houseDayForecasts(demo)).toEqual([]);
+  });
+});

@@ -13,6 +13,7 @@
     checkForecasts,
     dayAheadForecasts,
     dayAheadLoad,
+    houseDayForecasts,
     mulberry32,
     outlook,
     pvTimeSeries,
@@ -31,7 +32,11 @@
   const tz = house.timeZone;
   const locale = $derived(i18n.locale === 'de' ? 'de-DE' : 'en-GB');
 
-  const sun = accuracy(checkForecasts(house, dayAheadForecasts(house), 'pv_energy'));
+  // the house's own PV forecast is judged when there is one; else the built-in rule (G-13, Audit04 ST-02)
+  const own = houseDayForecasts(house);
+  const sun = accuracy(
+    checkForecasts(house, own.length ? own : dayAheadForecasts(house), 'pv_energy'),
+  );
   const load = accuracy(checkForecasts(house, dayAheadLoad(house), 'load_energy'));
   const loadTomorrow = dayAheadLoad(house).find((f) => f.day === 'tomorrow')?.energy;
 
@@ -113,7 +118,7 @@
     <h2>{t('page.models')}</h2>
     <div class="cards">
       <AccuracyCard
-        label={t('model.sunRule')}
+        label={own.length ? t('model.sunHouse') : t('model.sunRule')}
         pct={sun.pct}
         n={sun.n}
         interval={sun.interval}

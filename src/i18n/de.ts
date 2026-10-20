@@ -506,6 +506,7 @@ export const de = {
   'ts.fc.recomputed': 'nachgerechnet (Wetter von damals)',
   'ts.fc.latest': 'Prognose (neuester Lauf)',
   'model.sunRule': 'Faustregel Sonne (Median 7 Tage)',
+  'model.sunHouse': 'Sonnenprognose des Hauses (Vorabend)',
   'model.sun': 'Sonnenprognose',
   'model.battery': 'Akku voll bis Mittag',
   'model.batteryFrom': '14 Tagen',
