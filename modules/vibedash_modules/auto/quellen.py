@@ -61,6 +61,20 @@ class Influx:
         pts = self.query(q)
         return pts[0]["last"] if pts and pts[0].get("last") is not None else None
 
+    def soc_verlauf(self, jetzt: float, tage: int = 7, schritt_h: int = 2) -> dict | None:
+        """The house's own state of charge (auto_prognose.soc_jetzt, every 15 min) as a curve for the tile:
+        mean per step, gaps stay null (Audit04 UX-15: zoom without a curve)."""
+        bis = int(jetzt) // (schritt_h * 3600) * (schritt_h * 3600)
+        von = bis - tage * 86400
+        pts = self.query(
+            f"SELECT mean(soc_jetzt) FROM auto_prognose WHERE time >= {von}s AND time < {bis}s "
+            f"GROUP BY time({schritt_h}h) fill(null)"
+        )
+        werte = [None if x.get("mean") is None else round(float(x["mean"]), 1) for x in pts]
+        if not any(v is not None for v in werte):
+            return None
+        return {"von": pts[0]["time"] * 1000, "bis": pts[-1]["time"] * 1000, "werte": werte}
+
     def schreibe(self, zeilen: list[str]) -> None:
         zeilen = [z for z in zeilen if z]
         if not zeilen:
