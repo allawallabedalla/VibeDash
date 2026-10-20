@@ -233,22 +233,23 @@ def build(p, jetzt, t, calc=None):
         sections.append(
             {
                 "type": "bars",
-                "title": "Sonne fürs Auto (wenn angesteckt)",
+                "title": "Sonne fürs Auto (kWh, wenn angesteckt)",
                 "unit": "kWh",
                 "slot": "plan",
                 "labels": [lab(s) for s in sonne],
                 "values": [s.get("kwh") for s in sonne],
                 "color": "sun",
                 "note": " · ".join(
-                    f"{lab(s)}{' ab ' + s['start'] if s.get('start') else ''}: {de(s.get('kwh'))} kWh sicher, "
-                    f"bis {de(s.get('kwh_p90'))} möglich"
+                    f"{lab(s)}{' ab ' + s['start'] if s.get('start') else ''}: vorsichtig {de(s.get('kwh'))} kWh, "
+                    f"bei gutem Wetter bis {de(s.get('kwh_p90'))}"
                     for s in sonne
                     if (s.get("kwh_p90") or 0) > 0
                 )
                 or "Die nächsten Tage bleibt keine Sonne fürs Auto übrig.",
                 "info": {
-                    "what": "Was der Ladeplaner ohne Netzstrom ins Auto laden würde – schlechtester Wetterfall "
-                    "(„sicher“) und guter Fall (90 %). Nur, wenn das Auto dann steckt.",
+                    "what": "Was der Ladeplaner ohne Netzstrom ins Auto laden würde. „Vorsichtig“ = auch im "
+                    "schlechtesten von etwa 30 Wetterfällen, „bei gutem Wetter“ = 90-%-Wert. Nur, wenn das Auto "
+                    "dann steckt.",
                     "source": "auto_planer.py (plan.json, PV-Prognose je Dachfläche, 300 Szenarien).",
                 },
             }
@@ -265,8 +266,13 @@ def build(p, jetzt, t, calc=None):
                 "labels": [w["wt"] for w in je],
                 "values": [w.get("mittel") for w in je],
                 "color": "home",
-                "note": f"Mittel je Tag aus {n_tage} Tagen "
-                f"({min(w['n'] for w in je)}–{max(w['n'] for w in je)} je Wochentag).",
+                "note": f"Mittel je Tag aus {n_tage} Tagen, n = "
+                + (
+                    f"{je[0]['n']}"
+                    if len({w["n"] for w in je}) == 1
+                    else f"{min(w['n'] for w in je)}–{max(w['n'] for w in je)}"
+                )
+                + " je Wochentag.",
                 "info": {
                     "what": "Energie, die das Auto je Kalendertag verbraucht hat (Ladestand-Abfall der Fahrten × "
                     f"{de(kap, 1)} kWh nutzbare Kapazität). 10–90-%-Spanne je Tag: "

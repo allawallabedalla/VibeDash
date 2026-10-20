@@ -648,7 +648,7 @@ export const de = {
   'hc.planTomorrow': 'Plan morgen',
   'hc.span': 'vorsichtig geplant · bei gutem Wetter bis {high} kWh',
   'hc.span.what':
-    'Die Zahl ist der vorsichtige Plan: so viel lädt das Auto auch bei schlechtem Wetter. Die zweite Zahl ist, was gutes Wetter zusätzlich erlaubt. Keine 10–90-%-Spanne.',
+    'Die Zahl ist der vorsichtige Plan: so viel lädt das Auto auch im schlechtesten von etwa 30 Wetterfällen. Die zweite Zahl ist, was gutes Wetter erlaubt (90-%-Wert). Keine 10–90-%-Spanne.',
   'hc.span.source': 'Ladeplaner des Hauses.',
   'hc.range': '{low}–{high} kWh (10–90 %)',
   'hc.range.what': 'Geplante Lademenge; die Spanne reicht vom 10-%- bis zum 90-%-Wetterfall.',
@@ -670,7 +670,7 @@ export const de = {
   'hc.trace.aria': 'Auto lädt mit {car} kW, Einspeisung {feed} kW',
   'hc.planTitle': 'Ladeplan',
   'hc.planNote':
-    'Plan von {made} Uhr · Hausakku jetzt {soc} %, Mindestlinie {min} %. Nur Anzeige, VibeDash schaltet nichts.',
+    'Plan von {made} Uhr · Hausakku jetzt {soc} %, in den nächsten 24 h vorsichtig geplant tiefstens {min} %. Nur Anzeige, VibeDash schaltet nichts.',
   'hc.pastTitle': 'Ladungen',
   'hc.perDay': 'Geladen je Tag (14 Tage)',
   'hc.gridNote':
