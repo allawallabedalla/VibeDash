@@ -132,7 +132,7 @@ test('one series times out: page renders, tile says "keine Daten", notice names 
   });
 });
 
-test('battery kWh from the nominal capacity; derived consumption named', async ({ page }) => {
+test('battery kWh from the mapped capacity; derived consumption named', async ({ page }) => {
   const entities = [
     ...ENTITIES.map((e) => (e.id === 'load_energy' ? { ...e, derived: true } : e)),
     {
@@ -161,10 +161,10 @@ test('battery kWh from the nominal capacity; derived consumption named', async (
   // between closes its ⓘ again – wait for the second step, retry the tap
   await page.waitForLoadState('networkidle');
   await expect(async () => {
-    if (!((await battery.textContent()) ?? '').includes('Nennkapazität')) {
+    if (!((await battery.textContent()) ?? '').includes('Kapazität (12,5 kWh)')) {
       await battery.getByRole('button').first().click();
     }
-    await expect(battery).toContainText('Nennkapazität laut Wechselrichter (12,5 kWh)', {
+    await expect(battery).toContainText('Kapazität (12,5 kWh) aus der Zuordnung', {
       timeout: 1500,
     });
   }).toPass({ timeout: 10_000 });

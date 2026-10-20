@@ -62,7 +62,7 @@ export const en: Record<MessageKey, string> = {
   'info.battery.what': 'State of charge of the home battery.',
   'info.battery.source': 'Battery storage, state of charge in percent.',
   'info.battery.capacity':
-    'kWh = state of charge × nominal capacity from the inverter ({cap} kWh). This is not a measured capacity: an aged battery stores less.',
+    'kWh = state of charge × capacity ({cap} kWh) from the house mapping: measured, or the inverter’s nominal value (then rather too high).',
   'info.grid.what': 'Plus = power goes to the grid. Minus = power comes from the grid.',
   'info.grid.source': 'Grid meter. Two messages in the same second keep their arrival order.',
   'info.temp.what': 'Room temperature. The light band is the comfort range.',
