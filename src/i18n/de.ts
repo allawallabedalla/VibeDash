@@ -38,7 +38,7 @@ export const de = {
   'now.roomsNote': 'Zahl und Strich = jetzt, Balken = tiefster bis höchster Wert der letzten 24 h.',
   'tile.yield': 'Ertrag heute',
   'tile.tomorrow': 'Morgen',
-  'tile.autarky': 'Autarkie',
+  'tile.autarky': 'Eigenstrom',
 
   'sub.now': 'jetzt',
   'sub.full': 'voll',
@@ -487,7 +487,7 @@ export const de = {
   'review.load': 'Verbrauch',
   'review.feed': 'Einspeisung',
   'review.import': 'Bezug',
-  'review.autarky': 'Eigen',
+  'review.autarky': 'Eigenstrom',
   'review.loggerGap': 'Logger-Lücke, Zähler vollständig',
   'review.unit': 'Alle Werte in kWh aus Zählerständen, Tage nach Ortszeit.',
   'review.unitDerived':
@@ -592,7 +592,7 @@ export const de = {
   'week.flowNoteMeter': 'Aus Zählern, auch Akku und Sonne direkt.',
   'week.flowNotePower': 'Zähler; Akku ≈ aus der Leistung summiert (kein Akku-Zähler zugeordnet).',
   'sub.daysOf': '{n} von {of} Tagen',
-  'ts.autarky': 'Autarkie im Zeitraum {pct} % · {sub}',
+  'ts.autarky': 'Eigenstrom im Zeitraum {pct} % · {sub}',
   'ts.span1': '±1 Tag',
   'ts.span': '±3 Tage',
   'page.period': 'Zeitraum',
