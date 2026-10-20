@@ -26,16 +26,19 @@ TEXT = {
     "none_title": "Noch kein Ergebnis",
     "none_text": "Der Wochenlauf des Korrelationsatlas hat noch nichts geschrieben.",
     "source": "Korrelationsatlas des Hauses",
-    "robust_what": "Signalpaare mit |r| ≥ 0,5, signifikant nach Autokorrelation und Mehrfachtest, Spearman-"
-    "Gegenprobe und stabil in beiden Hälften des Zeitraums.",
+    "robust_what": "Signalpaare mit starkem Gleichlauf (Korrelation |r| ≥ 0,5), die roh oder nach Abzug des "
+    "Tagesgangs signifikant sind (Autokorrelation und Mehrfachtest berücksichtigt). Ohne Paare, bei denen ein "
+    "Signal aus dem anderen gerechnet ist.",
     "stand_what": "Wird jede Woche neu gerechnet.",
     "kinds_note": "Technisch gekoppelt = Kanäle desselben Geräts; prüfen = nicht erklärbar.",
     "kinds_what": "Einordnung nach Regeln: technisch gekoppelt, gleicher Sensor auf zwei Wegen, physikalisch erwartet, "
     "sonst prüfen.",
     "check_what": "Paare, die weder technisch noch physikalisch naheliegen. Korrelation ist keine Ursache – "
     "Hinweis, wo man hinschauen kann.",
-    "rank_note": "r roh / ohne Tagesgang bzw. Saison. Stärkste 150; alles mit Filter im Korrelationsatlas.",
-    "rank_what": "Ohne technisch gekoppelte Kanäle und ohne Paare aus demselben Sensor.",
+    "rank_note": "Stärke = Korrelation r von −1 bis 1, roh / ohne Tagesgang bzw. Saison. Stärkste 150; alles mit "
+    "Filter im Korrelationsatlas.",
+    "rank_what": "Ohne technisch gekoppelte Kanäle, ohne Paare aus demselben Sensor und ohne Paare, bei denen ein "
+    "Signal aus dem anderen gerechnet ist (z. B. WP-Strom aus der Außentemperatur).",
 }
 
 
@@ -53,7 +56,8 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
         return {"updated": now_ms, "sections": [{"type": "text", "title": t["none_title"], "text": t["none_text"]}]}
     v = data.get("vorwoche") if isinstance(data.get("vorwoche"), dict) else None
     names = data.get("namen") or {}
-    pairs = e.get("paare") or []
+    # a signal computed from the other one is circular, not a finding (Audit04 ST-15)
+    pairs = [p for p in e.get("paare") or [] if not p.get("abgeleitet")]
     st = {s["ebene"]: s for s in e["statistik"]}
     stand_ms = int(data.get("stand_ms") or now_ms)
     stand = datetime.fromtimestamp(stand_ms / 1000, tz).strftime("%d.%m. %H:%M")
@@ -65,10 +69,11 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
         return clean(f"{name(p['a'])} ~ {name(p['b'])}", 160)
 
     def rtext(p):
-        part = [f"r {de(p['r'])}"]
+        # plain words in the first line, with n (Audit04 ST-19, UX-06)
+        part = [f"Stärke {de(p['r'])}"]
         if p.get("rb") is not None:
             part.append(f"ohne Tagesgang {de(p['rb'])}")
-        part.append("Stunden" if p["ebene"] == "Stunden" else "Tage")
+        part.append(f"{p['n']} {'Std.' if p['ebene'] == 'Stunden' else 'Tage'}" if p.get("n") else p["ebene"])
         return " · ".join(part)
 
     # compare with last week (only once last week comes from an earlier run)
@@ -92,7 +97,7 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
             "value": f"{len(pairs):,}".replace(",", "."),
             "icon": "target",
             "color": "home",
-            "sub": "|r| ≥ 0,5 von " + f"{tested:,}".replace(",", ".") + " getesteten",
+            "sub": "starke Paare von " + f"{tested:,}".replace(",", ".") + " getesteten",
             "info": {"what": t["robust_what"], "source": t["source"]},
         },
         {
@@ -172,7 +177,7 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
             "title": "Rangliste ohne Technik",
             "columns": [
                 {"key": "p", "label": "Paar"},
-                {"key": "r", "label": "r", "align": "right"},
+                {"key": "r", "label": "Stärke", "align": "right"},
                 {"key": "k", "label": "Art"},
             ],
             "rows": [

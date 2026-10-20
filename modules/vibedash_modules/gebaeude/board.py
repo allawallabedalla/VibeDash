@@ -22,15 +22,16 @@ TEXT = {
     "source": "tägliche Gebäude-Auswertung",
     "collecting": "sammelt Daten",
     "t_cool": "Auskühlen",
-    "t_cool_sub": "τ ({lo}–{hi}) · {k} K je Nacht ohne Heizung",
+    "t_cool_sub": "Auskühlzeit, {lo}–{hi} h · {k} K je Nacht ohne Heizung",
     "t_store": "Speicher",
-    "t_store_sub": "{lo}–{hi} · n {n} Nächte",
+    "t_store_sub": "geschätzt, nicht gemessen ({lo}–{hi}) · n {n} Nächte",
     "t_sun": "Sonne",
     "t_sun_sub": "wirkt wie wärmer, je kWh/m² ({lo}–{hi})",
     "t_sun_what": "So viel wärmere Außenluft ersetzt 1 kWh/m² Sonnenstrahlung beim Heizbedarf "
     "(Ventil-Offenstunden je Tag ~ Heizgradtag + Strahlungssumme, n Tage {n}). Klarer Oktobertag ≈ 3 kWh/m².",
-    "t_cop": "WP-COP",
-    "t_cop_sub": "je Grad wärmer ± {se} · n {n} Ablesungen",
+    "t_cop": "WP je Grad wärmer",
+    "t_cop_unit": "COP",
+    "t_cop_sub": "wahrscheinlich {lo} bis {hi} · erst {n} Tage",
     "t_water": "Wasser",
     "t_water_sub": "Warmwasser in der PV-Zeit · {n} Läufe",
     "t_tilt": "Kippfenster",
@@ -38,12 +39,12 @@ TEXT = {
     "tiles_title": "Gebäude in Zahlen",
     "lever_water": "Warmwasser mittags laden: {pct} % der Läufe außerhalb der PV-Zeit (meist {h1} und {h2} Uhr, ≈ "
     "{kwh} kWh je Lauf). Warmwasser-Zeit an der Wärmepumpe auf 11–15 Uhr prüfen.",
-    "lever_heat": "Heizen mittags vorladen: 30 % der Heizenergie in 11–15 Uhr spart ≈ {kwh} kWh Strom/Woche "
-    "(COP +{cop} % bei {ta_m} statt {ta_r} °C), Netzstrom ≈ {grid} kWh/Woche – jetzt klein, im Winter mehr.",
-    "find_cool": "Das Haus hält Wärme lange (τ ≈ {tau} h): ohne Heizung kühlt es nachts nur ≈ {k} K ab. Vorladen am "
-    "Mittag funktioniert, Nachtabsenkung bringt wenig.",
-    "find_tilt": "Gekipptes Fenster: Raum kühlt nachts {pct} % ± {se} % schneller ab als die übrigen Räume, ≈ {kwh} "
-    "kWh Wärme je Nacht.",
+    "lever_heat": "Noch offen: Heizen mittags könnte Strom sparen (grob ≈ {kwh} kWh/Woche), weil die Wärmepumpe bei "
+    "wärmerer Luft effizienter ist. Belastbar erst mit Winterdaten – bisher {n} Tage.",
+    "find_cool": "Das Haus hält Wärme lange: ohne Heizung kühlt es nachts nur ≈ {k} K ab (Auskühlzeit ≈ {tau} h, eher "
+    "etwas zu lang gemessen). Nachtabsenkung bringt darum wenig.",
+    "find_tilt": "Schlafzimmer (Fenster nachts gekippt) kühlt {pct} % ± {se} % schneller ab als die übrigen Räume, "
+    "≈ {kwh} kWh Wärme je Nacht. Ob das am Fenster liegt, ist offen: es gibt keine Nächte mit zu.",
     "find_door": "Haustür öffnen: Flur {k} ± {se} K nach 30 min (n {n}) – kein messbarer Effekt.",
     "pv_old": "Alte PV-Tagesprognose lag an klaren Tagen {bias} ± {se} kWh daneben (n {n}). Das neue Stundenmodell ",
     "pv_new_ok": "wird ausgewertet.",
@@ -64,8 +65,10 @@ TEXT = {
     "sun_k": "K/klarer Tag",
     "sun_measurable": "messbar",
     "yes": "ja",
+    "odd": "fraglich",
     "no": "nein",
-    "sun_note": "Meist im Rauschen: die Fußbodenheizung puffert stark.",
+    "sun_note": "Meist im Rauschen: die Fußbodenheizung puffert stark. „fraglich“ = messbar, aber kühler bei Sonne – "
+    "bei 8 Räumen ist ein Zufallstreffer zu erwarten.",
     "pv_title": "PV-Prognose je Wetterlage",
     "pv_weather": "Wetterlage",
     "pv_dev": "Abweichung",
@@ -88,6 +91,12 @@ def de(x, nd=1, plus=False) -> str:
         return "–"
     s = f"{x:+.{nd}f}" if plus else f"{x:.{nd}f}"
     return s.replace(".", ",").replace("-", "−")
+
+
+def t95(df) -> float:
+    """Student t for a two-sided 95 % range (small n)."""
+    table = {1: 12.71, 2: 4.30, 3: 3.18, 4: 2.78, 5: 2.57, 6: 2.45, 7: 2.36, 8: 2.31, 9: 2.26, 10: 2.23}
+    return table.get(df, 2.0) if df >= 1 else float("inf")
 
 
 def _ok(b) -> bool:
@@ -161,10 +170,15 @@ def build(result: dict, stand_ms: int, t: dict) -> dict:
             {
                 "label": t["t_cop"],
                 "value": de(w["cop_je_k"], 2, plus=True),
-                "unit": "COP/K",
+                "unit": t["t_cop_unit"],
                 "icon": "bolt",
                 "color": "home",
-                "sub": t["t_cop_sub"].format(se=de(w["cop_je_k_se"], 2), n=w["cop_n"]),
+                # 95 % range from the standard error with n − 2 degrees of freedom (Audit04 ST-08)
+                "sub": t["t_cop_sub"].format(
+                    lo=de(w["cop_je_k"] - t95(w["cop_n"] - 2) * w["cop_je_k_se"], 2, plus=True),
+                    hi=de(w["cop_je_k"] + t95(w["cop_n"] - 2) * w["cop_je_k_se"], 2, plus=True),
+                    n=w["cop_n"],
+                ),
                 "info": info(w),
             }
         )
@@ -216,13 +230,9 @@ def build(result: dict, stand_ms: int, t: dict) -> dict:
         levers.append(
             {
                 "text": clean(
-                    t["lever_heat"].format(
-                        kwh=de(w["strom_weniger_kwh_woche"]),
-                        cop=round(w.get("cop_gewinn_pct") or 0),
-                        ta_m=de(w["ta_mittag"]),
-                        ta_r=de(w["ta_rest"]),
-                        grid=de(w["netz_weniger_kwh_woche"]),
-                    ),
+                    # the COP line from a few autumn days, stretched to midday air: an open question, not a lever
+                    # (Audit04 EN-06/ST-08)
+                    t["lever_heat"].format(kwh=de(w["strom_weniger_kwh_woche"]), n=w.get("cop_n", "–")),
                     200,
                 ),
                 "meta": t["m_estimate"],
@@ -330,7 +340,8 @@ def build(result: dict, stand_ms: int, t: dict) -> dict:
                         "cells": {
                             "r": clean(x["raum"], 30),
                             "k": f"{de(x['klarer_tag_k'], 1, plus=True)} ± {de(3 * x['se'], 1)}",
-                            "m": t["yes"] if x["messbar"] else t["no"],
+                            # sun that cools is implausible – with 8 rooms one chance hit is expected (Audit04 ST-17)
+                            "m": (t["odd"] if x["klarer_tag_k"] < 0 else t["yes"]) if x["messbar"] else t["no"],
                         }
                     }
                     for x in s["raeume"]

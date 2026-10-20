@@ -129,7 +129,7 @@ class TestKorrelation(unittest.TestCase):
             ],
         )
         tiles = {t["label"]: t for t in s["Zusammenhänge diese Woche"]["tiles"]}
-        self.assertEqual(tiles["Robust"]["sub"], "|r| ≥ 0,5 von 1.234 getesteten")
+        self.assertEqual(tiles["Robust"]["sub"], "starke Paare von 1.234 getesteten")
         self.assertEqual(
             (tiles["Prüfen"]["value"], tiles["Neu"]["value"], tiles["Entfallen"]["value"]), ("1", "3", "1")
         )
@@ -140,7 +140,7 @@ class TestKorrelation(unittest.TestCase):
             check[0],
             {
                 "text": "Temperatur Bad ~ Feuchte Bad",
-                "meta": "r −0,71 · ohne Tagesgang −0,55 · Stunden",
+                "meta": "Stärke −0,71 · ohne Tagesgang −0,55 · Stunden",
             },
         )
         # a pair that only follows the daily rhythm is not listed, only counted (Audit04 ST-04); no "look" anywhere
