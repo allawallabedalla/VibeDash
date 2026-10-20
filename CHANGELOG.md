@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Choice section** on boards (`choice`, action `choose` with a value). First use: "Wie mutig laden?" on the
+  charging page – Sicher / Mittel / Mutig until midnight, with what the car would get per level.
+
 - **Modules (`modules/`):** tools that make a whole tab, shipped with VibeDash and switched on by a
   config in `local/modules/`. First module **Wartung** (maintenance plan): maintenance day as a walk,
   service appointments with lead time, open items with appointments, tick off / note / later / undo,

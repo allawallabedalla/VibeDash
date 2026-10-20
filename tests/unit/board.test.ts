@@ -345,3 +345,51 @@ describe('board section slots (placement on an embedding page)', () => {
     expect(b.sections.map((x) => x.slot ?? null)).toEqual(['top', 'plan', null]);
   });
 });
+
+describe('choice sections', () => {
+  const choice = (extra: Record<string, unknown>) =>
+    sanitizeBoard({
+      sections: [
+        {
+          type: 'choice',
+          title: 'Wie mutig laden?',
+          id: 'laden:risiko',
+          selected: 'b',
+          options: [
+            { value: 'a', label: 'A', sub: 'eins' },
+            { value: 'b', label: 'B' },
+          ],
+          ...extra,
+        },
+      ],
+    })!.sections;
+
+  it('keeps a valid choice with its options and the chosen one', () => {
+    const [s] = choice({});
+    expect(s).toMatchObject({
+      type: 'choice',
+      id: 'laden:risiko',
+      selected: 'b',
+      options: [
+        { value: 'a', label: 'A', sub: 'eins' },
+        { value: 'b', label: 'B' },
+      ],
+    });
+  });
+
+  it('drops bad ids, bad or doubled values and choices with fewer than two options', () => {
+    expect(choice({ id: '../x' })).toEqual([]);
+    expect(choice({ options: [{ value: 'a', label: 'A' }] })).toEqual([]);
+    expect(
+      choice({
+        options: [
+          { value: 'a', label: 'A' },
+          { value: 'a', label: 'A2' },
+          { value: 'B C', label: 'x' },
+        ],
+      }),
+    ).toEqual([]);
+    const [s] = choice({ selected: 'zz' });
+    expect(s).toMatchObject({ selected: null });
+  });
+});

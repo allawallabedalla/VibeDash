@@ -629,6 +629,42 @@ describe('clicks on board items and the feedback backlog', () => {
       expect(validateMapping({ ...example, boards: [bad] }).ok).toBe(false);
   });
 
+  it('passes a choice on with its value and refuses a choice without a sane value', async () => {
+    const r = validateMapping({
+      ...example,
+      boards: [{ id: 'auto', title: 'Auto', icon: 'plugCar', module: 'auto' }],
+    });
+    if (!r.ok) throw new Error(r.errors.join());
+    const sent: unknown[] = [];
+    const d = deps({
+      mapping: r.mapping,
+      boardAction: async (_b, a) => {
+        sent.push(a);
+        return { status: 200, body: { ok: true, text: 'ok' } };
+      },
+    });
+    const ok = await write('/api/board/auto/action', d, {
+      item: 'laden:risiko',
+      action: 'choose',
+      value: 'mutig',
+    });
+    expect(ok.status).toBe(200);
+    expect(sent).toEqual([
+      { board: 'auto', item: 'laden:risiko', action: 'choose', value: 'mutig' },
+    ]);
+    for (const value of [undefined, '', 'Mutig!', 'x'.repeat(40)])
+      expect(
+        (
+          await write('/api/board/auto/action', d, {
+            item: 'laden:risiko',
+            action: 'choose',
+            value,
+          })
+        ).status,
+      ).toBe(400);
+    expect(sent.length).toBe(1);
+  });
+
   it('keeps feedback in a local file: add, list, mark done', async () => {
     const { fileStore } = await import('../../server/feedback');
     const dir = mkdtempSync(join(tmpdir(), 'vd-fb-'));

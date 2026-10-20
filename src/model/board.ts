@@ -35,6 +35,12 @@
  * (clock only, 2–7): weekday buttons side by side, today first and chosen; the slider is
  * the time of day (today from "min", other days from 0:00 up to "max" < 1440) and the
  * value sent is day × 1440 + minutes.
+ * "choice" (only if the board takes actions): a few options side by side, one chosen –
+ *   { "type": "choice", "title": "…", "id": "<kind>:<key>", "selected": "a",
+ *     "options": [ { "value": "a", "label": "…", "sub": "…" }, … ] } (2–5 options, value a-z0-9_-).
+ *   A tap sends POST /api/board/<id>/action { item: id, action: "choose", value }; the service
+ *   stores the choice and shows it on the next load. A setting for the house's own logic (e.g. how
+ *   cautious a charge plan is) – never a direct switch.
  * Every section may carry "note" (one line under it) and "info" ({ what, source } behind ⓘ), and
  * "slot": "top" | "plan" – where a page that embeds the board (the charging page, mapping
  * boards[].onPage) puts it: above its own content, after its plan; without slot at the end.
@@ -141,7 +147,16 @@ export type BoardSection =
     })
   | (Base & { type: 'text'; text: string })
   | (Base & BoardCalc)
+  | (Base & BoardChoice)
   | (Base & BoardPlan);
+
+export interface BoardChoice {
+  type: 'choice';
+  /** item id the choice is sent with ("<kind>:<key>") */
+  id: string;
+  options: { value: string; label: string; sub?: string }[];
+  selected: string | null;
+}
 
 export interface BoardCalc {
   type: 'calc';
@@ -471,6 +486,11 @@ export function sanitizeBoard(raw: unknown): Board | null {
         if (c) sections.push({ ...base, ...c });
         break;
       }
+      case 'choice': {
+        const c = sanitizeChoice(s);
+        if (c) sections.push({ ...base, ...c });
+        break;
+      }
       default:
         break;
     }
@@ -507,10 +527,38 @@ function sanitizeCalc(s: O): BoardCalc | null {
   };
 }
 
+const CHOICE_VALUE = /^[a-z0-9_-]{1,32}$/;
+/** Check a choice (2–5 options with unique values); null otherwise. */
+function sanitizeChoice(s: O): BoardChoice | null {
+  const id = typeof s.id === 'string' && ITEM_ID.test(s.id) ? s.id : null;
+  if (!id || !Array.isArray(s.options)) return null;
+  const options: BoardChoice['options'] = [];
+  for (const o of s.options.slice(0, 5)) {
+    if (!o || typeof o !== 'object') continue;
+    const x = o as O;
+    const value = typeof x.value === 'string' && CHOICE_VALUE.test(x.value) ? x.value : null;
+    if (!value || options.some((y) => y.value === value)) continue;
+    const sub = opt(x.sub, 80);
+    options.push({ value, label: text(x.label, 24) || value, ...(sub ? { sub } : {}) });
+  }
+  if (options.length < 2) return null;
+  const sel = typeof s.selected === 'string' ? s.selected : null;
+  return {
+    type: 'choice',
+    id,
+    options,
+    selected: options.some((o) => o.value === sel) ? sel : null,
+  };
+}
+
 /** A calculator's answer: ordinary sections, at most 8, no calculator inside. */
 export function sanitizeCalcResult(raw: unknown): BoardSection[] | null {
   const b = sanitizeBoard(raw);
-  return b ? b.sections.filter((x) => x.type !== 'calc' && x.type !== 'plan').slice(0, 8) : null;
+  return b
+    ? b.sections
+        .filter((x) => x.type !== 'calc' && x.type !== 'plan' && x.type !== 'choice')
+        .slice(0, 8)
+    : null;
 }
 
 const VIEW_KINDS: PlanViewKind[] = ['temp', 'humidity', 'valve', 'light', 'presence'];
