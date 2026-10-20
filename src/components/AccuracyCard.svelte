@@ -36,7 +36,9 @@
 
   type Level = 'good' | 'fair' | 'poor' | 'open';
   const level = $derived<Level>(
-    pct === null ? 'open' : pct >= 75 ? 'good' : pct >= 50 ? 'fair' : 'poor',
+    // good / poor only when the whole 95 % range is past the line – a point value alone made
+    // 77 % (57–90) "good" and 71 % (52–86) "fair" (Audit04 ST-11)
+    pct === null || !range ? 'open' : range.low >= 75 ? 'good' : range.high < 50 ? 'poor' : 'fair',
   );
   const levelKey = {
     good: 'level.good',

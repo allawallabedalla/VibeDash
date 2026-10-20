@@ -373,11 +373,16 @@ def build(p, jetzt, t, calc=None):
                         "pct": rb.get("quote_pct"),
                         "n": rb["n"],
                         "history": [],
+                        # a band model: „band held“, target 8 of 10 – more is not better (Audit04 ST-12)
                         "note": (
-                            f"Echter Verbrauch lag an {rb['im_band']} von {rb['n']} Tagen "
-                            f"in der 10–90-%-Spanne (Ziel 80 %). "
-                            f"Mittlerer Fehler {de(rb.get('fehler_kwh'), 1)} kWh/Tag, einfacher Mittelwert "
-                            f"{de(rb.get('fehler_naiv_kwh'), 1)}."
+                            f"Band hielt an {rb['im_band']} von {rb['n']} Tagen (Ziel 8 von 10). "
+                            f"Mittlerer Fehler {de(rb.get('fehler_kwh'), 2)} kWh/Tag, einfacher Mittelwert "
+                            f"{de(rb.get('fehler_naiv_kwh'), 2)}"
+                            + (
+                                " – kaum besser."
+                                if (rb.get("fehler_naiv_kwh") or 0) - (rb.get("fehler_kwh") or 0) < 0.1
+                                else "."
+                            )
                         ),
                         "details": [
                             {"label": "Bewertet", "value": "nachgerechnet (nur aus Vortagen)"},
