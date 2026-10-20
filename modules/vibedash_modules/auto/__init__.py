@@ -21,6 +21,8 @@ Config (local/modules/auto.json, template modules/templates/auto.json):
                {"sections": [...]}; it must not change anything. Without it there is no calculator.
   risiko       optional {datei} – how cautious the house's charge plan is (risiko.py): the choice is stored in
                this file (the house's planner reads it); without it there is no choice
+  steuerung    optional {status_url, jetzt_url, automatik_url} – the house's own charge control (steuerung.py):
+               a choice „Automatik / Jetzt voll laden“ that forwards the tap; the house switches by its own rules
   texte        optional wording overrides (keys of board.TEXT, CALC)
 """
 
@@ -34,7 +36,7 @@ import urllib.request
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from . import board, hersteller, prognose, risiko
+from . import board, hersteller, prognose, risiko, steuerung
 from .quellen import Influx, zeile
 
 STEP_MIN = 15
@@ -158,6 +160,9 @@ class Module:
     def board(self) -> dict:
         now = self.clock()
         out = board.build(_load(self.path(self.cfg["prognose"])), now, self.t, self._calc_section(now))
+        sc = self.cfg.get("steuerung") or {}
+        if sc.get("status_url"):
+            out["sections"] = [steuerung.section(steuerung.status(sc))] + (out.get("sections") or [])
         rf = (self.cfg.get("risiko") or {}).get("datei")
         if rf:
             plan = _load(self.path(self.cfg["plan"])) if self.cfg.get("plan") else None
@@ -170,8 +175,11 @@ class Module:
 
     def action(self, d: dict):
         """{item: "laden:risiko", action: "choose", value} -> stores the level until midnight."""
-        rf = (self.cfg.get("risiko") or {}).get("datei")
         value = d.get("value")
+        sc = self.cfg.get("steuerung") or {}
+        if sc.get("status_url") and d.get("item") == steuerung.ITEM and d.get("action") == "choose":
+            return steuerung.choose(sc, value)
+        rf = (self.cfg.get("risiko") or {}).get("datei")
         if not rf or d.get("item") != risiko.ITEM or d.get("action") != "choose":
             return 404, {"ok": False, "text": "keine Aktion"}
         if value not in {v for v, _, _ in risiko.LEVELS}:
