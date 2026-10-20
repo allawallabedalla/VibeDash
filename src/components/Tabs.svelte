@@ -77,10 +77,20 @@
     font-weight: 650;
   }
 
+  /* wide screens: every tab visible, a second row instead of a hidden scroll (Audit04 UX-05) */
+  @media (min-width: 601px) {
+    ul {
+      flex-wrap: wrap;
+      overflow-x: visible;
+    }
+  }
   @media (max-width: 600px) {
+    /* the right edge fades while more tabs follow; the extra end padding lets the last one leave the fade */
     ul {
       margin: 0 -16px;
-      padding: 2px 16px;
+      padding: 2px 44px 2px 16px;
+      mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
     }
     button {
       padding: 0 14px 0 11px;

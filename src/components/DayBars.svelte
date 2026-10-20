@@ -100,5 +100,10 @@
     .many .day:not(:nth-last-child(3n + 1)) .d {
       visibility: hidden;
     }
+    /* the shown label may use its hidden neighbours' room instead of „Mi.,…“ (Audit04 UX-09) */
+    .many .d {
+      max-width: none;
+      overflow: visible;
+    }
   }
 </style>

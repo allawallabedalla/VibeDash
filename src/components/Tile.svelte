@@ -269,9 +269,14 @@
     color: var(--text-2);
     line-height: 1.2;
     min-width: 0;
-    white-space: nowrap;
+    /* two lines instead of „Anstec…“ – tiles side by side must stay tellable apart (Audit04 UX-08) */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-wrap: anywhere;
+    hyphens: auto;
   }
   /* ⓘ sits in the corner (44 px target) so the label keeps its width. */
   header > :global(.info) {

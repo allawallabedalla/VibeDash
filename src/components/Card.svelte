@@ -83,5 +83,7 @@
     margin: 0;
     font-size: var(--small);
     color: var(--muted);
+    /* a long address in a note wraps instead of widening the page (Audit04 UX-04) */
+    overflow-wrap: anywhere;
   }
 </style>
