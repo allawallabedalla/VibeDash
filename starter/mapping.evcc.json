@@ -71,6 +71,13 @@
   },
   "boards": [
     {
+      "id": "auto",
+      "title": "Laden",
+      "icon": "plugCar",
+      "module": "auto",
+      "onPage": "charging"
+    },
+    {
       "id": "wartung",
       "title": "Wartung",
       "icon": "wrench",

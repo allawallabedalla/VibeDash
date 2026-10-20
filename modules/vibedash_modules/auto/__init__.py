@@ -24,6 +24,9 @@ Config (local/modules/auto.json, template modules/templates/auto.json):
   steuerung    optional {status_url, jetzt_url, automatik_url} – the house's own charge control (steuerung.py):
                a choice „Automatik / Jetzt voll laden“ that forwards the tap; the house switches by its own rules
   zeitstrahl   optional path of the house's weather cases for the charge timeline (zeitstrahl.py; shown only)
+  waechter     optional {evcc_url, passwort_env?, ladepunkt?, plan_url, guete_url, zustand?} – the product's charge
+               guard (waechter.py): switches the wallbox through evcc by the charge plan, locked until it has
+               proved itself; runs every minute. Not together with "steuerung" (the house's own guard).
   texte        optional wording overrides (keys of board.TEXT, CALC)
 """
 
@@ -38,7 +41,7 @@ import urllib.request
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from . import board, hersteller, prognose, risiko, steuerung, zeitstrahl
+from . import board, hersteller, prognose, risiko, steuerung, waechter, zeitstrahl
 from .quellen import Influx, zeile
 
 STEP_MIN = 15
@@ -111,15 +114,50 @@ class Module:
         }
 
     # ── Takt (called by the modules service, see app.py) ──────────────────────────────────────────────────────
-    def takt(self) -> tuple[int, int] | None:
-        """(period, offset) in seconds, or None when the module only shows."""
+    def _prognose_takt(self) -> tuple[int, int] | None:
         if (self.cfg.get("betrieb") or "aus") not in ("schatten", "an"):
             return None
         return int(self.cfg.get("takt_min") or 15) * 60, int(self.cfg.get("versatz_min", 9)) * 60
 
+    def _waechter(self) -> waechter.Waechter | None:
+        w = self.cfg.get("waechter") or {}
+        if not w.get("evcc_url") or (self.cfg.get("steuerung") or {}).get("status_url"):
+            return None
+        return waechter.Waechter(w, self.path)
+
+    def takt(self) -> tuple[int, int] | None:
+        """(period, offset) in seconds, or None when the module only shows. With the guard: every minute, the
+        forecast still only in its own slots."""
+        if self._waechter() is not None:
+            return 60, 0
+        return self._prognose_takt()
+
     def lauf(self, now: float | None = None) -> str:
-        """One run: "an" fetches from the maker, computes and writes; "schatten" only computes into its own file."""
         now = now or self.clock()
+        out = []
+        w = self._waechter()
+        if w is not None:
+            out.append("wächter: " + w.tick(now))
+        t = self._prognose_takt()
+        if t:
+            # the forecast keeps its own period: once per slot (the slot is remembered in a small file)
+            mark = self.path("auto/.prognose_slot")
+            slot = int((now - t[1]) // t[0])
+            try:
+                with open(mark, encoding="utf-8") as f:
+                    last = int(f.read().strip() or -1)
+            except (OSError, ValueError):
+                last = None
+            if w is None or (last is not None and slot != last):
+                out.append(self._prognose(now))
+            if w is not None:
+                os.makedirs(os.path.dirname(mark), exist_ok=True)
+                with open(mark, "w", encoding="utf-8") as f:
+                    f.write(str(slot))
+        return " · ".join(out) or "nichts zu tun"
+
+    def _prognose(self, now: float) -> str:
+        """One run: "an" fetches from the maker, computes and writes; "schatten" only computes into its own file."""
         modus = self.cfg.get("betrieb") or "aus"
         k = self.cfg.get("konto") or {}
         st_p, fa_p = self.path(k["status"]), self.path(k["fahrten"])
@@ -165,7 +203,12 @@ class Module:
 
     def board(self) -> dict:
         now = self.clock()
-        out = board.build(_load(self.path(self.cfg["prognose"])), now, self.t, self._calc_section(now))
+        data = _load(self.path(self.cfg["prognose"]))
+        if data is None and (self.cfg.get("betrieb") or "aus") == "aus" and self._waechter() is not None:
+            # no car account here (only the wallbox through evcc): no "waiting for the car" text
+            out = {"updated": int(now * 1000), "sections": []}
+        else:
+            out = board.build(data, now, self.t, self._calc_section(now))
         zp = self.cfg.get("zeitstrahl")
         if zp:
             p = self.path(zp)
@@ -182,19 +225,25 @@ class Module:
         sc = self.cfg.get("steuerung") or {}
         if sc.get("status_url"):
             out["sections"] = [steuerung.section(steuerung.status(sc))] + (out.get("sections") or [])
+        w = self._waechter()
+        if w is not None:
+            out["sections"] = w.sections() + (out.get("sections") or [])
         rf = (self.cfg.get("risiko") or {}).get("datei")
         if rf:
             plan = _load(self.path(self.cfg["plan"])) if self.cfg.get("plan") else None
             choice = risiko.section(risiko.current(self.path(rf), self.tz, now), plan)
             secs = out.get("sections") or []
             # at the top, right after „Laden: Automatik / Jetzt voll laden“ (controls first, information after)
-            i = 1 if secs and secs[0].get("id") == steuerung.ITEM else 0
+            i = 1 if secs and secs[0].get("id") in (steuerung.ITEM, waechter.ITEM) else 0
             out["sections"] = secs[:i] + [choice] + secs[i:]
         return out
 
     def action(self, d: dict):
         """{item: "laden:risiko", action: "choose", value} -> stores the level until midnight."""
         value = d.get("value")
+        w = self._waechter()
+        if w is not None and d.get("item") in (waechter.ITEM, waechter.TEST_ITEM) and d.get("action") == "choose":
+            return w.choose(d["item"], value)
         sc = self.cfg.get("steuerung") or {}
         if sc.get("status_url") and d.get("item") == steuerung.ITEM and d.get("action") == "choose":
             return steuerung.choose(sc, value)

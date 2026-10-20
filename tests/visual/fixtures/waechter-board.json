@@ -1,0 +1,56 @@
+{
+  "updated": 1790500000000,
+  "sections": [
+    {
+      "type": "choice",
+      "title": "Laden",
+      "id": "laden:waechter",
+      "slot": "top",
+      "selected": "aus",
+      "options": [
+        { "value": "aus", "label": "Aus", "sub": "VibeDash schaltet nichts" },
+        {
+          "value": "automatik",
+          "label": "Automatik",
+          "sub": "gesperrt – öffnet sich selbst",
+          "disabled": true
+        },
+        { "value": "jetzt", "label": "Jetzt voll laden", "sub": "sofort, bis abgesteckt" }
+      ],
+      "note": "Auto angesteckt, lädt 4,2 kW.",
+      "info": {
+        "what": "Automatik schaltet die Wallbox über evcc nach dem Ladeplan: Sonne fürs Auto, kein Netzstrom. Sie ist gesperrt, bis sie sich bewährt hat, und öffnet sich dann von selbst. Eine Änderung in der evcc- oder Wallbox-App gewinnt immer – bis zum Abstecken.",
+        "source": "evcc (Ladepunkt), Ladeplan und seine Rückrechnung (nur Vergangenheit)."
+      }
+    },
+    {
+      "type": "list",
+      "title": "Automatik gesperrt",
+      "slot": "top",
+      "items": [
+        { "text": "Werte lesen", "meta": "5 von 7 Tagen" },
+        {
+          "text": "Plan trifft",
+          "meta": "9 von 9 Tagen ohne Netzstrom · sicher ≥ 70 % (nötig 75 %, ab 14 Tagen)"
+        },
+        { "text": "Pausetest", "meta": "noch nicht erlaubt" }
+      ],
+      "info": {
+        "what": "Die Automatik öffnet sich erst, wenn alle drei Punkte erfüllt sind, und schließt sich wieder, wenn der Plan schlechter trifft oder die Wallbox das Umschalten nicht bestätigt.",
+        "source": "evcc, Rückrechnung des Ladeplans, Ladeleistung beim Pausetest."
+      }
+    },
+    {
+      "type": "choice",
+      "title": "Pausetest",
+      "id": "laden:pausetest",
+      "slot": "top",
+      "selected": null,
+      "options": [
+        { "value": "erlauben", "label": "Erlauben", "sub": "beim nächsten Laden, ≈ 1 Minute" },
+        { "value": "spaeter", "label": "Später", "sub": "nichts passiert" }
+      ],
+      "note": "Ich pausiere das Laden einmal kurz und schaue, ob die Ladeleistung wirklich fällt – danach geht es weiter wie vorher."
+    }
+  ]
+}

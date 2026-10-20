@@ -105,6 +105,8 @@ chmod 644 local/mapping.json
 mkdir -p local/modules
 [ -f local/modules/wartung.json ] || cp ../modules/templates/wartung.json local/modules/wartung.json
 [ -f local/modules/wartungsplan.json ] || cp ../modules/templates/wartungsplan.json local/modules/wartungsplan.json
+# Laden: nur der Wächter über evcc (gesperrt, bis er sich bewährt hat; „Aus“ schreibt nie etwas)
+[ -f local/modules/auto.json ] || cp ../modules/templates/auto.starter.json local/modules/auto.json
 chown -R 1000:1000 local 2>/dev/null || true
 
 # ── 5. Starten ─────────────────────────────────────────────────────────────────────────────────────────
