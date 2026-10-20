@@ -1,0 +1,34 @@
+# Der allgemeine VibeDash-Stick (image/build.sh --allgemein) für jedes Release: herunterladen, mit balenaEtcher
+# schreiben, einstecken – wer die Einrichtung im Browser zuerst öffnet, wird Besitzer. Kein Passwort, kein Code
+# auf dem Stick. Prüfsumme liegt daneben.
+name: stick
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  stick:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -q && sudo apt-get install -y -q xorriso cpio
+      - name: Build the general stick (current Debian, checksum and signature checked)
+        run: bash image/build.sh --allgemein --branch "${GITHUB_REF_NAME}" --out "$PWD/vibedash-stick.iso"
+      - run: sha256sum vibedash-stick.iso > vibedash-stick.iso.sha256
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${GITHUB_REF_NAME}" vibedash-stick.iso vibedash-stick.iso.sha256 --clobber
+      - name: Keep as artifact (manual run)
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: vibedash-stick
+          path: vibedash-stick.iso*
+          retention-days: 7

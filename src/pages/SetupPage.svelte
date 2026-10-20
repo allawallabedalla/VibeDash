@@ -37,6 +37,9 @@
     'load' | 'code' | 'questions' | 'stop' | 'scan' | 'role' | 'finish' | 'done' | 'closed'
   >('load');
   let code = $state('');
+  /** general stick: nobody has claimed the assistant yet – the first visitor gets the code */
+  let claimable = $state(false);
+  let claimedCode = $state('');
   let message = $state('');
   let busy = $state(false);
   let q = $state(0);
@@ -89,8 +92,9 @@
     try {
       const r = await fetch('/api/setup');
       if (!r.ok) return void (phase = 'closed');
-      const s = (await r.json()) as { open: boolean; scan: boolean };
+      const s = (await r.json()) as { open: boolean; scan: boolean; claimable?: boolean };
       scanOn = s.scan;
+      claimable = s.claimable === true;
       // without a network to search, skip the question: the step only says where the address is
       if (!scanOn) found = [];
       phase = s.open ? 'code' : 'closed';
@@ -98,6 +102,31 @@
       phase = 'closed';
     }
   });
+
+  async function claim() {
+    busy = true;
+    message = '';
+    try {
+      const r = await fetch('/api/setup/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      const b = (await r.json().catch(() => null)) as { code?: string } | null;
+      if (r.ok && b?.code) {
+        code = b.code;
+        claimedCode = b.code;
+        claimable = false;
+      } else {
+        claimable = false;
+        message = t('setup.claimTaken');
+      }
+    } catch (e) {
+      fail(e);
+    } finally {
+      busy = false;
+    }
+  }
 
   async function unlock() {
     busy = true;
@@ -258,7 +287,18 @@
       <p class="step">{t('setup.step', { n: stepNo, of: totalSteps })}</p>
     {/if}
     <section class="card" aria-live="polite">
-      {#if phase === 'code'}
+      {#if phase === 'code' && claimable}
+        <p>{t('setup.claimIntro')}</p>
+        <div class="row">
+          <button class="b main" disabled={busy} onclick={() => claim()}>{t('setup.claim')}</button>
+        </div>
+      {:else if phase === 'code' && claimedCode}
+        <p>{t('setup.claimed')}</p>
+        <p class="bigcode">{claimedCode}</p>
+        <div class="row">
+          <button class="b main" disabled={busy} onclick={() => unlock()}>{t('setup.next')}</button>
+        </div>
+      {:else if phase === 'code'}
         <p>{t('setup.intro')}</p>
         <form
           class="row"
@@ -564,5 +604,12 @@
     cursor: pointer;
     color: var(--muted);
     min-height: 40px;
+  }
+  .bigcode {
+    margin: 4px 0 12px;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    font-variant-numeric: tabular-nums;
   }
 </style>

@@ -58,6 +58,7 @@ services:
       # Einrichtungs-Assistent (/#/einrichten): Code vom Installer, evcc-Admin-Passwort, Heimnetz für die Suche
       EVCC_ADMIN_PASSWORD: ${EVCC_ADMIN_PASSWORD:-}
       SETUP_CODE: ${SETUP_CODE:-}
+      SETUP_CLAIM: ${SETUP_CLAIM:-off}
       SCAN_CIDR: ${SCAN_CIDR:-}
       SETUP_DEMO: ${SETUP_DEMO:-off}
       # + vibedash: the charge guard in the modules container reads the plan here

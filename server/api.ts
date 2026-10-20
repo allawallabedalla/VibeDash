@@ -170,6 +170,8 @@ function parseBody(req: RequestInfo): Record<string, unknown> | null {
 
 export interface SetupDeps {
   checkCode: (code: unknown) => 'ok' | 'wrong' | 'locked';
+  /** general stick: the first visitor claims the assistant and gets the code (null = already claimed) */
+  claim?: () => string | null;
   state: { read: () => SetupState; write: (s: SetupState) => void };
   evcc: ReturnType<typeof evccAdmin>;
   scanCidr: string | null;
@@ -198,6 +200,7 @@ async function handleSetup(
       scan: Boolean(st.scanCidr),
       questions: SETUP_QUESTIONS,
       answered: SETUP_QUESTIONS.every((q) => state.answers?.[q] === true),
+      claimable: Boolean(st.claim) && !state.owner && !state.done,
     });
   }
   if (method !== 'POST') return json(405, { error: 'method_not_allowed' });
@@ -206,6 +209,11 @@ async function handleSetup(
   const body = parseBody(req);
   if (!body) return json(400, { error: 'bad_body' });
   if (state.done) return json(409, { error: 'setup_closed' });
+  if (path === '/api/setup/claim') {
+    if (!st.claim) return json(404, { error: 'no_claim' });
+    const given = st.claim();
+    return given ? json(200, { code: given }) : json(409, { error: 'claimed' });
+  }
   const code = st.checkCode(body.code);
   if (code === 'locked') return json(429, { error: 'too_many_tries' });
   if (code !== 'ok') return json(403, { error: 'wrong_code' });

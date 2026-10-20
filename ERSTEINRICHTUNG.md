@@ -27,10 +27,17 @@ Wallbox und Steuerung kommen später über den Agenten (LADESTEUERUNG.md).
 - für die Einrichtung einmal: Bildschirm und Tastatur am Mini-PC (danach nicht mehr)
 - einen anderen Computer (Laptop) für Schritt 1.2
 
-## Stufe 0 · Der VibeDash-Stick (empfohlen, wenn du Claude Code hast)
+## Stufe 0 · Der VibeDash-Stick (empfohlen)
 
-Du brauchst nur: Claude Code am Laptop, den Mini-PC, ein Netzwerkkabel und einen leeren USB-Stick (mind. 2 GB).
-Kein Bildschirm, keine Tastatur, kein BIOS-Menü, keine Router-Einstellung.
+Du brauchst nur: den Mini-PC, ein Netzwerkkabel, einen leeren USB-Stick (mind. 2 GB) und einen Laptop.
+Kein Bildschirm, keine Tastatur, kein BIOS-Menü, keine Router-Einstellung. Zwei Varianten:
+
+- **Ohne Helfer – der allgemeine Stick:** Auf der GitHub-Seite von VibeDash unter „Releases“ die Datei
+  `vibedash-stick.iso` herunterladen und mit **balenaEtcher** auf den Stick schreiben (vorher: „Ist das ausgewählte
+  Laufwerk wirklich der USB-Stick?“). Er enthält kein Passwort und keinen Code: **Wer die Einrichtung im Browser
+  zuerst öffnet, übernimmt sie** und bekommt dort einen Code (aufschreiben). Danach weiter mit Schritt 1 unten.
+  Am Gerät selbst meldet sich niemand an – Extras (KNX, Grundriss …) brauchen später den persönlichen Stick.
+- **Mit Claude Code – der persönliche Stick:** wie unten; der Helfer kommt danach per SSH aufs Gerät.
 
 > **Für den Helfer (Agent):** Baue den Stick am Laptop mit `image/build.sh --key <öffentlicher SSH-Schlüssel>`
 > (gibt es keinen, vorher `ssh-keygen -t ed25519` – nach Ja des Menschen). Es lädt Debian, prüft Prüfsumme und
@@ -49,7 +56,8 @@ Kein Bildschirm, keine Tastatur, kein BIOS-Menü, keine Router-Einstellung.
    (nach etwa 10–30 Minuten): Stick abziehen, wieder einschalten. Hast du den Stick vergessen, passiert nichts – der
    Stick merkt, dass VibeDash schon drauf ist, löscht nichts und schaltet wieder aus.
 5. Nach dem Einschalten richtet sich VibeDash selbst ein (etwa 5–15 Minuten, braucht Internet). Dann am Handy oder
-   Laptop öffnen: **http://vibedash.local:8095/#/einrichten** und den **Einrichtungs-Code** vom Zugangszettel eingeben. Ab hier wie unten in Weg B, Schritt 2 (Assistent) – oder der Helfer macht es mit dir.
+   Laptop öffnen: **http://vibedash.local:8095/#/einrichten** – beim persönlichen Stick den **Einrichtungs-Code** vom
+   Zugangszettel eingeben, beim allgemeinen auf **„Einrichtung übernehmen“** tippen und den Code aufschreiben. Ab hier wie unten in Weg B, Schritt 2 (Assistent) – oder der Helfer macht es mit dir.
 
 Klappt `vibedash.local` nicht: Der Helfer findet die Adresse in der Router-App (Gerät „vibedash“).
 
