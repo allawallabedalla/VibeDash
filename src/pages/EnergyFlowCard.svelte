@@ -93,7 +93,12 @@
       ? null
       : {
           pv: v('pv_power')!,
-          load: v('load_power')!,
+          // consumption incl. conversion losses = balance of the meters (guideline "Verbrauch", Audit04 EN-02);
+          // the inverter's house load lacks the losses and left a fake "feed-in" rest in the flow
+          load:
+            v('battery_power') === null
+              ? v('load_power')!
+              : Math.max(0, v('pv_power')! - v('battery_power')! - v('grid_power')!),
           battery: v('battery_power') ?? 0,
           grid: v('grid_power')!,
           car,

@@ -43,8 +43,8 @@ export interface Flows {
   grid: number;
 }
 
-/** Below this a flow is noise (meter rounding, standby). */
-export const QUIET_W = 50;
+/** Below this a flow is noise (meter rounding, standby, the grid's control jitter of ±~85 W). */
+export const QUIET_W = 100;
 
 export function energyFlows(i: FlowInput): Flows {
   const pos = (v: number) => (Number.isFinite(v) && v > QUIET_W ? v : 0);

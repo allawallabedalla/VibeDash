@@ -149,18 +149,48 @@ export function sunTile(data: DemoData, fc?: SunForecast | null): TileProps {
   });
 }
 
+/**
+ * Consumption now in W, including conversion losses (guideline: "Verbrauch" is
+ * everything the house uses, losses included): sun − battery charging + battery
+ * discharging − feed-in + import. Without fresh sun, battery and grid values the
+ * inverter's house load. Audit04 EN-02: tile and flow showed 0.3 kW, the
+ * balance 0.5 kW at the same time.
+ */
+export function consumptionNowW(data: DemoData): number {
+  const pv = freshValue(data, 'pv_power');
+  const bat = freshValue(data, 'battery_power');
+  const grid = freshValue(data, 'grid_power');
+  return pv !== null && bat !== null && grid !== null
+    ? Math.max(0, pv - bat - grid)
+    : nowValue(data, 'load_power');
+}
+
+/** The same balance for the last 24 h (15-min grid), else the house load. */
+export function consumption24h(data: DemoData): (number | null)[] {
+  if (!['pv_power', 'battery_power', 'grid_power'].every((id) => data.series[id]?.samples.length))
+    return last24h(data, 'load_power');
+  const [pv, bat, grid] = ['pv_power', 'battery_power', 'grid_power'].map((id) =>
+    last24h(data, id),
+  );
+  return pv!.map((p, i) =>
+    p === null || bat![i] == null || grid![i] == null
+      ? null
+      : Math.max(0, p - bat![i]! - grid![i]!),
+  );
+}
+
 export function loadTile(data: DemoData): TileProps {
   return staleOr(data, 'load_power', {
     label: t('tile.home'),
     icon: 'home',
     color: 'var(--home)',
     zoom: zoomKw('load_power', t('tile.home'), 'var(--home)'),
-    value: num(nowValue(data, 'load_power') / 1000, 1),
+    value: num(consumptionNowW(data) / 1000, 1),
     unit: 'kW',
     sub: t('sub.now'),
     graphic: {
       kind: 'spark',
-      values: last24h(data, 'load_power').map(kw),
+      values: consumption24h(data).map(kw),
       min: 0,
       span: last24hSpan(data),
     },
@@ -570,7 +600,7 @@ export function sunNowTile(data: DemoData): TileProps {
 
 /** Consumption now: where it comes from (sun directly, battery, grid). */
 export function loadNowTile(data: DemoData): TileProps {
-  const load = Math.max(0, nowValue(data, 'load_power') || 0);
+  const load = consumptionNowW(data);
   const fromBattery = Math.max(0, -(freshValue(data, 'battery_power') ?? 0));
   const grid = freshValue(data, 'grid_power') ?? 0;
   const fromGrid = Math.abs(grid) < 50 ? 0 : Math.max(0, -grid);
