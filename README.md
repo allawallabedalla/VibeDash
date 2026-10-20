@@ -215,7 +215,10 @@ section: 2–5 options, one chosen (contract in `src/model/board.ts`). A tap sen
 `{ item, action: "choose", value }` like any other click. The car module uses it for how
 cautious the house's charge plan is (`"risiko": {"datei": …}` in `local/modules/auto.json`,
 levels Sicher/Mittel/Mutig until midnight); the house's planner reads the stored level,
-its guard and stop rules stay the same.
+its guard and stop rules stay the same. With `"steuerung": {status_url, jetzt_url, automatik_url}` the
+car module also shows **Laden: Automatik / Jetzt voll laden** at the top of the charging page – it
+forwards the tap to the house's own charge control, which switches by its own rules (LADESTEUERUNG.md
+section 7: always overridable, force ends when full or unplugged).
 
 ## Feedback button (local backlog)
 

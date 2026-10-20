@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Laden: Automatik / Jetzt voll laden** (car module, `steuerung`): forwards to the house's charge control;
+  force = 16 A incl. grid power until full, unplugged or back to automatic.
+
 - **Choice section** on boards (`choice`, action `choose` with a value). First use: "Wie mutig laden?" on the
   charging page – Sicher / Mittel / Mutig until midnight, with what the car would get per level.
 
