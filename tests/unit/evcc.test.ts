@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { evccClient, parseSessions, parseState, solarShare } from '../../src/adapters/evcc';
+import {
+  evccClient,
+  parseSessions,
+  parseState,
+  solarShare,
+  type EvccNow,
+} from '../../src/adapters/evcc';
+import { handleApi, type ApiDeps } from '../../server/api';
 import type { FetchLike } from '../../src/adapters/influx1';
 
 // Synthetic values only, shaped like evcc's /api/state and /api/sessions.
@@ -118,7 +125,7 @@ describe('API: evcc', () => {
       now: () => 0,
       log: () => {},
       evcc: {
-        now: async () => parseState({ pvPower: 1 }),
+        now: async () => parseState({ pvPower: 1, loadpoints: [{ title: 'Garage' }] }),
         sessions: async (year?: number) => {
           if (year === 2025) throw Object.assign(new Error('t'), { name: 'TimeoutError' });
           return [];
@@ -132,5 +139,26 @@ describe('API: evcc', () => {
     expect((await get('/api/evcc/sessions?year=2025')).body).toEqual({ error: 'timeout' });
     expect((await get('/api/health')).body).toMatchObject({ evcc: true });
     expect((await handleApi('POST', new URL('http://h/api/evcc/now'), deps)).status).toBe(405);
+  });
+});
+
+describe('charging page only with a wallbox', () => {
+  const health = async (loadpoints: unknown[]) => {
+    const deps = {
+      mode: 'live' as const,
+      now: Date.now,
+      log: () => {},
+      cache: new Map(),
+      evcc: {
+        now: async () => ({ loadpoints }) as unknown as EvccNow,
+        sessions: async () => [],
+      },
+    };
+    const r = await handleApi('GET', new URL('http://x/api/health'), deps as unknown as ApiDeps);
+    return (r.body as { evcc: boolean }).evcc;
+  };
+  it('evcc that only reads meters is no charging page', async () => {
+    expect(await health([])).toBe(false);
+    expect(await health([{ title: 'Garage' }])).toBe(true);
   });
 });

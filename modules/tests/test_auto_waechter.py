@@ -36,7 +36,7 @@ def plan(kw):
 class TestWaechter(unittest.TestCase):
     def setUp(self):
         self.base = tempfile.mkdtemp(prefix="vd-waechter-")
-        self.guete = {"n": 20, "korrekt_pct": 100.0, "zustand": "bewertbar"}
+        self.guete = {"n": 30, "korrekt_pct": 100.0, "zustand": "bewertbar"}
         self.plan = plan(3.0)
         self.ev = FakeEvcc()
 
@@ -64,8 +64,8 @@ class TestWaechter(unittest.TestCase):
 
     def test_wilson_is_honest_for_small_n(self):
         self.assertLess(W.wilson_low(7, 7), 0.75)  # 7 of 7 is not yet enough
-        self.assertGreaterEqual(W.wilson_low(14, 14), 0.75)
-        self.assertLess(W.wilson_low(13, 14), 0.75)
+        self.assertGreaterEqual(W.wilson_low(26, 28), 0.75)
+        self.assertLess(W.wilson_low(25, 28), 0.75)
 
     def test_off_never_writes_and_automatic_stays_locked(self):
         w = self.w()
@@ -94,7 +94,7 @@ class TestWaechter(unittest.TestCase):
         self.plan = plan(0.0)
         w.tick(T0 + 7 * 86400 + 120)
         self.assertEqual(self.ev.mode, "off")
-        self.guete = {"n": 20, "korrekt_pct": 70.0}
+        self.guete = {"n": 30, "korrekt_pct": 70.0}
         self.assertIn("gesperrt", w.tick(T0 + 7 * 86400 + 240))
         self.assertEqual(self.ev.mode, "pv")
         n = len(self.ev.writes)

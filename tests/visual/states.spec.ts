@@ -554,3 +554,56 @@ test('charge guard locked: automatic greyed out, three conditions, pause test qu
   await expect(page.getByRole('radio', { name: /Erlauben/ })).toBeVisible();
   await page.screenshot({ path: `screenshots/waechter-${info.project.name}.png`, fullPage: true });
 });
+
+test('setup: first visitor takes over, grid check asks for the direction', async ({
+  page,
+}, info) => {
+  await page.route('**/api/health', (r) =>
+    r.fulfill(json({ ok: true, source: 'live', backends: [], setup: true })),
+  );
+  await page.route('**/api/setup', (r) =>
+    r.fulfill(json({ open: true, scan: false, questions: [], answered: false, claimable: true })),
+  );
+  const tpl = {
+    template: 'acme-meter',
+    brands: ['Acme'],
+    products: ['Zähler'],
+    params: [
+      {
+        name: 'host',
+        label: 'Adresse',
+        help: '',
+        type: 'text',
+        required: true,
+        advanced: false,
+      },
+    ],
+  };
+  await page.route('**/api/setup/*', (r) => {
+    const step = r.request().url().split('/').pop();
+    if (step === 'claim') return r.fulfill(json({ code: '482913' }));
+    if (step === 'templates') return r.fulfill(json({ templates: [tpl] }));
+    // evcc: + = buying from the grid
+    if (step === 'test') return r.fulfill(json({ result: { power: { value: 2300, error: '' } } }));
+    return r.fulfill(json({ ok: true, all: true }));
+  });
+  await page.goto('/?lang=de#/einrichten');
+  await page.getByRole('button', { name: 'Einrichtung übernehmen' }).click();
+  await expect(page.getByText('482913')).toBeVisible();
+  await page.screenshot({ path: `screenshots/setup-claim-${info.project.name}.png` });
+  await page.getByRole('button', { name: 'Weiter' }).click();
+  for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Ja' }).click();
+  await page.getByRole('button', { name: 'Weiter' }).click();
+  await page.getByRole('button', { name: 'Nein' }).click(); // no solar plant
+  await page.getByRole('button', { name: 'Nein' }).click(); // no battery
+  await page.getByRole('button', { name: 'Ja' }).click(); // grid meter
+  await page.getByRole('button', { name: /Acme/ }).click();
+  await page.locator('input').first().fill('192.168.1.20');
+  await page.getByRole('button', { name: 'Testen' }).click();
+  await page.getByRole('button', { name: 'Ja' }).click();
+  await expect(page.getByText(/Kaufst du gerade Strom/)).toBeVisible();
+  await page.screenshot({ path: `screenshots/setup-direction-${info.project.name}.png` });
+  // wrong direction: nothing is saved
+  await page.getByRole('button', { name: 'Ich speise ein' }).click();
+  await expect(page.getByText(/Richtung passt nicht/)).toBeVisible();
+});

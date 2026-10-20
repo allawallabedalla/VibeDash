@@ -32,7 +32,7 @@ from datetime import UTC, datetime
 ITEM = "laden:waechter"
 TEST_ITEM = "laden:pausetest"
 LESE_TAGE = 7
-TREFF_N = 14
+TREFF_N = 28  # RISIKEN.md: control only after at least 4 weeks of display
 TREFF_MIN = 0.75
 FEHL_MAX = 3
 LAEDT_KW = 1.0  # the car is charging

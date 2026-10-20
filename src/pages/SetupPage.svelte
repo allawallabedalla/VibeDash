@@ -46,7 +46,7 @@
   let scanOn = $state(false);
   let found = $state<{ host: string; ports: number[] }[] | null>(null);
   let roleIdx = $state(0);
-  let roleStep = $state<'ask' | 'pick' | 'form' | 'check' | 'saved'>('ask');
+  let roleStep = $state<'ask' | 'pick' | 'form' | 'check' | 'direction' | 'saved'>('ask');
   let templates = $state<Template[]>([]);
   let search = $state('');
   let chosen = $state<Template | null>(null);
@@ -195,7 +195,8 @@
     chosen = x;
     const v: Record<string, string> = {};
     for (const p of x.params) v[p.name] = preset?.[p.name] ?? p.value ?? '';
-    if (!v.host && found?.length === 1) v.host = found[0]!.host;
+    const mb = (found ?? []).filter((f) => f.ports.some((p) => p !== 80));
+    if (!v.host && mb.length === 1) v.host = mb[0]!.host;
     values = v;
     reading = null;
     roleStep = 'form';
@@ -228,8 +229,32 @@
     if (p && !p.error && typeof p.value === 'number') return `${num(p.value / 1000, 1)} kW`;
     return null;
   };
+  /** evcc's sign: grid + = buying, battery + = giving power, pv + = producing */
+  const powerW = (rd: Reading | null): number | null => {
+    const p = rd?.power;
+    return p && !p.error && typeof p.value === 'number' ? p.value : null;
+  };
   async function confirm(yes: boolean) {
     if (!yes || !chosen) return void (message = t('setup.mismatch'));
+    // the amount alone proves little: grid and battery also need the direction (Fremdtest 8)
+    const w = powerW(reading);
+    if ((role === 'grid' || role === 'battery') && w !== null && Math.abs(w) >= 100) {
+      roleStep = 'direction';
+      return;
+    }
+    await save();
+  }
+  function direction(positive: boolean) {
+    const w = powerW(reading);
+    if (w === null || w > 0 !== positive) {
+      message = t('setup.signWrong');
+      roleStep = 'check';
+      return;
+    }
+    void save();
+  }
+  async function save() {
+    if (!chosen) return;
     busy = true;
     try {
       const r = await post('save', { usage: role, template: chosen.template, values });
@@ -396,7 +421,7 @@
               {/each}
             </ul>
           {/if}
-        {:else if (roleStep === 'form' || roleStep === 'check') && chosen}
+        {:else if (roleStep === 'form' || roleStep === 'check' || roleStep === 'direction') && chosen}
           <p>
             <strong
               >{[chosen.brands.join(', '), chosen.products[0]].filter(Boolean).join(' · ')}</strong
@@ -411,10 +436,18 @@
                   : ''}</span
               >
               {#if p.name === 'host' && found?.length}
-                <select bind:value={values[p.name]}>
-                  <option value="">–</option>
-                  {#each found as f (f.host)}<option value={f.host}>{f.host}</option>{/each}
-                </select>
+                <!-- free to type; the devices found are only suggestions (Fremdtest 6) -->
+                <input
+                  bind:value={values[p.name]}
+                  list="setup-hosts"
+                  inputmode="decimal"
+                  autocomplete="off"
+                />
+                <datalist id="setup-hosts">
+                  {#each found as f (f.host)}<option value={f.host}
+                      >{f.ports.some((x) => x !== 80) ? 'Modbus' : 'Web'}</option
+                    >{/each}
+                </datalist>
               {:else if p.type === 'choice'}
                 <select bind:value={values[p.name]}>
                   {#each p.choices ?? [] as c (c)}<option value={c}>{c}</option>{/each}
@@ -448,8 +481,21 @@
             {#if busy}<p class="hint" role="status">{t('setup.testing')}</p>{/if}
           {:else}
             {@const r = readText(reading)}
-            {#if r}
+            {#if roleStep === 'direction'}
+              <p class="q">{t(role === 'grid' ? 'setup.dirGrid' : 'setup.dirBattery')}</p>
+              <div class="row">
+                <button class="b main" disabled={busy} onclick={() => direction(true)}
+                  >{t(role === 'grid' ? 'setup.buy' : 'setup.discharging')}</button
+                >
+                <button class="b main" disabled={busy} onclick={() => direction(false)}
+                  >{t(role === 'grid' ? 'setup.sell' : 'setup.charging')}</button
+                >
+              </div>
+            {:else if r}
               <p class="q">{t('setup.read', { value: r })} {t('setup.check')}</p>
+              {#if role === 'pv' && (powerW(reading) ?? 0) < 50}
+                <p class="hint">{t('setup.pvNight')}</p>
+              {/if}
               <div class="row">
                 <button class="b main" disabled={busy} onclick={() => confirm(true)}
                   >{t('setup.yes')}</button

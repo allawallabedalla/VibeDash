@@ -1,4 +1,5 @@
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { validateMapping } from '../../server/mapping';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -97,12 +98,15 @@ describe('setup assistant: building blocks', () => {
     expect(cidrHosts('8.8.8.0/24')).toEqual([]);
   });
 
-  it('scan only lists hosts with a device port', async () => {
+  it('scan lists Modbus devices first, then devices with only a web page', async () => {
     const found = await scan(
       '192.168.5.0/29',
-      async (h, p) => (h === '192.168.5.3' && p === 502) || p === 80,
+      async (h, p) => (h === '192.168.5.3' && p === 502) || (h === '192.168.5.2' && p === 80),
     );
-    expect(found).toEqual([{ host: '192.168.5.3', ports: [502, 80] }]);
+    expect(found).toEqual([
+      { host: '192.168.5.3', ports: [502] },
+      { host: '192.168.5.2', ports: [80] },
+    ]);
   });
 
   it('setup code: right code passes, 5 wrong tries lock for 10 minutes', () => {
@@ -121,6 +125,7 @@ describe('setup assistant: whole flow with a fake evcc', () => {
     const calls: { what: string; body?: unknown }[] = [];
     const site: Record<string, unknown> = { grid: '', pv: null, battery: null };
     let n = 0;
+    const made: unknown[] = [];
     const evcc = {
       templates: async () => ({ status: 200, data: RAW }),
       test: async (b: unknown) => (
@@ -129,9 +134,10 @@ describe('setup assistant: whole flow with a fake evcc', () => {
       ),
       create: async (b: unknown) => (
         calls.push({ what: 'create', body: b }),
+        made.push({ id: n + 1, name: `db:${n + 1}`, config: b }),
         { status: 200, data: { id: ++n, name: `db:${n}` } }
       ),
-      devices: async () => ({ status: 200, data: [] }),
+      devices: async () => ({ status: 200, data: made }),
       site: async () => ({ status: 200, data: { ...site } }),
       updateSite: async (b: Record<string, unknown>) => (
         Object.assign(site, b),
@@ -194,6 +200,9 @@ describe('setup assistant: whole flow with a fake evcc', () => {
     });
     expect((await post('/api/setup/save', v)).body).toEqual({ ok: true, name: 'db:1' });
     expect(site.pv).toEqual(['db:1']);
+    // "back" and save the same again: no second device (Fremdtest 7)
+    expect((await post('/api/setup/save', v)).body).toEqual({ ok: true, name: 'db:1' });
+    expect(site.pv).toEqual(['db:1']);
     await post('/api/setup/save', { ...v, usage: 'grid' });
     expect(site.grid).toBe('db:2');
     expect(calls.filter((c) => c.what === 'create').length).toBe(2);
@@ -244,5 +253,33 @@ describe('general stick: the first visitor becomes the owner', () => {
     expect((await get()).body).toMatchObject({ claimable: false });
     expect((await post('/api/setup/unlock', { code })).status).toBe(200);
     expect((await post('/api/setup/unlock', { code: '000000' })).status).toBe(403);
+  });
+});
+
+describe('confirmed in the assistant', () => {
+  it('a device saved after the yes is no longer "being checked"', async () => {
+    const raw = JSON.parse(readFileSync('starter/mapping.evcc.json', 'utf8'));
+    const v = validateMapping(raw);
+    if (!v.ok) throw new Error(v.errors.join('; '));
+    const state = stateFile(join(mkdtempSync(join(tmpdir(), 'vd-conf-')), 'setup.json'));
+    state.write({ confirmed: { pv: true } });
+    const deps = {
+      mode: 'live',
+      now: Date.now,
+      log: () => {},
+      mapping: v.mapping,
+      series: {},
+      setup: { state } as unknown as SetupDeps,
+    } as unknown as ApiDeps;
+    const r = await handleApi('GET', new URL('http://x/api/entities'), deps);
+    const conf = Object.fromEntries(
+      (r.body as { entities: { id: string; confirmed: boolean }[] }).entities.map((e) => [
+        e.id,
+        e.confirmed,
+      ]),
+    );
+    expect(conf.pv_power).toBe(true);
+    expect(conf.grid_power).toBe(false);
+    expect(conf.load_power).toBe(false); // needs grid and pv
   });
 });

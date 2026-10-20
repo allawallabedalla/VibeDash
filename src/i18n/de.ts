@@ -302,9 +302,9 @@ export const de = {
   'state.missingSince': 'Daten fehlen seit {when}',
   'state.checking': 'wird geprüft',
   'q.unconfirmedOne':
-    'Ein Wert ist noch nicht bestätigt. Stimmt er mit der Hersteller-App überein? (In local/mapping.json „confirmed: true“ setzen.)',
+    'Ein Wert ist noch nicht bestätigt. Stimmt er mit der Hersteller-App überein? Bestätigen geht in der Einrichtung (#/einrichten) oder mit deinem Helfer.',
   'q.unconfirmed':
-    '{n} Werte sind noch nicht bestätigt. Stimmen sie mit der Hersteller-App überein? (In local/mapping.json „confirmed: true“ setzen.)',
+    '{n} Werte sind noch nicht bestätigt. Stimmen sie mit der Hersteller-App überein? Bestätigen geht in der Einrichtung (#/einrichten) oder mit deinem Helfer.',
   'state.open': 'noch offen',
   'state.retry': 'Erneut versuchen',
   'state.errorTitle': 'Keine Daten',
@@ -413,6 +413,17 @@ export const de = {
     'Das ist dein Code. Aufschreiben oder abfotografieren – du brauchst ihn, wenn du an einem anderen Gerät weitermachst.',
   'setup.claimTaken':
     'Jemand hat die Einrichtung schon übernommen – bitte den Code von dieser Person eingeben.',
+  'setup.dirGrid':
+    'Und die Richtung: Kaufst du gerade Strom aus dem Netz – oder speist du ein? Das zeigt deine App.',
+  'setup.buy': 'Ich kaufe',
+  'setup.sell': 'Ich speise ein',
+  'setup.dirBattery': 'Und die Richtung: Lädt der Akku gerade – oder gibt er Strom ab?',
+  'setup.charging': 'Lädt',
+  'setup.discharging': 'Gibt ab',
+  'setup.signWrong':
+    'Die Richtung passt nicht zur Messung – nichts gespeichert. Frag bitte deinen Helfer: Sie muss am Gerät umgedreht werden.',
+  'setup.pvNight':
+    'Im Dunkeln liefert die Solaranlage 0 kW – das beweist noch nichts. Bei Tageslicht noch einmal prüfen ist besser.',
   'setup.code': 'Einrichtungs-Code',
   'setup.codeHelp': 'Der Code stand am Ende der Installation auf dem Bildschirm (6 Ziffern).',
   'setup.codeWrong': 'Der Code stimmt nicht. Bitte nochmal.',
@@ -437,8 +448,9 @@ export const de = {
   'setup.roleQ.battery': 'Hast du einen Batteriespeicher?',
   'setup.roleQ.grid':
     'Misst ein Gerät, was ins Netz geht und was du beziehst? (Oft macht das der Wechselrichter mit.)',
-  'setup.same': 'Gleiches Gerät wie eben ({brand}) verwenden?',
-  'setup.brand': 'Hersteller (steht auf dem Typenschild)',
+  'setup.same':
+    'Läuft das über dasselbe Gerät wie eben ({brand})? Bei Akku und Netzzähler ist das oft so.',
+  'setup.brand': 'Hersteller (Typenschild – bei Akku und Zähler oft der des Wechselrichters)',
   'setup.brandSearch': 'Hersteller suchen …',
   'setup.address': 'Adresse im Heimnetz',
   'setup.more': 'Weitere Angaben (meist nicht nötig)',
@@ -456,7 +468,7 @@ export const de = {
   'setup.finished':
     'Fertig. In etwa einer Minute kommen die ersten Werte. Der Assistent ist jetzt geschlossen.',
   'setup.closed':
-    'Die Einrichtung ist abgeschlossen. Zum Ändern hilft dein Agent oder ein neuer Lauf des Installers.',
+    'Die Einrichtung ist abgeschlossen – so stellt niemand sonst etwas um. Ändern kann sie nur noch dein Helfer (z. B. Claude Code).',
   'setup.toDash': 'Zum Dashboard',
   'setup.error':
     'Das hat nicht geklappt. Nochmal versuchen – oder Foto vom Bildschirm an deinen Helfer.',

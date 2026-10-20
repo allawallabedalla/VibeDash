@@ -64,7 +64,7 @@ services:
       # + vibedash: the charge guard in the modules container reads the plan here
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost},vibedash
       ALLOWED_HOSTS_EXACT: 'on'
-      LOCATION_WRITE: 'off'
+      # the place for the weather is set once on the overview (Fremdtest 9)
       LATITUDE: ${LATITUDE:-}
       LONGITUDE: ${LONGITUDE:-}
       TZ: ${TZ:-Europe/Berlin}
