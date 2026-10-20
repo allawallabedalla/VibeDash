@@ -16,7 +16,18 @@
   } from '../app/charge-timeline';
   import { i18n } from '../i18n/index.svelte';
 
-  let { cases, house }: { cases: Cases; house: House } = $props();
+  let {
+    cases,
+    house,
+    startStep = 0,
+    kwOptions = [3.7, 7.4, 11],
+  }: {
+    cases: Cases;
+    house: House;
+    /** steps before this are the past: shaded, no windows there */
+    startStep?: number;
+    kwOptions?: number[];
+  } = $props();
 
   // the drawing has the size of its box in CSS pixels: crisp text and finger-sized handles on a phone
   let boxW = $state(0);
@@ -26,7 +37,6 @@
   const PLOT = $derived(narrow ? 230 : 230); // bottom of the power area
   const GRID_H = $derived(narrow ? 64 : 70); // grid import area below
   const H = $derived(PLOT + GRID_H + 28);
-  const KW_OPTIONS = [3.7, 7.4, 11];
 
   const TEXT = {
     de: {
@@ -79,7 +89,12 @@
   const fill = (s: string, v: Record<string, string>) =>
     s.replace(/\{(\w+)\}/g, (_, k: string) => v[k] ?? '');
 
-  let windows = $state<Window[]>([{ id: 1, from: 44, to: 56, kw: 7.4 }]);
+  // svelte-ignore state_referenced_locally (the first window only needs the start once)
+  const first = Math.min(Math.max(startStep, 44), 88);
+  // svelte-ignore state_referenced_locally
+  let windows = $state<Window[]>([
+    { id: 1, from: first, to: first + 8, kw: kwOptions[1] ?? kwOptions[0] ?? 7 },
+  ]);
   let selected = $state<number | null>(1);
   let nextId = 2;
 
@@ -160,10 +175,11 @@
       if (w.id !== d.id) return w;
       if (d.mode === 'move') {
         const len = d.to - d.from;
-        const from = Math.max(0, Math.min(STEPS - len, d.from + delta));
+        const from = Math.max(startStep, Math.min(STEPS - len, d.from + delta));
         return { ...w, from, to: from + len };
       }
-      if (d.mode === 'from') return { ...w, from: Math.max(0, Math.min(d.to - 1, d.from + delta)) };
+      if (d.mode === 'from')
+        return { ...w, from: Math.max(startStep, Math.min(d.to - 1, d.from + delta)) };
       return { ...w, to: Math.min(STEPS, Math.max(d.from + 1, d.to + delta)) };
     });
   }
@@ -172,8 +188,11 @@
   }
 
   function add(at = 48) {
-    const from = Math.max(0, Math.min(STEPS - 8, at - 4));
-    windows = [...windows, { id: nextId, from, to: from + 8, kw: 7.4 }];
+    const from = Math.max(startStep, Math.min(STEPS - 8, at - 4));
+    windows = [
+      ...windows,
+      { id: nextId, from, to: Math.min(STEPS, from + 8), kw: kwOptions[1] ?? kwOptions[0] ?? 7 },
+    ];
     selected = nextId++;
   }
   function remove(id: number) {
@@ -181,7 +200,7 @@
     selected = windows.at(-1)?.id ?? null;
   }
   function best() {
-    const kw = windows.find((w) => w.id === selected)?.kw ?? 7.4;
+    const kw = windows.find((w) => w.id === selected)?.kw ?? kwOptions[1] ?? kwOptions[0] ?? 7;
     windows = suggest(cases, house, kw).map((w) => ({ ...w, id: nextId++ }));
     selected = windows[0]?.id ?? null;
   }
@@ -241,6 +260,13 @@
     {/each}
     <line class="base" x1="0" x2={W} y1={PLOT} y2={PLOT} />
 
+    {#if startStep > 0}<rect
+        class="past"
+        x="0"
+        y={TOP}
+        width={x(startStep)}
+        height={PLOT + GRID_H - TOP}
+      />{/if}
     <!-- windows (under the curves, so the sun stays readable) -->
     {#each windows as w, k (w.id)}
       {@const st = windowState(k)}
@@ -299,7 +325,7 @@
   <div class="selbar">
     <span class="when">{clock(sel.from)}–{clock(sel.to)}</span>
     <span class="pw">{tx.power}</span>
-    {#each KW_OPTIONS as k (k)}
+    {#each kwOptions as k (k)}
       <button type="button" class:on={sel.kw === k} onclick={() => setKw(sel.id, k)}
         >{f(k, 1)} kW</button
       >
@@ -376,6 +402,9 @@
   }
   .hour {
     stroke: var(--line);
+  }
+  .past {
+    fill: var(--gap);
   }
   .base {
     stroke: var(--faint);

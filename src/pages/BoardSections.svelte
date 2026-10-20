@@ -208,6 +208,15 @@
         />
       {/await}
     </Card>
+  {:else if s.type === 'chargetimeline'}
+    <Card title={s.title} icon="plugCar" color="var(--battery)" note={s.note} info={s.info}>
+      <!-- loaded only where a board has a timeline (first-page budget) -->
+      {#await import('../components/BoardChargeTimeline.svelte')}
+        <p class="muted-note" role="status">{t('state.loading')}</p>
+      {:then { default: BoardChargeTimeline }}
+        <BoardChargeTimeline tl={s} />
+      {/await}
+    </Card>
   {:else if s.type === 'choice'}
     <Card title={s.title} icon="lookCircle" color="var(--battery)" note={s.note} info={s.info}>
       <!-- loaded only where a board has a choice (first-page budget) -->
