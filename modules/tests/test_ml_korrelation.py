@@ -129,7 +129,7 @@ class TestKorrelation(unittest.TestCase):
             ],
         )
         tiles = {t["label"]: t for t in s["Zusammenhänge diese Woche"]["tiles"]}
-        self.assertEqual(tiles["Robust"]["sub"], "|r| ≥ 0,5 von 1.234 getesteten")
+        self.assertEqual(tiles["Robust"]["sub"], "starke Paare von 1.234 getesteten")
         self.assertEqual(
             (tiles["Prüfen"]["value"], tiles["Neu"]["value"], tiles["Entfallen"]["value"]), ("1", "3", "1")
         )

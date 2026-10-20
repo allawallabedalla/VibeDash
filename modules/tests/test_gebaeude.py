@@ -128,9 +128,9 @@ class TestGebaeude(unittest.TestCase):
             ],
         )
         tiles = {t["label"]: t for t in b["sections"][0]["tiles"]}
-        self.assertEqual(tiles["Auskühlen"]["sub"], "τ (180–240) · 0,50 K je Nacht ohne Heizung")
+        self.assertEqual(tiles["Auskühlen"]["sub"], "Auskühlzeit, 180–240 h · 0,50 K je Nacht ohne Heizung")
         self.assertEqual(tiles["Speicher"]["value"], "30")
-        self.assertEqual(tiles["WP-COP"]["value"], "+0,25")
+        self.assertEqual(tiles["WP je Grad wärmer"]["value"], "+0,25")
         self.assertEqual((tiles["Wasser"]["value"], tiles["Wasser"]["state"]), ("10", "look"))
         self.assertEqual(tiles["Kippfenster"]["value"], "≈ 2,0")
         self.assertEqual(tiles["Auskühlen"]["info"]["what"], "Methode A")
