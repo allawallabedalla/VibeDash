@@ -12,6 +12,8 @@ pnpm build >/dev/null
 pnpm budget
 echo "== visual tests (pages, states: overflow, contrast, ≈ with n, touch targets)"
 pnpm test:visual 2>&1 | tail -3   # pipefail (set -o pipefail above) keeps its exit code
+echo "== shell scripts (starter, VibeDash stick)"
+for f in starter/install.sh image/*.sh; do bash -n "$f"; done
 echo "== forecast + modules + tools/grundriss (Python)"
 if command -v uvx >/dev/null 2>&1; then
   (cd modules && uvx ruff@0.16.9 format --check . && uvx ruff@0.16.9 check .)

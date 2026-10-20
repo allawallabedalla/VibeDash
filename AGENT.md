@@ -42,6 +42,11 @@ devices need a manual step by the person. Say so honestly.
 
 ### 1.0 Fresh mini PC: the starter pack
 
+**Brand-new mini PC, you on the person's laptop:** build the VibeDash stick (`image/build.sh --key <your public
+SSH key>`, ERSTEINRICHTUNG.md stage 0). It installs Debian and the starter by itself; afterwards you reach the box
+with `ssh vibedash@vibedash.local` (key only, `sudo` without a password). The access note it writes holds the setup
+code and a password – never commit or share it.
+
 On a machine without a data store, run `sudo bash starter/install.sh` (idempotent; see `ERSTEINRICHTUNG.md`). It
 installs Docker from Ubuntu packages and starts, in `starter/compose.yaml`: InfluxDB 1.8 (database `haus`, no published
 port, users `evcc` write-only / `vibedash` read-only, credentials in `starter/.env` mode 600), **evcc** as the

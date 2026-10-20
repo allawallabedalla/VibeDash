@@ -8,8 +8,7 @@
 # Ohne --iso lädt es die aktuelle Debian-Netzinstallation und prüft Prüfsumme (und, wenn gpg da ist,
 # die Debian-Signatur). Den Stick schreibt danach balenaEtcher oder der Helfer.
 set -euo pipefail
-cd "$(dirname "$0")"
-HIER=$(pwd)
+HIER=$(cd "$(dirname "$0")" && pwd)
 
 ISO="" KEY="" BRANCH="main" OUT="vibedash.iso" DEBUG=0
 REPO_URL="${VIBEDASH_REPO_URL:-https://github.com/allawallabedalla/VibeDash.git}"
@@ -23,6 +22,10 @@ while [ $# -gt 0 ]; do
     *) echo "unbekannt: $1" >&2; exit 2 ;;
   esac
 done
+# Pfade gelten von dort, wo gestartet wurde; gearbeitet wird im Ordner image/
+voll() { case "$1" in /*|"") echo "$1" ;; *) echo "$(pwd)/$1" ;; esac; }
+ISO=$(voll "$ISO"); KEY=$(voll "$KEY"); OUT=$(voll "$OUT")
+cd "$HIER"
 for p in xorriso cpio gzip curl; do
   command -v "$p" >/dev/null || { echo "Es fehlt: $p" >&2; exit 1; }
 done
@@ -51,25 +54,28 @@ if [ -z "$ISO" ]; then
 fi
 
 # ── 2. Persönliche Zugangsdaten ────────────────────────────────────────────────────────────────────────
-zufall() { LC_ALL=C tr -dc "$1" < /dev/urandom | head -c "$2"; }
+# tr endet mit SIGPIPE, sobald head genug hat – das ist hier kein Fehler (pipefail)
+zufall() { local x; x=$(LC_ALL=C tr -dc "$1" < /dev/urandom | head -c "$2") || true; echo "$x"; }
 PASSWORT=$(zufall 'A-HJ-NP-Za-km-z2-9' 16)
 CODE=$(zufall '0-9' 6)
 
 # ── 3. Antworten und Erststart in die Startdatei des Installers ────────────────────────────────────────
-mkdir -p "$ARBEIT/initrd/vibedash"
-sed "s/@@PASSWORT@@/${PASSWORT}/g" preseed.cfg > "$ARBEIT/initrd/preseed.cfg"
-cp vibedash-platte.sh vibedash-danach.sh vibedash-erststart.sh vibedash-erststart.service "$ARBEIT/initrd/vibedash/"
+mkdir -p "$ARBEIT/initrd.d/vibedash"
+sed "s/@@PASSWORT@@/${PASSWORT}/g" preseed.cfg > "$ARBEIT/initrd.d/preseed.cfg"
+cp vibedash-platte.sh vibedash-danach.sh vibedash-erststart.sh vibedash-erststart.service "$ARBEIT/initrd.d/vibedash/"
 {
   echo "VIBEDASH_REPO_URL=${REPO_URL}"
   echo "VIBEDASH_BRANCH=${BRANCH}"
   echo "VIBEDASH_SETUP_CODE=${CODE}"
-} > "$ARBEIT/initrd/vibedash/abbild.env"
-if [ -n "$KEY" ]; then cp "$KEY" "$ARBEIT/initrd/vibedash/authorized_keys"; else : > "$ARBEIT/initrd/vibedash/authorized_keys"; fi
+} > "$ARBEIT/initrd.d/vibedash/abbild.env"
+if [ -n "$KEY" ]; then cp "$KEY" "$ARBEIT/initrd.d/vibedash/authorized_keys"; else : > "$ARBEIT/initrd.d/vibedash/authorized_keys"; fi
 
-xorriso -osirrox on -indev "$ISO" -extract /install.amd/initrd.gz "$ARBEIT/initrd.gz" >/dev/null 2>&1
-chmod u+w "$ARBEIT/initrd.gz"
-# ein zweites cpio-Archiv anhängen: der Kernel liest beide, der Installer findet /preseed.cfg von selbst
-(cd "$ARBEIT/initrd" && find . | cpio -o -H newc 2>/dev/null | gzip -9) >> "$ARBEIT/initrd.gz"
+xorriso -osirrox on -indev "$ISO" -extract /install.amd/initrd.gz "$ARBEIT/orig.gz" >/dev/null 2>&1
+# unser cpio-Archiv hinter das entpackte Original, dann zusammen packen: der Kernel liest beide
+# Archive, der Installer findet /preseed.cfg von selbst (Debian-Wiki „Preseed/EditIso“)
+gzip -dc "$ARBEIT/orig.gz" > "$ARBEIT/initrd"
+(cd "$ARBEIT/initrd.d" && find . | cpio -o -H newc 2>/dev/null) >> "$ARBEIT/initrd"
+gzip -9 -c "$ARBEIT/initrd" > "$ARBEIT/initrd.gz"
 
 # ── 4. Startmenü: VibeDash installieren nach 10 Sekunden ───────────────────────────────────────────────
 KONSOLE=""

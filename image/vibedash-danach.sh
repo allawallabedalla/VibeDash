@@ -18,6 +18,12 @@ if [ -s /vibedash/authorized_keys ]; then
   chmod 700 "$t/home/vibedash/.ssh"
   chmod 600 "$t/home/vibedash/.ssh/authorized_keys"
   in-target chown -R vibedash:vibedash /home/vibedash/.ssh
+  # mit Schlüssel: der Helfer braucht kein Passwort für sudo (er kann keins eintippen), dafür ist die
+  # Anmeldung per Passwort über das Netz aus – rein kommt nur, wer den Schlüssel hat (Fremdtest 2, 23)
+  echo 'vibedash ALL=(ALL) NOPASSWD:ALL' > "$t/etc/sudoers.d/vibedash"
+  chmod 440 "$t/etc/sudoers.d/vibedash"
+  mkdir -p "$t/etc/ssh/sshd_config.d"
+  printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\n' > "$t/etc/ssh/sshd_config.d/vibedash.conf"
 fi
 
 in-target systemctl enable vibedash-erststart.service

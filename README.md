@@ -1,5 +1,8 @@
 # VibeDash
 
+> **Deutsch:** Ruhiges Haus-Dashboard für Solaranlage, Akku, Wärmepumpe und E-Auto – läuft zu Hause auf einem
+> Mini-PC, ohne Cloud. Einstieg ohne Vorwissen: **[ERSTEINRICHTUNG.md](ERSTEINRICHTUNG.md)**.
+
 Calm home dashboards for smart homes, solar, heat pumps and EVs – composed by an AI agent
 from a fixed set of design building blocks, on top of checked data.
 
@@ -18,9 +21,15 @@ switches a device, never asks you to open anything. Start here, even with a bran
 [ERSTEINRICHTUNG.md](ERSTEINRICHTUNG.md) (from the box to the dashboard; with Claude Code or just a chat). Rules:
 [INBETRIEBNAHME.md](INBETRIEBNAHME.md) section 0.
 
-> Status: early. Pages Overview, Now, Forecasts and Charging (charge plan, stage A)
-> and a gallery of all building blocks; synthetic demo data, or InfluxDB 1.x and/or Home
-> Assistant via the server. Agent build guide incl. onboarding: [AGENT.md](AGENT.md) (German source: [INBETRIEBNAHME.md](INBETRIEBNAHME.md)). Project background and roadmap (German): [ANLEITUNG.md](ANLEITUNG.md).
+> **Status (October 2026):** in daily use in one home. Pages Overview, Week, Now, Forecasts and Charging
+> (charge plan with a risk choice, a "charge now" wish, a charge timeline to try windows), plus tool modules with
+> their own tabs (`modules/`): maintenance plan with a calendar subscription, rooms on the floor plan (2D/3D),
+> garden, building physics, KNX and KNX log, model accuracy, correlation atlas. Each person switches tabs on/off
+> and orders them. Data: synthetic demo, InfluxDB 1.x, Home Assistant and/or evcc. Install: a ready
+> **VibeDash stick** (`image/`, Debian, installs itself) or one installer line on Ubuntu/Debian (`starter/`), then
+> a setup assistant in the browser. Agent build guide: [AGENT.md](AGENT.md) (German source:
+> [INBETRIEBNAHME.md](INBETRIEBNAHME.md)); background and roadmap (German): [ANLEITUNG.md](ANLEITUNG.md).
+> Not yet run in a second home: expect rough edges in the setup assistant for other brands.
 
 <p>
   <img src="docs/screenshots/overview-mac-light.png" alt="Overview, demo data, light" width="64%">
