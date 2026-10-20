@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { handleApi, type ApiDeps, type SetupDeps } from '../../server/api';
 import {
   cidrHosts,
+  claimChecker,
   codeChecker,
   deviceBody,
   privateHost,
@@ -201,5 +202,47 @@ describe('setup assistant: whole flow with a fake evcc', () => {
     const g = await handleApi('GET', new URL('/api/setup', 'http://x'), deps);
     expect(g.body).toMatchObject({ open: false });
     expect((await post('/api/setup/test', v)).status).toBe(409);
+  });
+});
+
+describe('general stick: the first visitor becomes the owner', () => {
+  function claimSetup() {
+    const state = stateFile(join(mkdtempSync(join(tmpdir(), 'vd-claim-')), 'setup.json'));
+    const c = claimChecker(state.read);
+    const st: SetupDeps = {
+      checkCode: (x) => c.check(x),
+      claim: () => c.claim(state.write),
+      state,
+      evcc: {} as SetupDeps['evcc'],
+      scanCidr: null,
+      scan: async () => [],
+      allowDemo: false,
+    };
+    const deps: ApiDeps = { mode: 'live', now: Date.now, log: () => {}, setup: st };
+    const req = (body: object) => ({
+      body: JSON.stringify(body),
+      contentType: 'application/json',
+      host: 'x',
+      origin: 'http://x',
+      fetchSite: 'same-origin',
+    });
+    const post = (path: string, body: object) =>
+      handleApi('POST', new URL(path, 'http://x'), deps, req(body));
+    const get = () => handleApi('GET', new URL('/api/setup', 'http://x'), deps);
+    return { post, get, state };
+  }
+
+  it('hands out one code, once, and only that code opens the assistant', async () => {
+    const { post, get, state } = claimSetup();
+    expect((await get()).body).toMatchObject({ claimable: true });
+    expect((await post('/api/setup/unlock', { code: '123456' })).status).toBe(403);
+    const first = await post('/api/setup/claim', {});
+    const code = (first.body as { code: string }).code;
+    expect(code).toMatch(/^\d{6}$/);
+    expect(state.read().owner).not.toContain(code); // only the hash is stored
+    expect((await post('/api/setup/claim', {})).status).toBe(409);
+    expect((await get()).body).toMatchObject({ claimable: false });
+    expect((await post('/api/setup/unlock', { code })).status).toBe(200);
+    expect((await post('/api/setup/unlock', { code: '000000' })).status).toBe(403);
   });
 });

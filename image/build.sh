@@ -4,13 +4,17 @@
 # Das Ergebnis ist persönlich: Es enthält Passwort und Einrichtungs-Code (stehen im Zugangszettel).
 #
 #   image/build.sh [--key ~/.ssh/id_ed25519.pub] [--iso debian.iso] [--branch main] [--out vibedash.iso]
+#   image/build.sh --allgemein [--out vibedash-stick.iso]
+#
+# --allgemein: der Stick für alle (GitHub-Release, kein Helfer nötig): kein Passwort, keine Anmeldung am Gerät,
+# kein Code auf dem Stick – wer die Einrichtung im Browser zuerst öffnet, wird Besitzer und bekommt den Code.
 #
 # Ohne --iso lädt es die aktuelle Debian-Netzinstallation und prüft Prüfsumme (und, wenn gpg da ist,
 # die Debian-Signatur). Den Stick schreibt danach balenaEtcher oder der Helfer.
 set -euo pipefail
 HIER=$(cd "$(dirname "$0")" && pwd)
 
-ISO="" KEY="" BRANCH="main" OUT="vibedash.iso" DEBUG=0
+ISO="" KEY="" BRANCH="main" OUT="vibedash.iso" DEBUG=0 ALLGEMEIN=0
 REPO_URL="${VIBEDASH_REPO_URL:-https://github.com/allawallabedalla/VibeDash.git}"
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -18,7 +22,8 @@ while [ $# -gt 0 ]; do
     --key) KEY=$2; shift 2 ;;
     --branch) BRANCH=$2; shift 2 ;;
     --out) OUT=$2; shift 2 ;;
-    --debug) DEBUG=1; shift ;;          # serielle Konsole (nur für Tests in einer VM)
+    --debug) DEBUG=1; shift ;;
+    --allgemein) ALLGEMEIN=1; shift ;;          # serielle Konsole (nur für Tests in einer VM)
     *) echo "unbekannt: $1" >&2; exit 2 ;;
   esac
 done
@@ -30,6 +35,7 @@ for p in xorriso cpio gzip curl; do
   command -v "$p" >/dev/null || { echo "Es fehlt: $p" >&2; exit 1; }
 done
 [ -z "$KEY" ] || [ -s "$KEY" ] || { echo "Schlüssel nicht gefunden: $KEY" >&2; exit 1; }
+[ "$ALLGEMEIN" = 0 ] || [ -z "$KEY" ] || { echo "--allgemein ist für alle – ohne Schlüssel" >&2; exit 2; }
 
 ARBEIT=$(mktemp -d)
 trap 'rm -rf "$ARBEIT"' EXIT
@@ -58,10 +64,17 @@ fi
 zufall() { local x; x=$(LC_ALL=C tr -dc "$1" < /dev/urandom | head -c "$2") || true; echo "$x"; }
 PASSWORT=$(zufall 'A-HJ-NP-Za-km-z2-9' 16)
 CODE=$(zufall '0-9' 6)
+[ "$ALLGEMEIN" = 0 ] || CODE=erster
 
 # ── 3. Antworten und Erststart in die Startdatei des Installers ────────────────────────────────────────
 mkdir -p "$ARBEIT/initrd.d/vibedash"
-sed "s/@@PASSWORT@@/${PASSWORT}/g" preseed.cfg > "$ARBEIT/initrd.d/preseed.cfg"
+if [ "$ALLGEMEIN" = 1 ]; then
+  # kein Passwort: das Konto ist gesperrt, niemand meldet sich am Gerät an (es braucht auch keiner)
+  grep -v 'passwd/user-password' preseed.cfg > "$ARBEIT/initrd.d/preseed.cfg"
+  echo 'd-i passwd/user-password-crypted password !' >> "$ARBEIT/initrd.d/preseed.cfg"
+else
+  sed "s/@@PASSWORT@@/${PASSWORT}/g" preseed.cfg > "$ARBEIT/initrd.d/preseed.cfg"
+fi
 cp vibedash-platte.sh vibedash-danach.sh vibedash-erststart.sh vibedash-erststart.service "$ARBEIT/initrd.d/vibedash/"
 {
   echo "VIBEDASH_REPO_URL=${REPO_URL}"
@@ -117,6 +130,10 @@ xorriso -indev "$ISO" -outdev "$OUT" \
   -map "$ARBEIT/isolinux.cfg" /isolinux/isolinux.cfg \
   -boot_image any replay >/dev/null 2>&1
 
+if [ "$ALLGEMEIN" = 1 ]; then
+  echo "Fertig: $OUT (allgemein: wer die Einrichtung zuerst öffnet, wird Besitzer)"
+  exit 0
+fi
 ZETTEL="${OUT%.iso}-zugang.txt"
 umask 077
 cat > "$ZETTEL" <<EOF

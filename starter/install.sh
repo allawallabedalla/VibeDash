@@ -73,8 +73,14 @@ if [ ! -f .env ]; then
     echo "INFLUX_EVCC_PASSWORD=$(pw)"
     echo "INFLUX_VIBEDASH_PASSWORD=$(pw)"
     echo "EVCC_ADMIN_PASSWORD=$(pw)"
-    # der VibeDash-Stick bringt den Code mit (steht auf dem Zugangszettel), sonst ein neuer
-    echo "SETUP_CODE=${VIBEDASH_SETUP_CODE:-$(shuf -i 100000-999999 -n 1)}"
+    # der persönliche VibeDash-Stick bringt den Code mit (Zugangszettel); der allgemeine sagt „erster“:
+    # dann bekommt ihn, wer die Einrichtung zuerst öffnet; sonst ein neuer
+    if [ "${VIBEDASH_SETUP_CODE:-}" = erster ]; then
+      echo "SETUP_CODE="
+      echo "SETUP_CLAIM=on"
+    else
+      echo "SETUP_CODE=${VIBEDASH_SETUP_CODE:-$(shuf -i 100000-999999 -n 1)}"
+    fi
     echo "VIBEDASH_PORT=${PORT}"
     echo "ALLOWED_HOSTS=${name},${name}.local,${name}.fritz.box${ip:+,${ip}}"
     echo "TZ=$(timedatectl show -p Timezone --value 2>/dev/null || echo Europe/Berlin)"
@@ -124,6 +130,10 @@ for _ in $(seq 1 60); do
     fi
     setup_code=$(grep '^SETUP_CODE=' .env | cut -d= -f2)
     say "Fertig. Jetzt im Browser öffnen:  http://${host}:${PORT}/#/einrichten${oder}"
+    if [ -z "$setup_code" ]; then
+      echo "Kein Code nötig: Wer die Seite zuerst öffnet, übernimmt die Einrichtung und bekommt einen Code."
+      exit 0
+    fi
     printf '\n   Dein Einrichtungs-Code:  \033[1m%s\033[0m   (aufschreiben oder abfotografieren)\n\n' "$setup_code"
     echo "Der Assistent im Browser verbindet Solaranlage, Akku und Netzzähler – nur mit Ja/Nein und einem Blick"
     echo "in deine Hersteller-App. Mit einem Agenten (Claude Code) geht es auch ohne Assistent (ERSTEINRICHTUNG.md)."

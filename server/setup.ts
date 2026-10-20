@@ -10,7 +10,7 @@
  * one-time setup code the installer prints, rate-limited, and closes itself
  * when the person says "done" (local/setup.json).
  */
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, randomInt, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { Socket } from 'node:net';
 import { dirname } from 'node:path';
@@ -243,6 +243,38 @@ export function codeChecker(code: string, now: () => number = Date.now) {
 export interface SetupState {
   done?: string;
   answers?: Record<string, boolean>;
+  /** "first visit becomes the owner" (general stick): sha256 of the code handed to the first visitor */
+  owner?: string;
+}
+
+const sha = (s: string) => createHash('sha256').update(s).digest('hex');
+
+/**
+ * General VibeDash stick (no personal code on it): whoever opens the assistant first claims it and gets a code,
+ * like a new router or Home Assistant's onboarding. Afterwards the code is checked against the stored hash, with
+ * the same limit of wrong tries as a printed code.
+ */
+export function claimChecker(read: () => SetupState, now: () => number = Date.now) {
+  const wrong: number[] = [];
+  return {
+    claim(write: (s: SetupState) => void): string | null {
+      const st = read();
+      if (st.owner) return null;
+      const code = String(randomInt(100000, 1000000));
+      write({ ...st, owner: sha(code) });
+      return code;
+    },
+    check(given: unknown): 'ok' | 'wrong' | 'locked' {
+      const t = now();
+      while (wrong.length && t - wrong[0]! > 600_000) wrong.shift();
+      if (wrong.length >= 5) return 'locked';
+      const owner = read().owner;
+      const a = Buffer.from(sha(String(given ?? '').trim()));
+      if (owner && a.length === owner.length && timingSafeEqual(a, Buffer.from(owner))) return 'ok';
+      wrong.push(t);
+      return 'wrong';
+    },
+  };
 }
 export function stateFile(path: string) {
   return {
