@@ -22,6 +22,14 @@ from datetime import datetime
 from .plan import Plan
 
 STATE = {"faellig": "act", "nie": "open", "bald": "look", "ok": "ok", "verschoben": "ok"}
+
+
+def _state(a: dict) -> str:
+    """List state of a task; due only because it was never ticked off since moving in = "open" (like "never
+    recorded": no alarm word), not "act"."""
+    return "open" if a.get("seit_einzug") and a["zustand"] == "faellig" else STATE[a["zustand"]]
+
+
 RANK = {"faellig": 0, "nie": 1, "bald": 2, "verschoben": 3, "ok": 4, "ruht": 5}
 WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 
@@ -62,6 +70,7 @@ TEXT = {
         "date_today": "heute",
         "appointment": "Termin {d} {t}",
         "rest_line": "{n} weitere auf Stand",
+        "in_day": "im Rundgang",
         "rest_next": " – als Nächstes: {t}",
         "plan_due": "{n} dran · ",
         "plan_ok": "Alles auf Stand · ",
@@ -105,6 +114,7 @@ TEXT = {
         "date_today": "today",
         "appointment": "Appointment {d} {t}",
         "rest_line": "{n} more up to date",
+        "in_day": "in the walk",
         "rest_next": " – next: {t}",
         "plan_due": "{n} due · ",
         "plan_ok": "All up to date · ",
@@ -138,10 +148,13 @@ class WartungBoard:
         day = self.t["date_today"] if d.date() == self.p.today() else WEEKDAYS[d.weekday()] + d.strftime(" %d.%m.")
         return self.t["appointment"].format(d=day, t=d.strftime("%H:%M"))
 
-    def item(self, a: dict, values: dict, with_place: bool = False) -> dict:
-        """One plan task as a clickable list item (id plan:<id>)."""
+    def item(self, a: dict, values: dict, with_place: bool = False, in_day: bool = False) -> dict:
+        """One plan task as a clickable list item (id plan:<id>). in_day: the task is also in the maintenance day
+        above – there it asks for action, here it stays calm (no double alarm)."""
         reading = values.get(a.get("daten") or "")
-        parts = [a.get("intervall") + (f" ({a['saison']})" if a.get("saison") else "")]
+        parts = ([self.t["in_day"]] if in_day else []) + [
+            a.get("intervall") + (f" ({a['saison']})" if a.get("saison") else "")
+        ]
         if with_place:
             parts.append(a.get("ort") or "")
         if a.get("minuten"):
@@ -152,7 +165,7 @@ class WartungBoard:
             "actions": ["done", "snooze", "comment"],
             "text": (a.get("text") or "")[:300] + (f"{self.t['now']}{reading}" if reading else ""),
             "meta": " · ".join(x for x in parts if x)[:80],
-            **({"state": STATE[a["zustand"]]} if a.get("zustand") in STATE else {}),
+            **({"state": "look" if in_day and _state(a) == "act" else _state(a)} if a.get("zustand") in STATE else {}),
         }
 
     def plan_list(self, tasks: list[dict], area: str, title: str, values: dict, plan: dict) -> list[dict]:
@@ -169,7 +182,8 @@ class WartungBoard:
         due = [a for a in mine if a["zustand"] in ("faellig", "nie", "bald", "verschoben")]
         calm = [a for a in mine if a not in due]
         with_place = area in (self.cfg.get("ort_zeigen") or [])
-        items = [self.item(a, values, with_place) for a in due]
+        in_day = getattr(self, "_day_ids", set())
+        items = [self.item(a, values, with_place, a.get("id") in in_day) for a in due]
         if calm:
             nxt = next((a for a in calm if a.get("faellig")), None)
             items.append(
@@ -302,7 +316,8 @@ class WartungBoard:
                             "text": o.get("text", "")[:200]
                             + (f"{t['now']}{values[o['daten']]}" if values.get(o.get("daten") or "") else ""),
                             **({"meta": self._appointment(o["termin"])} if o.get("termin") else {}),
-                            "state": "look",
+                            # an appointment still to come stays calm until its day (Audit04: no alarm in advance)
+                            "state": "open" if (o.get("termin") or "")[:10] > self.p.today().isoformat() else "look",
                         }
                         for o in sorted(open_, key=lambda o: o.get("termin") or "9999")
                     ],
@@ -316,6 +331,7 @@ class WartungBoard:
     def build(self, notes=None) -> dict:
         plan = self.p.load()
         tasks = self.p.all(plan)
+        self._day_ids = {a.get("id") for st in self.p.maintenance_day(plan)["stationen"] for a in st["aufgaben"]}
         house = {}
         if self.cfg.get("einschub_url"):
             try:

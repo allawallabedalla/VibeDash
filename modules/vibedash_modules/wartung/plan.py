@@ -232,8 +232,8 @@ def state(a: dict, iv_days: dict, day: date, move_in: date | None = None) -> dic
     """-> {zustand, faellig, rest_tage, stand}; zustand: ruht/nie/faellig/bald/ok.
     Without 'zuletzt' the move-in date counts as the last time it was done."""
 
-    def out(z, f, st):
-        return {"zustand": z, "faellig": f, "rest_tage": (f - day).days if f else None, "stand": st}
+    def out(z, f, st, **extra):
+        return {"zustand": z, "faellig": f, "rest_tage": (f - day).days if f else None, "stand": st, **extra}
 
     iv = iv_days.get(a.get("intervall"))
     if a.get("saison") and day.month not in SEASONS.get(a["saison"], range(1, 13)):
@@ -264,6 +264,10 @@ def state(a: dict, iv_days: dict, day: date, move_in: date | None = None) -> dic
     rest = (f - day).days
     note = " (ab Einzug gerechnet)" if since_move_in else ""
     if rest < 0:
+        if since_move_in:
+            # never ticked off since moving in: due by the plan, but not proven overdue – shown calmly ("nachholen"),
+            # still in the maintenance day by the same urgency (Audit04: 33 tasks "Handeln" only because of this)
+            return out("faellig", f, "seit Einzug noch nicht abgehakt", seit_einzug=True)
         return out("faellig", f, f"fällig seit {-rest} Tagen{note}")
     if rest <= SOON_DAYS:
         return out("bald", f, f"fällig in {rest} Tagen{note}")

@@ -80,7 +80,11 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
             "neu": [new[k] for k in new if k not in old and new[k]["einordnung"] != "technisch gekoppelt"],
             "weg": [old[k] for k in old if k not in new and old[k]["einordnung"] != "technisch gekoppelt"],
         }
-    check = [p for p in pairs if p["einordnung"] == "prüfen"]
+    # "check" = not explained beforehand AND still there without the daily rhythm (Audit04 ST-04: 19 of 31 were only
+    # the daily rhythm); a correlation is never a task, so nothing here carries a "look" state (Audit04 UX-10)
+    check_all = [p for p in pairs if p["einordnung"] == "prüfen"]
+    check = [p for p in check_all if not p.get("nur_tagesgang")]
+    rhythm_only = len(check_all) - len(check)
     tested = st.get("h", {}).get("paare_getestet", 0) + st.get("d", {}).get("paare_getestet", 0)
     tiles = [
         {
@@ -94,8 +98,7 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
         {
             "label": "Prüfen",
             "value": str(len(check)),
-            "icon": "lookCircle" if check else "okCircle",
-            "state": "look" if check else "ok",
+            "icon": "eye",
             "sub": "nicht von vornherein erklärbar",
         },
         {
@@ -141,11 +144,13 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
         {
             "type": "list",
             "title": "Prüfen",
-            "items": [{"text": pair(p), "meta": clean(rtext(p), 60), "state": "look"} for p in check[:20]],
-            "note": f"Die {min(20, len(check))} stärksten von {len(check)}. „Nur Tagesgang“: "
-            "beides folgt nur dem Tagesrhythmus."
-            if check
-            else "Keine.",
+            "items": [{"text": pair(p), "meta": clean(rtext(p), 60)} for p in check[:20]],
+            "note": (f"Die {min(20, len(check))} stärksten von {len(check)}." if check else "Keine.")
+            + (
+                f" Dazu {rhythm_only} Paare, die nur dem Tagesrhythmus folgen (nicht aufgeführt)."
+                if rhythm_only
+                else ""
+            ),
             "info": {"what": t["check_what"], "source": t["source"]},
         }
     )
@@ -179,7 +184,6 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
                         + (" · Tag" if p["ebene"] == "Tage" else "")
                         + (" · nur Tagesgang" if p["nur_tagesgang"] else ""),
                     },
-                    **({"state": "look"} if p["einordnung"] == "prüfen" else {}),
                 }
                 for p in rank
             ],
