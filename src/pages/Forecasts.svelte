@@ -39,8 +39,10 @@
   const sun = accuracy(
     checkForecasts(house, own.length ? own : dayAheadForecasts(house), 'pv_energy'),
   );
-  const load = accuracy(checkForecasts(house, dayAheadLoad(house), 'load_energy'));
-  const loadTomorrow = dayAheadLoad(house).find((f) => f.day === 'tomorrow')?.energy;
+  // the house without the car when it has that meter: charging days made the range 19–35 kWh (Audit04 ST-14)
+  const loadId = house.series.home_energy?.samples.length ? 'home_energy' : 'load_energy';
+  const load = accuracy(checkForecasts(house, dayAheadLoad(house, loadId), loadId));
+  const loadTomorrow = dayAheadLoad(house, loadId).find((f) => f.day === 'tomorrow')?.energy;
 
   const tiles = $derived([
     yieldTodayTile(house),
@@ -53,11 +55,12 @@
           approx: true,
           value: num(loadTomorrow.value),
           unit: 'kWh',
-          sub: t('sub.range', {
-            low: num(loadTomorrow.low),
-            high: num(loadTomorrow.high),
-            n: loadTomorrow.n,
-          }),
+          sub:
+            t('sub.range', {
+              low: num(loadTomorrow.low),
+              high: num(loadTomorrow.high),
+              n: loadTomorrow.n,
+            }) + (loadId === 'home_energy' ? ` · ${t('sub.noCar')}` : ''),
           graphic: {
             kind: 'scale' as const,
             value: loadTomorrow.value,
