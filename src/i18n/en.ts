@@ -405,8 +405,10 @@ export const en: Record<MessageKey, string> = {
   'setup.claimIntro':
     'You are the first one here. Whoever takes over the setup gets a code – after that nobody else can change anything.',
   'setup.claim': 'Take over the setup',
-  'setup.claimed': 'This is your code. Write it down or take a photo – you need it to continue on another device.',
-  'setup.claimTaken': 'Somebody has already taken over the setup – please enter the code from that person.',
+  'setup.claimed':
+    'This is your code. Write it down or take a photo – you need it to continue on another device.',
+  'setup.claimTaken':
+    'Somebody has already taken over the setup – please enter the code from that person.',
   'setup.code': 'Setup code',
   'setup.codeHelp': 'The code was shown at the end of the installation (6 digits).',
   'setup.codeWrong': 'That code is not right. Please try again.',

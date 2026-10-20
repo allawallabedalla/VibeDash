@@ -409,8 +409,10 @@ export const de = {
   'setup.claimIntro':
     'Du bist die erste Person hier. Wer die Einrichtung übernimmt, bekommt einen Code – danach kann niemand sonst etwas umstellen.',
   'setup.claim': 'Einrichtung übernehmen',
-  'setup.claimed': 'Das ist dein Code. Aufschreiben oder abfotografieren – du brauchst ihn, wenn du an einem anderen Gerät weitermachst.',
-  'setup.claimTaken': 'Jemand hat die Einrichtung schon übernommen – bitte den Code von dieser Person eingeben.',
+  'setup.claimed':
+    'Das ist dein Code. Aufschreiben oder abfotografieren – du brauchst ihn, wenn du an einem anderen Gerät weitermachst.',
+  'setup.claimTaken':
+    'Jemand hat die Einrichtung schon übernommen – bitte den Code von dieser Person eingeben.',
   'setup.code': 'Einrichtungs-Code',
   'setup.codeHelp': 'Der Code stand am Ende der Installation auf dem Bildschirm (6 Ziffern).',
   'setup.codeWrong': 'Der Code stimmt nicht. Bitte nochmal.',
