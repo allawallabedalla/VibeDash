@@ -504,7 +504,7 @@ export const de = {
   'ts.fc.house': 'Prognose vom Vorabend',
   'ts.fc.houseSpan': 'Prognose: Vorabend, voraus neuester Lauf',
   'ts.fc.houseDays': 'Prognose vom Vorabend',
-  'ts.fc.recomputed': 'nachgerechnet (Wetter von damals)',
+  'ts.fc.recomputed': 'nachgerechnet (an diese Tage angepasst)',
   'ts.fc.latest': 'Prognose (neuester Lauf)',
   'model.sunRule': 'Faustregel Sonne (Median 7 Tage)',
   'model.sun': 'Sonnenprognose',

@@ -494,7 +494,7 @@ export const en: Record<MessageKey, string> = {
   'ts.fc.house': 'Forecast from the evening before',
   'ts.fc.houseSpan': 'Forecast: evening before, ahead newest run',
   'ts.fc.houseDays': 'Forecast from the evening before',
-  'ts.fc.recomputed': 'computed afterwards (weather of back then)',
+  'ts.fc.recomputed': 'computed afterwards (fitted to these days)',
   'ts.fc.latest': 'Forecast (newest run)',
   'model.sunRule': 'Rule of thumb sun (median of 7 days)',
   'model.sun': 'Solar forecast',
