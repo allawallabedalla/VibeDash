@@ -7,7 +7,7 @@
  * - All forecasts share the same lead time, so the evaluation is fair.
  * - The forecast is checked against the meter reading, never against itself.
  */
-import { estimate, freshFor, quantile, toGrid, valueAt } from '../model/series';
+import { estimate, quantile, toGrid } from '../model/series';
 import type { Estimate, Forecast } from '../model/types';
 import { addDays, dayStart, localDateKey, localHour, localMidnight } from '../model/time';
 import { CLEAR_SKY_DAY_KWH, clearSkyPower, type DemoData } from './generate';
