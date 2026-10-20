@@ -4,8 +4,8 @@
 #   curl -fsSL https://raw.githubusercontent.com/allawallabedalla/VibeDash/main/starter/install.sh | sudo bash
 #
 # Was er tut (und nur das):
-#   1. prüft: Ubuntu, 64 Bit, genug Platz – sonst Abbruch ohne Änderung
-#   2. installiert Docker aus den Ubuntu-Paketen und automatische Sicherheitsupdates
+#   1. prüft: Ubuntu oder Debian (VibeDash-Stick), 64 Bit, genug Platz – sonst Abbruch ohne Änderung
+#   2. installiert Docker aus den Paketen des Systems und automatische Sicherheitsupdates
 #   3. holt VibeDash nach /opt/vibedash (oder nimmt VIBEDASH_DIR)
 #   4. legt Zugangsdaten an (starter/.env, nur root lesbar) – beim zweiten Lauf bleiben sie
 #   5. startet Datenbank (ohne Port nach außen), evcc (nur lesend, ohne Geräte) und VibeDash
@@ -26,7 +26,11 @@ fail() { printf '\n\033[1;31mHakt:\033[0m %s\nNochmal starten ist sicher.\n' "$*
 # ── 1. Prüfen (noch keine Änderung) ────────────────────────────────────────────────────────────────────
 [ "$(id -u)" -eq 0 ] || stop "Bitte mit sudo starten (siehe ERSTEINRICHTUNG.md)."
 . /etc/os-release 2>/dev/null || true
-[ "${ID:-}" = ubuntu ] || stop "Dieser Installer ist für Ubuntu Server LTS (gefunden: ${PRETTY_NAME:-unbekannt})."
+case "${ID:-}" in
+  ubuntu) COMPOSE_PAKET=docker-compose-v2 ;;
+  debian) COMPOSE_PAKET=docker-compose ;;     # Debian 13 (VibeDash-Stick, image/)
+  *) stop "Dieser Installer ist für Ubuntu Server LTS oder Debian 13 (gefunden: ${PRETTY_NAME:-unbekannt})." ;;
+esac
 case "$(uname -m)" in x86_64|aarch64) ;; *) stop "Nur 64-Bit-Rechner werden unterstützt." ;; esac
 frei_gb=$(df -BG --output=avail / | tail -1 | tr -dc 0-9)
 [ "${frei_gb:-0}" -ge 10 ] || stop "Zu wenig freier Speicher (${frei_gb} GB, nötig: 10 GB)."
@@ -38,7 +42,7 @@ say "Schritt 2 von 5: Programme installieren (Docker, Sicherheitsupdates) …"
 export DEBIAN_FRONTEND=noninteractive
 if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
   apt-get update -q
-  apt-get install -y -q docker.io docker-compose-v2 git openssl unattended-upgrades
+  apt-get install -y -q docker.io "$COMPOSE_PAKET" git openssl unattended-upgrades
 else
   apt-get install -y -q git openssl unattended-upgrades >/dev/null 2>&1 || true
 fi
@@ -69,7 +73,8 @@ if [ ! -f .env ]; then
     echo "INFLUX_EVCC_PASSWORD=$(pw)"
     echo "INFLUX_VIBEDASH_PASSWORD=$(pw)"
     echo "EVCC_ADMIN_PASSWORD=$(pw)"
-    echo "SETUP_CODE=$(shuf -i 100000-999999 -n 1)"
+    # der VibeDash-Stick bringt den Code mit (steht auf dem Zugangszettel), sonst ein neuer
+    echo "SETUP_CODE=${VIBEDASH_SETUP_CODE:-$(shuf -i 100000-999999 -n 1)}"
     echo "VIBEDASH_PORT=${PORT}"
     echo "ALLOWED_HOSTS=${name},${name}.local,${name}.fritz.box${ip:+,${ip}}"
     echo "TZ=$(timedatectl show -p Timezone --value 2>/dev/null || echo Europe/Berlin)"
@@ -108,12 +113,15 @@ SETUP_DEMO="$SETUP_DEMO" docker compose --env-file .env up -d --build
 for _ in $(seq 1 60); do
   if curl -fsS "http://127.0.0.1:${PORT}/api/health" >/dev/null 2>&1; then
     host=$(hostname)
+    # der bloße Name klappt nicht in jedem Heimnetz: die Adresse als Rückfall dazu (Fremdtest 15)
+    ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    oder=${ip:+   (oder http://${ip}:${PORT})}
     if grep -q '"done"' local/setup.json 2>/dev/null; then
-      say "Fertig. Dein Dashboard:  http://${host}:${PORT}"
+      say "Fertig. Dein Dashboard:  http://${host}:${PORT}${oder}"
       exit 0
     fi
     setup_code=$(grep '^SETUP_CODE=' .env | cut -d= -f2)
-    say "Fertig. Jetzt im Browser öffnen:  http://${host}:${PORT}/#/einrichten"
+    say "Fertig. Jetzt im Browser öffnen:  http://${host}:${PORT}/#/einrichten${oder}"
     printf '\n   Dein Einrichtungs-Code:  \033[1m%s\033[0m   (aufschreiben oder abfotografieren)\n\n' "$setup_code"
     echo "Der Assistent im Browser verbindet Solaranlage, Akku und Netzzähler – nur mit Ja/Nein und einem Blick"
     echo "in deine Hersteller-App. Mit einem Agenten (Claude Code) geht es auch ohne Assistent (ERSTEINRICHTUNG.md)."
