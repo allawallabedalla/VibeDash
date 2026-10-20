@@ -487,6 +487,7 @@ export const en: Record<MessageKey, string> = {
   'nav.gallery': 'Building blocks',
   'model.load': 'Usage forecast',
   'tile.loadTomorrow': 'Usage tomorrow',
+  'sub.noCar': 'without the car',
   'info.loadTomorrow.what': 'Expected electricity use of the house tomorrow.',
   'info.loadTomorrow.source': 'Median of the last {n} complete days (house meter), range 10–90 %.',
   'ts.fc.rule': 'Rule of thumb (median of 7 days)',

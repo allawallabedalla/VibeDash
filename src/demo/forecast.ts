@@ -134,9 +134,10 @@ export function checkForecasts(
  * Day-ahead forecast of the house's daily consumption: median of the last 7
  * complete days, made the evening before. Same rules as the PV model.
  */
-export function dayAheadLoad(data: DemoData): DailyForecast[] {
-  const days = completeDays(data, 'load_energy');
-  const starts = dayStarts(data);
+export function dayAheadLoad(data: DemoData, counterId = 'load_energy'): DailyForecast[] {
+  const days = completeDays(data, counterId);
+  // the days of this counter itself (index i of days = index i of starts)
+  const starts = days.map((d) => ({ day: d.day, start: dayStart(d.day, data.timeZone) }));
   const todayStart = localMidnight(data.now, data.timeZone);
   const targets = [
     ...starts,

@@ -496,6 +496,7 @@ export const de = {
   'nav.gallery': 'Bausteine',
   'model.load': 'Verbrauchsprognose',
   'tile.loadTomorrow': 'Verbrauch morgen',
+  'sub.noCar': 'ohne Auto',
   'info.loadTomorrow.what': 'Erwarteter Stromverbrauch des Hauses für morgen.',
   'info.loadTomorrow.source':
     'Median der letzten {n} vollständigen Tage (Hauszähler), Spanne 10–90 %.',

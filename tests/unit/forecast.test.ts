@@ -211,3 +211,13 @@ describe("the house's own day-ahead forecast", () => {
     expect(houseDayForecasts(demo)).toEqual([]);
   });
 });
+
+describe('consumption forecast per meter', () => {
+  it('takes its days from the meter it forecasts (same result as before for the house load)', async () => {
+    const { dayAheadLoad } = await import('../../src/demo');
+    const a = dayAheadLoad(demo);
+    const b = dayAheadLoad(demo, 'load_energy');
+    expect(b).toEqual(a);
+    expect(a.find((f) => f.day === 'tomorrow')).toBeTruthy();
+  });
+});
