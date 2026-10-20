@@ -19,6 +19,8 @@ Config (local/modules/auto.json, template modules/templates/auto.json):
   rechner      optional {url, tage?} – the house's charge planner answers "what if plugged in at …":
                POST {board, value} (value = day × 1440 + minutes, local), header X-Haus-Rechnung: 1 ->
                {"sections": [...]}; it must not change anything. Without it there is no calculator.
+  risiko       optional {datei} – how cautious the house's charge plan is (risiko.py): the choice is stored in
+               this file (the house's planner reads it); without it there is no choice
   texte        optional wording overrides (keys of board.TEXT, CALC)
 """
 
@@ -32,7 +34,7 @@ import urllib.request
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from . import board, hersteller, prognose
+from . import board, hersteller, prognose, risiko
 from .quellen import Influx, zeile
 
 STEP_MIN = 15
@@ -155,7 +157,28 @@ class Module:
 
     def board(self) -> dict:
         now = self.clock()
-        return board.build(_load(self.path(self.cfg["prognose"])), now, self.t, self._calc_section(now))
+        out = board.build(_load(self.path(self.cfg["prognose"])), now, self.t, self._calc_section(now))
+        rf = (self.cfg.get("risiko") or {}).get("datei")
+        if rf:
+            plan = _load(self.path(self.cfg["plan"])) if self.cfg.get("plan") else None
+            choice = risiko.section(risiko.current(self.path(rf), self.tz, now), plan)
+            secs = out.get("sections") or []
+            # above the calculator (both in slot "plan")
+            i = next((k for k, s in enumerate(secs) if s.get("type") == "calc"), len(secs))
+            out["sections"] = secs[:i] + [choice] + secs[i:]
+        return out
+
+    def action(self, d: dict):
+        """{item: "laden:risiko", action: "choose", value} -> stores the level until midnight."""
+        rf = (self.cfg.get("risiko") or {}).get("datei")
+        value = d.get("value")
+        if not rf or d.get("item") != risiko.ITEM or d.get("action") != "choose":
+            return 404, {"ok": False, "text": "keine Aktion"}
+        if value not in {v for v, _, _ in risiko.LEVELS}:
+            return 400, {"ok": False, "text": "unbekannte Stufe"}
+        risiko.store(self.path(rf), value, self.tz, self.clock())
+        label = next(lb for v, lb, _ in risiko.LEVELS if v == value)
+        return 200, {"ok": True, "text": f"Laden: {label} bis Mitternacht"}
 
     def calc(self, d: dict):
         """{value} -> (status, {sections}) from the house's planner; only a calculation."""

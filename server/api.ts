@@ -271,7 +271,15 @@ async function handleSetup(
 const isObjRec = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === 'object' && !Array.isArray(v);
 
-export const BOARD_ACTIONS = ['done', 'ack', 'comment', 'delete', 'undo', 'snooze'] as const;
+export const BOARD_ACTIONS = [
+  'done',
+  'ack',
+  'comment',
+  'delete',
+  'undo',
+  'snooze',
+  'choose',
+] as const;
 export type BoardAction = (typeof BOARD_ACTIONS)[number];
 export interface BoardActionRequest {
   board: string;
@@ -279,6 +287,8 @@ export interface BoardActionRequest {
   action: BoardAction;
   text?: string;
   date?: string;
+  /** "choose": the option picked in a choice section (a-z0-9_-) */
+  value?: string;
 }
 
 /** Simple brake against a stuck button or a loop: at most 30 writes a minute. */
@@ -307,6 +317,11 @@ async function handleBoardAction(id: string, deps: ApiDeps, req: RequestInfo): P
   const date =
     typeof body.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.date) ? body.date : undefined;
   if (action === 'snooze' && !date) return json(400, { error: 'date_required' });
+  const value =
+    action === 'choose' && typeof body.value === 'string' && /^[a-z0-9_-]{1,32}$/.test(body.value)
+      ? body.value
+      : undefined;
+  if (action === 'choose' && !value) return json(400, { error: 'value_required' });
   if (tooMany(deps.now())) return json(429, { error: 'too_many' });
   try {
     const r = await deps.boardAction(b, {
@@ -315,6 +330,7 @@ async function handleBoardAction(id: string, deps: ApiDeps, req: RequestInfo): P
       action,
       ...(text ? { text } : {}),
       ...(date ? { date } : {}),
+      ...(value ? { value } : {}),
     });
     // the board shows the change on the next look
     deps.cache?.delete(`board|${b.id}`);

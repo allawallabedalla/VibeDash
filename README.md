@@ -210,6 +210,13 @@ Run it with `docker compose` (service `modules` in `compose.example.yaml`, alrea
 starter pack) or as a user unit (`deploy/vibedash-modules.service`; `scripts/release.sh`
 ships and restarts it with each release). `MODULES_URL` points the server elsewhere.
 
+**Choices (a setting, not a switch).** A board that takes actions may carry a `choice`
+section: 2–5 options, one chosen (contract in `src/model/board.ts`). A tap sends
+`{ item, action: "choose", value }` like any other click. The car module uses it for how
+cautious the house's charge plan is (`"risiko": {"datei": …}` in `local/modules/auto.json`,
+levels Sicher/Mittel/Mutig until midnight); the house's planner reads the stored level,
+its guard and stop rules stay the same.
+
 ## Feedback button (local backlog)
 
 Every page has a feedback button (top right): idea, bug or question about the page you

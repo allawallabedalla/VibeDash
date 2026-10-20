@@ -208,6 +208,15 @@
         />
       {/await}
     </Card>
+  {:else if s.type === 'choice'}
+    <Card title={s.title} icon="lookCircle" color="var(--battery)" note={s.note} info={s.info}>
+      <!-- loaded only where a board has a choice (first-page budget) -->
+      {#await import('../components/BoardChoice.svelte')}
+        <p class="muted-note" role="status">{t('state.loading')}</p>
+      {:then { default: BoardChoice }}
+        <BoardChoice board={id} choice={s} onchanged={() => onchanged?.()} />
+      {/await}
+    </Card>
   {:else if s.type === 'plan'}
     <Card
       title={s.title || tab?.title || ''}
