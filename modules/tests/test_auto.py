@@ -86,6 +86,44 @@ class TestAuto(unittest.TestCase):
         self.assertNotIn("Citro", json.dumps(b, ensure_ascii=False))
         self.assertIn("Hersteller-App", json.dumps(b, ensure_ascii=False))
 
+    def test_soc_tile_gets_its_curve(self):
+        """Audit04 UX-15: the enlarged Ladestand tile shows a curve when the module stored one."""
+        tile = next(x for x in self.mod.board()["sections"][0]["tiles"] if x["label"] == "Ladestand")
+        self.assertNotIn("spark", tile)
+        pr = _prognose()
+        pr["soc_verlauf"] = {"von": 1000, "bis": 8200000, "werte": [50.0, None, 41.5]}
+        with open(os.path.join(self.base, "prognose.json"), "w", encoding="utf-8") as f:
+            json.dump(pr, f)
+        tile = next(x for x in self.mod.board()["sections"][0]["tiles"] if x["label"] == "Ladestand")
+        self.assertEqual((tile["spark"], tile["sparkFrom"], tile["sparkTo"]), ([50.0, None, 41.5], 1000, 8200000))
+
+    def test_soc_curve_query(self):
+        from vibedash_modules.auto.quellen import Influx
+
+        class R:
+            def __init__(self, body):
+                self.body = body
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def read(self, *a):
+                return self.body
+
+        asked = []
+
+        def opener(url, timeout):
+            asked.append(url)
+            vals = [[7200, None], [14400, 55.04]]
+            return R(json.dumps({"results": [{"series": [{"columns": ["time", "mean"], "values": vals}]}]}).encode())
+
+        sv = Influx({"db": "x"}, opener=opener).soc_verlauf(20000)
+        self.assertEqual(sv, {"von": 7200000, "bis": 14400000, "werte": [None, 55.0]})
+        self.assertIn("auto_prognose", asked[0])
+
     def test_no_calculator_without_url(self):
         self.cfg["rechner"]["url"] = ""
         m = Module(self.cfg, lambda p: os.path.join(self.base, p), clock=lambda: NOW)

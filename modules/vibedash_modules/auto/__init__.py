@@ -29,6 +29,7 @@ Config (local/modules/auto.json, template modules/templates/auto.json):
 
 from __future__ import annotations
 
+import contextlib
 import json
 import math
 import os
@@ -142,6 +143,10 @@ class Module:
                 raise
             out = prognose.rechne(alle, st, plan, None, jetzt=now)
             text += f" · Influx: {type(e).__name__}"
+        if influx is not None:
+            # the curve is extra; the tile shows the value without it
+            with contextlib.suppress(Exception):
+                out["soc_verlauf"] = influx.soc_verlauf(now)
         ziel = self.path(self.cfg["schatten_prognose"] if modus == "schatten" else self.cfg["prognose"])
         hersteller.schreib(ziel, out, mode=0o644)
         if modus == "an":

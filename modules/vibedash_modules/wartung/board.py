@@ -59,7 +59,7 @@ TEXT = {
         "cal_info": " Kalender-Abo fürs iPhone (je Samstag ein Termin, nur im Heimnetz): {u} – Einstellungen → Apps → "
         "Kalender → Kalender-Accounts → Account hinzufügen → Andere → Kalenderabo hinzufügen.",
         "service_title": "Service: wann der Fachbetrieb kommen muss",
-        "service_note": "„Zur Kenntnis“ = Termin ist ausgemacht; „Erledigt“, wenn der Termin war.",
+        "service_note": "Knopf „Zur Kenntnis“, sobald der Termin ausgemacht ist; „Erledigt“, wenn er war.",
         "service_list_info": "Fällig = letzte Erledigung (sonst Einzug {d}) + Intervall laut Plan. Auto: Tage bis "
         "zur Inspektion meldet das Auto selbst.",
         "service_list_info_nomove": "Fällig = letzte Erledigung + Intervall laut Plan.",
@@ -69,6 +69,7 @@ TEXT = {
         "now": " – jetzt: ",
         "date_today": "heute",
         "appointment": "Termin {d} {t}",
+        "appointment_past": "überfällig seit {d} {t}",
         "rest_line": "{n} weitere auf Stand",
         "in_day": "im Rundgang",
         "rest_next": " – als Nächstes: {t}",
@@ -104,7 +105,7 @@ TEXT = {
         "cal_note": " · calendar: {u}",
         "cal_info": " Calendar subscription (one event per Saturday, home network only): {u}",
         "service_title": "Service: when the professional has to come",
-        "service_note": "“Acknowledged” = appointment made; “Done” once it took place.",
+        "service_note": "Button “Acknowledged” once the appointment is made; “Done” once it took place.",
         "service_list_info": "Due = last done (else move-in {d}) + interval from the plan.",
         "service_list_info_nomove": "Due = last done + interval from the plan.",
         "open_title": "Open items",
@@ -113,6 +114,7 @@ TEXT = {
         "now": " – now: ",
         "date_today": "today",
         "appointment": "Appointment {d} {t}",
+        "appointment_past": "overdue since {d} {t}",
         "rest_line": "{n} more up to date",
         "in_day": "in the walk",
         "rest_next": " – next: {t}",
@@ -146,7 +148,12 @@ class WartungBoard:
         except ValueError:
             return f"Termin {t}"
         day = self.t["date_today"] if d.date() == self.p.today() else WEEKDAYS[d.weekday()] + d.strftime(" %d.%m.")
-        return self.t["appointment"].format(d=day, t=d.strftime("%H:%M"))
+        past = d.replace(tzinfo=d.tzinfo or self.p.tz) < datetime.now(self.p.tz)  # Audit04 UX-22
+        if past and d.date() == self.p.today():
+            day = ""
+        return " ".join(
+            self.t["appointment_past" if past else "appointment"].format(d=day, t=d.strftime("%H:%M")).split()
+        )
 
     def item(self, a: dict, values: dict, with_place: bool = False, in_day: bool = False) -> dict:
         """One plan task as a clickable list item (id plan:<id>). in_day: the task is also in the maintenance day

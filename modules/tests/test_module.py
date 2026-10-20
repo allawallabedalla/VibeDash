@@ -77,7 +77,10 @@ class TestWartung(unittest.TestCase):
             "kacheln": [{"label": "Feuchte innen", "value": "55"}],
         }
         plan = _read(os.path.join(self.base, "wartungsplan.json"))
-        plan["offen"] = [{"id": "o1", "text": "Akku prüfen", "daten": "akku", "termin": "2026-10-20T19:00"}]
+        plan["offen"] = [
+            {"id": "o1", "text": "Akku prüfen", "daten": "akku", "termin": "2099-10-20T19:00"},
+            {"id": "o2", "text": "Filter", "termin": "2020-01-04T10:00"},
+        ]
         _write(os.path.join(self.base, "wartungsplan.json"), plan)
         cfg = {"plan": "wartungsplan.json", "einschub_url": "http://house/x", "layout": ["einschub:server", "kern"]}
         from vibedash_modules.wartung import Module
@@ -91,6 +94,8 @@ class TestWartung(unittest.TestCase):
         o = next(i for s in b["sections"] for i in s.get("items") or [] if i.get("id") == "offen:o1")
         self.assertEqual(o["text"], "Akku prüfen – jetzt: 99 %")
         self.assertTrue(o["meta"].startswith("Termin"))
+        o2 = next(i for s in b["sections"] for i in s.get("items") or [] if i.get("id") == "offen:o2")
+        self.assertEqual(o2["meta"], "überfällig seit Sa 04.01. 10:00")
         m.board_.fetch = lambda url: (_ for _ in ()).throw(OSError("down"))
         self.assertEqual(m.board()["sections"][0]["title"], "Haus & Wartung")
 

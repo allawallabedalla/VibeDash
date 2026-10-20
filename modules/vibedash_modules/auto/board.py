@@ -96,6 +96,11 @@ def build(p, jetzt, t, calc=None):
             "unit": "%",
             "color": "battery",
             "icon": "battery",
+            **(
+                {"spark": sv["werte"], "sparkFrom": sv["von"], "sparkTo": sv["bis"]}
+                if (sv := p.get("soc_verlauf")) and sv.get("werte")
+                else {}
+            ),
             "approx": geladen > 0.05,
             "sub": (
                 f"Auto meldete {de(p.get('soc_meldung'))} % {alter(jetzt - t_meld) if t_meld else ''}"
