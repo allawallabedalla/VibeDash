@@ -141,4 +141,5 @@ for _ in $(seq 1 60); do
   fi
   sleep 5
 done
-fail "VibeDash antwortet nicht. Zeig deinem Helfer die Ausgabe von: docker compose -f ${DIR}/starter/compose.yaml ps"
+docker compose --env-file .env ps 2>&1 | tail -8 || true
+fail "VibeDash antwortet noch nicht. Mach ein Foto von diesem Bildschirm für deinen Helfer – oder starte die Zeile einfach noch einmal."

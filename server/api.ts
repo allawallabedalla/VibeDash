@@ -179,6 +179,13 @@ export interface SetupDeps {
   allowDemo: boolean;
 }
 
+/** Series of the starter mapping (mapping.evcc.json) that the assistant's check of one device confirms. */
+const CONFIRMS: Record<Usage, string[]> = {
+  pv: ['pv_power', 'pv_energy'],
+  grid: ['grid_power'],
+  battery: ['battery_power', 'battery_soc'],
+};
+
 /** The safety questions (RISIKEN.md) the assistant asks first – all must be "yes". */
 export const SETUP_QUESTIONS = ['own_home', 'read_only', 'no_opening', 'ask_if_unsure'] as const;
 
@@ -260,9 +267,14 @@ async function handleSetup(
       return json(r.status === 200 ? 200 : 502, { result: r.data });
     }
     if (step === 'save') {
-      const c = await st.evcc.create(dev.body);
-      const name = isObjRec(c.data) ? String(c.data.name ?? '') : '';
-      if (c.status >= 300 || !name) return json(502, { error: 'evcc_create', result: c.data });
+      // the same device saved twice ("back" in the assistant) must not count twice (Fremdtest 7)
+      const same = await sameDevice(st, dev.body);
+      let name = same ?? '';
+      if (!same) {
+        const c = await st.evcc.create(dev.body);
+        name = isObjRec(c.data) ? String(c.data.name ?? '') : '';
+        if (c.status >= 300 || !name) return json(502, { error: 'evcc_create', result: c.data });
+      }
       const site = await st.evcc.site();
       const cur = isObjRec(site.data) ? site.data : {};
       const list2 = (k: string) => (Array.isArray(cur[k]) ? (cur[k] as unknown[]).map(String) : []);
@@ -272,12 +284,35 @@ async function handleSetup(
           : { [usage]: [...list2(usage).filter((x) => x !== name), name] };
       const u = await st.evcc.updateSite(update);
       if (u.status >= 300) return json(502, { error: 'evcc_site', result: u.data });
+      // saved only after the person's yes (and the direction for grid and battery): confirmed
+      const fresh = st.state.read();
+      st.state.write({ ...fresh, confirmed: { ...fresh.confirmed, [usage]: true } });
       return json(200, { ok: true, name });
     }
   } catch (e) {
     return timeoutOr(e as Error, deps.log, 'setup');
   }
   return json(404, { error: 'unknown_step' });
+}
+
+/** Name of a device evcc already has with the same template, address and use – or null. */
+async function sameDevice(st: SetupDeps, body: Record<string, unknown>): Promise<string | null> {
+  const r = await st.evcc.devices().catch(() => null);
+  const list: unknown[] = Array.isArray(r?.data)
+    ? r.data
+    : isObjRec(r?.data) && Array.isArray(r.data.result)
+      ? r.data.result
+      : [];
+  const want = (isObjRec(body.config) ? body.config : body) as Record<string, unknown>;
+  for (const d of list) {
+    if (!isObjRec(d)) continue;
+    const c = isObjRec(d.config) ? d.config : {};
+    const same = ['template', 'host', 'usage', 'port', 'id'].every(
+      (k) => want[k] === undefined || String(c[k] ?? '') === String(want[k]),
+    );
+    if (same && typeof d.name === 'string' && d.name) return d.name;
+  }
+  return null;
 }
 
 const isObjRec = (v: unknown): v is Record<string, unknown> =>
@@ -468,6 +503,19 @@ export interface ApiResult {
 
 const json = (status: number, body: unknown): ApiResult => ({ status, body });
 
+/** Does evcc know a wallbox? Asked at most every 5 minutes; when evcc does not answer: yes (as before). */
+async function evccHasLoadpoint(deps: ApiDeps): Promise<boolean> {
+  const r = await cached(deps, 'evcc|loadpoints', 300_000, async () => {
+    try {
+      const n = await deps.evcc!.now();
+      return json(200, { has: n.loadpoints.length > 0 });
+    } catch {
+      return json(200, { has: true }); // kept too: a silent evcc must not slow every page load
+    }
+  });
+  return (r.body as { has: boolean }).has;
+}
+
 /** TTL of cached answers: "now" ranges briefly, long ranges and days longer. */
 export const CACHE_MS = { short: 20_000, long: 120_000, daily: 600_000 } as const;
 
@@ -547,7 +595,8 @@ export async function handleApi(
       ok: true,
       source: deps.mode,
       backends: deps.mapping ? sourcesOf(deps.mapping) : [],
-      evcc: Boolean(deps.evcc),
+      // evcc without a wallbox (only reading the meters) is no charging page (Fremdtest 10)
+      evcc: deps.evcc ? await evccHasLoadpoint(deps) : false,
       charging: Boolean(deps.charging),
       pv: Boolean(deps.pv),
       plan: Boolean(deps.plan),
@@ -652,11 +701,20 @@ export async function handleApi(
   }
 
   if (path === '/api/entities') {
+    // what the person confirmed in the setup assistant (yes + direction) is no longer "being checked" (Fremdtest 11)
+    const ok = deps.setup?.state.read().confirmed ?? {};
+    const byAssistant = (id: string) =>
+      Object.entries(CONFIRMS).some(([u, ids]) => ok[u as Usage] && ids.includes(id)) ||
+      (id.startsWith('load_') && ok.grid === true && ok.pv === true);
     return json(200, {
       timeZone: deps.mapping.timeZone,
-      entities: Object.values(deps.mapping.series)
-        .filter((m) => !m.helper)
-        .map((m) => ({ ...m.entity, stepMs: m.stepMs })),
+      entities: Object.entries(deps.mapping.series)
+        .filter(([, m]) => !m.helper)
+        .map(([id, m]) => ({
+          ...m.entity,
+          ...(byAssistant(id) ? { confirmed: true } : {}),
+          stepMs: m.stepMs,
+        })),
     });
   }
 

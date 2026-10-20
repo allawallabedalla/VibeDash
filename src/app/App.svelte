@@ -26,10 +26,10 @@
     { id: 'week', label: t('page.week'), icon: 'calendar' as const },
     { id: 'now', label: t('page.now'), icon: 'bolt' as const },
     { id: 'forecasts', label: t('page.forecasts'), icon: 'forecast' as const },
+    // a charging board alone (e.g. the charge guard) is no reason: only with a wallbox, a plan or charging records
     ...(store.evcc ||
     store.plan ||
     store.charging ||
-    cb ||
     (store.state.status === 'ready' && currentSource() === 'demo')
       ? [
           {

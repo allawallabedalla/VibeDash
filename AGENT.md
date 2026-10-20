@@ -35,7 +35,8 @@ described in `LADESTEUERUNG.md` and is **not** part of setting up a home.
 
 ## 1. Onboarding: from a new PC to the first real tile
 
-After installation VibeDash shows **demo data**. Real values need a **data source** and a
+A fresh starter install shows **"no data"** until devices are connected (a plain checkout without a server shows
+demo data). Real values need a **data source** and a
 **mapping** (`local/mapping.json`). Finding devices fully automatically does **not** work
 reliably: every device type speaks differently, registers are vendor-specific, and some
 devices need a manual step by the person. Say so honestly.
@@ -48,21 +49,28 @@ with `ssh vibedash@vibedash.local` (key only, `sudo` without a password). The ac
 code and a password – never commit or share it.
 
 On a machine without a data store, run `sudo bash starter/install.sh` (idempotent; see `ERSTEINRICHTUNG.md`). It
-installs Docker from Ubuntu packages and starts, in `starter/compose.yaml`: InfluxDB 1.8 (database `haus`, no published
+installs Docker from the system's packages (Ubuntu or Debian 13) into `/opt/vibedash` (root-owned: use `sudo` for
+every file there, e.g. `/opt/vibedash/starter/local/mapping.json`) and starts, in `starter/compose.yaml`: InfluxDB 1.8 (database `haus`, no published
 port, users `evcc` write-only / `vibedash` read-only, credentials in `starter/.env` mode 600), **evcc** as the
 universal reader (Modbus, OCPP, vendor APIs) and VibeDash (`starter/mapping.evcc.json`: evcc writes one measurement per
 value, field `value`; grid import and battery discharge are positive in evcc, so the mapping flips them with
-`scale: -1`). Then add the person's devices to `starter/evcc.yaml` from evcc's read-only templates – one at a time,
-each confirmed with a yes and a check against the manufacturer app – and restart with
-`docker compose -f starter/compose.yaml --env-file starter/.env up -d`. Never write demo devices into a real home
-(`starter/test/evcc.demo.yaml` is for CI only). No control in evcc (no charge modes other than off) until
-LADESTEUERUNG.md.
+`scale: -1`). **Meters go in through the setup assistant only** (`#/einrichten`, or its API `/api/setup/*` with
+the setup code) – it creates them in evcc's own database, checks amount **and direction** with the person, avoids
+duplicates and marks the values confirmed. Never also write meters into `starter/evcc.yaml` (two ways = devices
+twice). Restart after changes: `sudo docker compose -f /opt/vibedash/starter/compose.yaml --env-file
+/opt/vibedash/starter/.env up -d`. Never write demo devices into a real home (the CI uses evcc's `demo-*`
+templates). Charging is switched only by the charge guard (LADESTEUERUNG.md section 9, locked until it has proved
+itself).
+
+**Modbus on the inverter:** if a device needs its local interface switched on (e.g. Modbus TCP / SunSpec in the
+inverter's settings), say clearly: **"read only – leave control / Steuerung via Modbus off"**, and ask for a photo of
+the settings page as a check. A write-enabled Modbus lets anyone in the home network change the inverter.
 
 ### 1.1 Pick the path (offer in this order)
 
 1. **Home Assistant present?** → use the Home Assistant adapter (available, section 2).
    HA already solved discovery for thousands of devices.
-2. **evcc present (energy/wallbox)?** → evcc as source (planned as M6).
+2. **evcc present (energy/wallbox)?** → evcc as source (available, section 2).
 3. **InfluxDB already collecting?** → Influx adapter (available, section 2).
 4. **None of these?** → agent-led onboarding (1.2), together with the person.
 
@@ -96,8 +104,9 @@ All three adapters exist (Home Assistant, evcc, InfluxDB 1.x).
 4. **Cross-check with something the person knows.** "I read 3.2 kW generation. Does your
    vendor app show about that right now?" Check sign and direction (feed-in vs. import,
    battery charging vs. discharging) – the most common source of errors.
-5. **State manual steps clearly.** What only the person can do, as a short instruction:
-   "In the wallbox app, enter `ws://<VibeDash computer>:<port>/` as OCPP server."
+5. **State manual steps clearly.** What only the person can do, as a short instruction – an address to type is
+   dictated character by character and checked with a photo of the app screen (the one exception to "no
+   technical input"): "In the wallbox app, enter `ws://<VibeDash computer>:<port>/` as OCPP server."
 6. **Connect.** Write the adapter configuration and the entry in `local/mapping.json`
    (never into the repo); credentials only in `.env`.
 7. **Check data truth** (`ANLEITUNG.md` section 6 and section 3 below): meter readings over

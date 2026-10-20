@@ -219,9 +219,12 @@ export async function scan(
         return { host, ports };
       }),
     );
-    for (const r of res) if (r.ports.some((p) => p !== 80)) found.push(r);
+    for (const r of res) if (r.ports.length) found.push(r);
   }
-  return found;
+  // Modbus first; devices with a web page only (older inverters with their own web API) stay as "maybe"
+  // – the address field takes any address anyway (Fremdtest 6)
+  const modbus = (r: { ports: number[] }) => r.ports.some((p) => p !== 80);
+  return [...found.filter(modbus), ...found.filter((r) => !modbus(r))];
 }
 
 /** Setup code check: constant time, at most 5 wrong tries per 10 minutes. */
@@ -245,6 +248,8 @@ export interface SetupState {
   answers?: Record<string, boolean>;
   /** "first visit becomes the owner" (general stick): sha256 of the code handed to the first visitor */
   owner?: string;
+  /** devices the person confirmed in the assistant (amount, and direction for grid and battery) */
+  confirmed?: Partial<Record<Usage, boolean>>;
 }
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');

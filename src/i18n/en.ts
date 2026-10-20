@@ -298,9 +298,9 @@ export const en: Record<MessageKey, string> = {
   'state.missingSince': 'data missing since {when}',
   'state.checking': 'being checked',
   'q.unconfirmedOne':
-    'One value is not confirmed yet. Does it match the vendor app? (Set “confirmed: true” in local/mapping.json.)',
+    'One value is not confirmed yet. Does it match the vendor app? Confirm it in the setup (#/einrichten) or with your helper.',
   'q.unconfirmed':
-    '{n} values are not confirmed yet. Do they match the vendor app? (Set “confirmed: true” in local/mapping.json.)',
+    '{n} values are not confirmed yet. Do they match the vendor app? Confirm it in the setup (#/einrichten) or with your helper.',
   'state.open': 'still open',
   'state.retry': 'Try again',
   'state.errorTitle': 'No data',
@@ -409,6 +409,17 @@ export const en: Record<MessageKey, string> = {
     'This is your code. Write it down or take a photo – you need it to continue on another device.',
   'setup.claimTaken':
     'Somebody has already taken over the setup – please enter the code from that person.',
+  'setup.dirGrid':
+    'And the direction: are you buying power from the grid right now – or feeding in? Your app shows it.',
+  'setup.buy': 'Buying',
+  'setup.sell': 'Feeding in',
+  'setup.dirBattery': 'And the direction: is the battery charging right now – or giving power?',
+  'setup.charging': 'Charging',
+  'setup.discharging': 'Giving power',
+  'setup.signWrong':
+    'The direction does not match the reading – nothing saved. Please ask your helper: it has to be turned round on the device.',
+  'setup.pvNight':
+    'In the dark the solar plant gives 0 kW – that proves nothing yet. Better check again in daylight.',
   'setup.code': 'Setup code',
   'setup.codeHelp': 'The code was shown at the end of the installation (6 digits).',
   'setup.codeWrong': 'That code is not right. Please try again.',
@@ -430,8 +441,9 @@ export const en: Record<MessageKey, string> = {
   'setup.roleQ.battery': 'Do you have a home battery?',
   'setup.roleQ.grid':
     'Does a device measure what goes to and comes from the grid? (Often the inverter does.)',
-  'setup.same': 'Use the same device as before ({brand})?',
-  'setup.brand': 'Manufacturer (on the type plate)',
+  'setup.same':
+    'Does this run through the same device as before ({brand})? For battery and grid meter it often does.',
+  'setup.brand': 'Manufacturer (type plate – for battery and meter often the inverter maker)',
   'setup.brandSearch': 'Search manufacturer …',
   'setup.address': 'Address in the home network',
   'setup.more': 'More (rarely needed)',
@@ -448,7 +460,8 @@ export const en: Record<MessageKey, string> = {
   'setup.finish': 'Finish setup',
   'setup.finished':
     'Done. The first readings arrive in about a minute. The assistant is now closed.',
-  'setup.closed': 'Setup is finished. To change it, your agent or a new installer run helps.',
+  'setup.closed':
+    'The setup is finished – so nobody else changes anything. Only your helper (e.g. Claude Code) can change it now.',
   'setup.toDash': 'To the dashboard',
   'setup.error': 'That did not work. Try again – or send a photo of the screen to your helper.',
   'setup.banner': 'Setup not finished yet',
