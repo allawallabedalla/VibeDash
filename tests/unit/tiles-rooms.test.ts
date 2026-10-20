@@ -59,4 +59,12 @@ describe('rooms now (all room sensors of one kind)', () => {
     expect(tile.sub).toBe('sub.comfortRoom:Bad');
     expect(tile.value).toBe('58');
   });
+  it('a held value keeps its room in front of "last reported" (Audit04 DA-05)', () => {
+    const data = withRooms([50, 58], [48, 52]);
+    const bath = data.series.hum_bath!;
+    // sends on change: the value is held, the last real report was two hours ago
+    (bath as { held?: { reports: number[] } }).held = { reports: [data.now - 2 * 3_600_000] };
+    const tile = humidityTile(data);
+    expect(tile.sub).toBe('Bad · state.lastReport');
+  });
 });

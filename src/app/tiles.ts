@@ -348,7 +348,7 @@ export function humidityTile(data: DemoData): TileProps {
   const src = humiditySource(data);
   const humidity = nowValue(data, src.id);
   const notes = sensorNotes(data, src.id);
-  return staleOr(data, src.id, {
+  const tile = staleOr(data, src.id, {
     label: t('tile.humidity'),
     icon: 'droplet',
     color: 'var(--climate)',
@@ -376,6 +376,11 @@ export function humidityTile(data: DemoData): TileProps {
         .join(' '),
     },
   });
+  // the age replaces the sub line: keep the room in front of it, or the value reads as the living room's
+  // (Audit04 DA-05: "61 % · zuletzt gemeldet 20:16" came from the dressing room)
+  return src.room && tile.sub && !tile.sub.includes(src.room)
+    ? { ...tile, sub: `${src.room} · ${tile.sub}` }
+    : tile;
 }
 
 /** The house's own daily PV forecast (series pv_forecast_day, optional _low/_high). */
