@@ -20,6 +20,7 @@ import { i18n, num, t, time } from '../i18n/index.svelte';
 import { freshFor, lastReport, steadyValue } from '../model/series';
 import { balanceW } from '../model/balance';
 import { addDays, localDateKey, localMidnight } from '../model/time';
+import { loading } from './loading';
 
 const kw = (w: number | null) => (w === null ? null : w / 1000);
 const signed = (v: number, digits: number) =>
@@ -60,14 +61,17 @@ function withoutValue(
   tile: TileProps,
   reason: 'state.noData' | 'state.stale' | 'state.open',
 ): TileProps {
+  // series still on their way (first visit): "lädt …", not "keine Daten"
+  const wait = reason === 'state.noData' && loading.pending > 0;
   return {
     ...tile,
     value: '–',
     unit: undefined,
     approx: false,
-    sub: t(reason),
+    sub: t(wait ? 'state.loading' : reason),
     graphic: undefined,
     status: undefined,
+    ...(wait ? { loading: true } : {}),
   };
 }
 

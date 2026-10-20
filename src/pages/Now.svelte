@@ -21,7 +21,7 @@
   import { num, t, time } from '../i18n/index.svelte';
   import PageHead from './PageHead.svelte';
 
-  const house = currentData();
+  const house = $derived(currentData());
 
   const kw = (w: number | null) => (w === null ? null : w / 1000);
   const energy = $derived([
@@ -34,11 +34,11 @@
   const roomTemps = $derived(roomsNow(house, 'temperature'));
   const roomHumidity = $derived(roomsNow(house, 'humidity'));
 
-  const src = sourcesAt(house, house.now - 60_000);
-  const band = typicalProfile(house, 'load_power');
-  const bandKw = { low: band.low.map(kw), high: band.high.map(kw) };
-  const sensorGap = house.issues.find(
-    (i) => i.kind === 'gap' && i.entityIds.includes('living_temp'),
+  const src = $derived(sourcesAt(house, house.now - 60_000));
+  const band = $derived(typicalProfile(house, 'load_power'));
+  const bandKw = $derived({ low: band.low.map(kw), high: band.high.map(kw) });
+  const sensorGap = $derived(
+    house.issues.find((i) => i.kind === 'gap' && i.entityIds.includes('living_temp')),
   );
 </script>
 

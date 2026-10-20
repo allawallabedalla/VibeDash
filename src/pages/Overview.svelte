@@ -1,6 +1,6 @@
 <script lang="ts">
   /** M2: first real page. First level tiles, then today, then look-back table, then questions. */
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { currentData, currentSource, store } from '../app/data.svelte';
   import { groupQuestions, questions } from '../app/questions';
   import { reviewNote, reviewRows } from '../app/review';
@@ -29,11 +29,10 @@
   import { i18n, t } from '../i18n/index.svelte';
   import PageHead from './PageHead.svelte';
   import WeatherDaysCard from './WeatherDaysCard.svelte';
-  import EnergyFlowCard from './EnergyFlowCard.svelte';
 
-  const house = currentData();
+  const house = $derived(currentData());
 
-  const tz = house.timeZone;
+  const tz = $derived(house.timeZone);
   const locale = $derived(i18n.locale === 'de' ? 'de-DE' : 'en-GB');
 
   const qs = $derived(questions(house, currentSource()));
@@ -62,14 +61,17 @@
 
   // Forecast line in the sun tile (M9): the demo's own model, or live the hourly PV
   // forecast of the forecasting service. Live without it: no forecast, no made-up line.
+  // the forecast line is set up once per page (the service may replace it); fresh series do not change it
+  // svelte-ignore state_referenced_locally
   let sunFc = $state<SunForecast | null>(
     currentSource() === 'demo' ? demoSunForecast(house) : null,
   );
   // the house's own hourly forecast, if mapped (pv_forecast, _low, _high in kW or W)
   {
-    const start = localMidnight(house.now, house.timeZone);
+    // read once per page: the forecast line does not follow every fresh series
+    const start = untrack(() => localMidnight(house.now, house.timeZone));
     const x = Array.from({ length: 24 }, (_, h) => start + h * 3_600_000 + 1_800_000);
-    const own = hourlyPvForecast(house, x);
+    const own = untrack(() => hourlyPvForecast(house, x));
     if (own && currentSource() !== 'demo') {
       // kW like the measured line (Audit02 DE2-01: W here made the measured line look flat)
       sunFc = {
@@ -232,7 +234,10 @@
         />
       {/await}
     </Card>
-    <EnergyFlowCard {house} />
+    <!-- the drawing follows right after the first paint (first-page budget) -->
+    {#await import('./EnergyFlowCard.svelte') then { default: EnergyFlowCard }}
+      <EnergyFlowCard {house} />
+    {/await}
   </div>
 
   <!-- loaded on demand: keeps the first page under its JS budget -->

@@ -10,6 +10,7 @@ import { explainedBy, type Note } from '../model/notes';
 import { newBuild } from '../model/release';
 import { counterResets, findGaps } from '../model/series';
 import type { Entity, Series } from '../model/types';
+import { loading, thin } from './loading';
 
 export type HouseData = DemoData;
 export type Source = 'demo' | 'live';
@@ -31,6 +32,8 @@ const CLIENT_TIMEOUT_MS = 15_000; // server gives up after 10 s
 const RECENT_MS = 48 * 3_600_000; // only ask about gaps from the last two days
 
 let state = $state<State>({ status: 'loading' });
+/** time of the snapshot shown until fresh data are in (null = fresh) */
+let stale = $state<number | null>(null);
 let version = $state(0);
 let evcc = $state(false);
 let charging = $state(false);
@@ -102,10 +105,16 @@ function detectIssues(
   return out;
 }
 
+type Ready = Extract<State, { status: 'ready' }>;
+
 async function loadLive(
   timeZone: string,
   backends: Backend[],
   range: '24h' | '31d',
+  /** called with the house so far while the series arrive (at most every 150 ms) */
+  progress?: (partial: Ready) => void,
+  /** series to show until the fresh ones are in (snapshot of the last visit) */
+  base?: Record<string, Series>,
 ): Promise<State> {
   const ents = await getJson('/api/entities');
   if (!ents || ents.status !== 200) return { status: 'error', reason: reasonOf(ents) };
@@ -117,30 +126,73 @@ async function loadLive(
   const missing: { id: string; reason: Reason }[] = [];
   const now = Date.now();
   const series: Record<string, Series> = {};
+  const entities = wanted.map((id) => byId.get(id) ?? ENTITIES.find((e) => e.id === id)!);
+  for (const id of wanted)
+    series[id] = base?.[id] ?? {
+      entityId: id,
+      source: 'live',
+      stepMs: byId.get(id)?.stepMs ?? 60_000,
+      samples: [],
+    };
+  let left = wanted.filter((id) => byId.has(id)).length;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const partial = (): Ready => ({
+    status: 'ready',
+    source: 'live',
+    backends,
+    data: {
+      now: base ? Date.now() : now,
+      timeZone,
+      entities,
+      series: { ...series },
+      notes: [],
+      issues: [],
+    },
+    missing: [],
+  });
+  const flush = () => {
+    timer = undefined;
+    loading.pending = left;
+    progress?.(partial());
+  };
+  if (progress) {
+    loading.pending = left;
+    if (!base) progress(partial());
+  }
 
   await Promise.all(
     wanted.map(async (id) => {
       const ent = byId.get(id);
-      series[id] = { entityId: id, source: 'live', stepMs: ent?.stepMs ?? 60_000, samples: [] };
       if (!ent) {
+        series[id] = { entityId: id, source: 'live', stepMs: 60_000, samples: [] };
         missing.push({ id, reason: 'not_mapped' });
         return;
       }
       const r = await getJson(`/api/series/${id}?range=${range}`);
+      left--;
       if (!r || r.status !== 200) {
+        series[id] = { entityId: id, source: 'live', stepMs: ent.stepMs ?? 60_000, samples: [] };
         missing.push({ id, reason: reasonOf(r) });
-        return;
+      } else {
+        const body = r.body as {
+          samples: [number, number][];
+          held?: { reports: number[]; holdMs: number };
+        };
+        series[id] = {
+          entityId: id,
+          source: 'live',
+          stepMs: ent.stepMs ?? 60_000,
+          samples: body.samples.map(([t, v]) => ({ t, v })),
+          ...(body.held && Array.isArray(body.held.reports) ? { held: body.held } : {}),
+        };
       }
-      const body = r.body as {
-        samples: [number, number][];
-        held?: { reports: number[]; holdMs: number };
-      };
-      series[id]!.samples = body.samples.map(([t, v]) => ({ t, v }));
-      if (body.held && Array.isArray(body.held.reports)) series[id]!.held = body.held;
+      // one tile after the other: hand over what is there, in small batches
+      if (progress && !timer) timer = setTimeout(flush, 150);
     }),
   );
+  if (timer) clearTimeout(timer);
+  loading.pending = 0;
 
-  const entities = wanted.map((id) => byId.get(id) ?? ENTITIES.find((e) => e.id === id)!);
   const nb = await getJson('/api/notes');
   const notes = nb?.status === 200 ? ((nb.body as { notes?: Note[] }).notes ?? []) : [];
   return {
@@ -192,7 +244,8 @@ function watchBuild(first: unknown) {
 
 export async function load(): Promise<void> {
   const run = ++loads;
-  state = { status: 'loading' };
+  // a page that is there stays there while it is refreshed
+  if (state.status !== 'ready') state = { status: 'loading' };
   const health = await getJson('/api/health');
   watchBuild((health?.body as { build?: unknown } | undefined)?.build);
   const body = health?.body as
@@ -221,21 +274,71 @@ export async function load(): Promise<void> {
   pv = body?.pv === true;
   plan = body?.plan === true;
   if (health?.status === 200 && body?.source === 'live' && body.timeZone) {
-    // The last day first, so the page is there quickly; the month follows.
-    const quick = await loadLive(body.timeZone, body.backends ?? [], '24h');
+    // At once: the last visit's snapshot (if any), marked with its time; then the last day series by series,
+    // so tile after tile turns fresh; the month follows. The page stays (no reload between the steps).
+    const snap = state.status === 'ready' ? null : readSnapshot(body.timeZone);
+    if (snap) {
+      state = snap;
+      stale = snap.data.now;
+    }
+    const keep = state.status === 'ready' ? state.data.series : undefined;
+    const quick = await loadLive(
+      body.timeZone,
+      body.backends ?? [],
+      '24h',
+      (p) => {
+        if (run === loads) state = p;
+      },
+      keep,
+    );
     if (run !== loads) return;
     if (quick.status === 'ready') {
       state = quick;
-      version++;
-    }
+      stale = null;
+      saveSnapshot(quick);
+    } else if (state.status !== 'ready') state = quick;
     const full = await loadLive(body.timeZone, body.backends ?? [], '31d');
     if (run !== loads) return;
     // a failed month must not replace a working day
     if (full.status === 'ready' || quick.status !== 'ready') state = full;
   } else {
     state = { status: 'ready', source: 'demo', backends: [], data: generateDemo(), missing: [] };
+    version++;
   }
-  version++;
+}
+
+// ── snapshot of the last visit (this device only) ─────────────────────────────
+const SNAP_KEY = 'vibedash.snapshot.v1';
+const SNAP_MAX_AGE_MS = 24 * 3_600_000;
+const SNAP_POINTS = 300;
+
+function saveSnapshot(st: Ready) {
+  try {
+    const series: Record<string, Series> = {};
+    for (const [id, x] of Object.entries(st.data.series))
+      series[id] = { ...x, samples: thin(x.samples, SNAP_POINTS) };
+    localStorage.setItem(
+      SNAP_KEY,
+      JSON.stringify({ v: 1, backends: st.backends, data: { ...st.data, series } }),
+    );
+  } catch {
+    /* private mode, full storage: the next visit simply loads as before */
+  }
+}
+
+function readSnapshot(timeZone: string): Ready | null {
+  try {
+    const raw = localStorage.getItem(SNAP_KEY);
+    if (!raw) return null;
+    const x = JSON.parse(raw) as { v?: number; backends?: Backend[]; data?: HouseData };
+    const d = x.data;
+    if (x.v !== 1 || !d || d.timeZone !== timeZone || typeof d.now !== 'number') return null;
+    if (Date.now() - d.now > SNAP_MAX_AGE_MS || !d.series || !Array.isArray(d.entities))
+      return null;
+    return { status: 'ready', source: 'live', backends: x.backends ?? [], data: d, missing: [] };
+  } catch {
+    return null;
+  }
 }
 
 export const store = {
@@ -269,6 +372,10 @@ export const store = {
   /** Boards (extra pages from house services), in mapping order. */
   get boards(): BoardTab[] {
     return boards;
+  },
+  /** Time of the last visit's snapshot while it is shown (null when the data are fresh). */
+  get stale(): number | null {
+    return stale;
   },
   /** Changes on every (re)load; pages are keyed on it. */
   get version(): number {

@@ -19,7 +19,7 @@
   import BoardSections, { chargingBoard } from './BoardSections.svelte';
 
   const demo = currentSource() === 'demo';
-  const timeZone = currentData().timeZone;
+  const timeZone = $derived(currentData().timeZone);
 
   type PlanState =
     | { s: 'off' }

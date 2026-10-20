@@ -21,16 +21,18 @@
   import WeatherDaysCard from './WeatherDaysCard.svelte';
   import { hasWeatherDays } from '../app/weather-days';
 
-  const house = currentData();
-  const tz = house.timeZone;
+  const house = $derived(currentData());
+  const tz = $derived(house.timeZone);
   const locale = $derived(i18n.locale === 'de' ? 'de-DE' : 'en-GB');
-  const w = weekNumbers(house);
-  const rooms = roomRanges(house, w.days);
+  const w = $derived(weekNumbers(house));
+  const rooms = $derived(roomRanges(house, w.days));
   /** day tiles: one value per day, at the day's middle (for the enlarged time axis) */
   const mid = (d: { start: number; end: number }) => (d.start + d.end) / 2;
-  const daySpan = w.days.length ? { from: mid(w.days[0]!), to: mid(w.days.at(-1)!) } : undefined;
+  const daySpan = $derived(
+    w.days.length ? { from: mid(w.days[0]!), to: mid(w.days.at(-1)!) } : undefined,
+  );
   // charts: the seven completed days, then today (lighter, apart from the sums)
-  const today = w.days.length;
+  const today = $derived(w.days.length);
 
   const labels = $derived([
     ...w.days.map((d) =>
@@ -72,11 +74,13 @@
       .filter(Boolean)
       .join(' · ') || undefined;
   const known = (v: (number | null)[]) => v.filter((x): x is number => x !== null);
-  const socs = w.soc.filter((x) => x !== null);
-  const socLow = socs.length ? Math.min(...socs.map((x) => x.low)) : null;
-  const socHigh = socs.length ? Math.max(...socs.map((x) => x.high)) : null;
-  const nights = known(w.night);
-  const nightMean = nights.length ? nights.reduce((s, x) => s + x, 0) / nights.length : null;
+  const socs = $derived(w.soc.filter((x) => x !== null));
+  const socLow = $derived(socs.length ? Math.min(...socs.map((x) => x.low)) : null);
+  const socHigh = $derived(socs.length ? Math.max(...socs.map((x) => x.high)) : null);
+  const nights = $derived(known(w.night));
+  const nightMean = $derived(
+    nights.length ? nights.reduce((s, x) => s + x, 0) / nights.length : null,
+  );
 
   const weekTiles = $derived<TileProps[]>([
     {
@@ -144,8 +148,8 @@
   ]);
 
   // Where the solar power went and where the house power came from (week sums).
-  const f = w.flows;
-  const est = f?.source === 'power';
+  const f = $derived(w.flows);
+  const est = $derived(f?.source === 'power');
   const whereTo = $derived([
     {
       label: t('week.toHouse'),
@@ -199,7 +203,7 @@
       .join(' '),
   );
 
-  const tsData = pvTimeSeries(house, 'week');
+  const tsData = $derived(pvTimeSeries(house, 'week'));
   // The made-up weather only exists for the demo household.
   const demo = currentSource() === 'demo';
 </script>

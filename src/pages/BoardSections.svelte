@@ -7,15 +7,21 @@
   import { onMount } from 'svelte';
   import { store as boardStore } from '../app/data.svelte';
   import type { Board } from '../model/board';
+  import { boardCache } from '../app/loading';
 
   export function chargingBoard() {
     const tab = $derived(boardStore.boards.find((b) => b.onPage === 'charging'));
-    let board = $state<Board | null>(null);
+    // the last answer on this device at once, the fresh one when it is in
+    const cached = () => (tab ? boardCache<Board>(tab.id) : null);
+    let board = $state<Board | null>(cached()?.read()?.b ?? null);
     async function load() {
       if (!tab) return;
       try {
         const r = await fetch(`/api/board/${tab.id}`, { signal: AbortSignal.timeout(25_000) });
-        if (r.ok) board = (await r.json()) as Board;
+        if (r.ok) {
+          board = (await r.json()) as Board;
+          cached()?.write(board);
+        }
       } catch {
         /* keep what is shown */
       }
@@ -74,7 +80,7 @@
     onchanged?: () => void;
   } = $props();
 
-  const house = currentData();
+  const house = $derived(currentData());
   const tab = $derived(store.boards.find((b) => b.id === id));
   const inSlot = (s: BoardSection) => !slot || (slot === 'rest' ? !s.slot : s.slot === slot);
 

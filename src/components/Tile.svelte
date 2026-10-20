@@ -63,6 +63,8 @@
     info?: { what: string; source: string };
     /** Short marker, e.g. "being checked" until the person confirmed the value. */
     pending?: string;
+    /** the data is still on its way: the value breathes softly */
+    loading?: boolean;
     /**
      * Tap to enlarge: the series behind the tile (ids in the house data), drawn
      * for 24 h / 7 / 30 days with min, max, mean and n. Without it the enlarged
@@ -110,6 +112,7 @@
     statusLabel,
     info,
     pending,
+    loading = false,
     zoom,
   }: TileProps = $props();
 
@@ -140,11 +143,12 @@
   {:else}
     <div class="body" class:with-ring={graphic?.kind === 'ring'}>
       <div class="reading">
-        <div class="value">
-          {#if approx}<span class="approx">≈</span>{/if}{value}{#if unit}<span class="unit"
-              >{unit}</span
-            >{/if}
-        </div>
+        <!-- a new value rises in softly (data arriving step by step) -->
+        {#key value}<div class="value" class:loading>
+            {#if approx}<span class="approx">≈</span>{/if}{value}{#if unit}<span class="unit"
+                >{unit}</span
+              >{/if}
+          </div>{/key}
         {#if sub}<div class="sub">{sub}</div>{/if}
         {#if pending}<div class="pending">{pending}</div>{/if}
       </div>
@@ -310,6 +314,7 @@
     min-width: 0;
   }
   .value {
+    animation: rise 0.28s ease-out;
     font-size: 30px;
     font-weight: 700;
     letter-spacing: -0.025em;
@@ -382,6 +387,27 @@
     .unit,
     .sub {
       font-size: 14px;
+    }
+  }
+  .value.loading {
+    animation: breathe 1.4s ease-in-out infinite;
+    color: var(--faint);
+  }
+  @keyframes rise {
+    from {
+      opacity: 0.35;
+      transform: translateY(3px);
+    }
+  }
+  @keyframes breathe {
+    50% {
+      opacity: 0.45;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .value,
+    .value.loading {
+      animation: none;
     }
   }
 </style>

@@ -59,8 +59,8 @@
     span: 'quantiles' | 'cautious-good' | null;
   }
 
-  const house = currentData();
-  const tz = house.timeZone;
+  const house = $derived(currentData());
+  const tz = $derived(house.timeZone);
   const locale = $derived(i18n.locale === 'de' ? 'de-DE' : 'en-GB');
   let view = $state<{ s: 'loading' } | { s: 'error' } | { s: 'ready'; a: Answer }>({
     s: 'loading',
@@ -90,7 +90,7 @@
             ? t('hc.src.force')
             : t('hc.src.unknown');
 
-  const today = localMidnight(house.now, tz);
+  const today = $derived(localMidnight(house.now, tz));
   const days = Array.from({ length: 14 }, (_, i) => addDays(today, i - 13, tz));
   const dayLabel = (d: number) =>
     d === today
