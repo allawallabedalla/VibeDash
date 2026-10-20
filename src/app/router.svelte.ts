@@ -2,7 +2,8 @@
  * Minimal hash router: #/ , #/week, #/now, #/forecasts, #/charging, #/gallery
  * and #/b/<id> for a board (a page a house service supplies). No dependency needed.
  */
-type Fixed = 'overview' | 'week' | 'now' | 'forecasts' | 'charging' | 'gallery' | 'einrichten';
+type Fixed =
+  'overview' | 'week' | 'now' | 'forecasts' | 'charging' | 'gallery' | 'einrichten' | 'zeitstrahl';
 export type Route = Fixed | `b/${string}`;
 const routes: Fixed[] = [
   'overview',
@@ -12,6 +13,7 @@ const routes: Fixed[] = [
   'charging',
   'gallery',
   'einrichten',
+  'zeitstrahl',
 ];
 
 function parse(hash: string): Route {

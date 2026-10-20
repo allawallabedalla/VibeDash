@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Prototype `#/zeitstrahl`:** place several charge windows on a day (move, stretch, add, remove, power per window,
+  best suggestion); car energy, grid import (with 10–90 % range) and solar share recomputed on every pointer move
+  in the browser (31 weather cases). Made-up data, switches nothing. The review table on the overview now loads
+  after the first paint (first-page budget).
+
 - **Laden: Automatik / Jetzt voll laden** (car module, `steuerung`): forwards to the house's charge control;
   force = 16 A incl. grid power until full, unplugged or back to automatic.
 

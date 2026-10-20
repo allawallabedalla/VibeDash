@@ -18,7 +18,6 @@
     type SunForecast,
   } from '../app/tiles';
   import Card from '../components/Card.svelte';
-  import DataTable from '../components/DataTable.svelte';
   import Icon from '../components/Icon.svelte';
   import Segmented from '../components/Segmented.svelte';
   import StatusBar, { type StatusItem } from '../components/StatusBar.svelte';
@@ -253,7 +252,10 @@
         label={t('ts.periods')}
       />
     {/snippet}
-    <DataTable {columns} {rows} caption={t('review.title')} />
+    <!-- below the fold: loaded after the first paint (first-page budget) -->
+    {#await import('../components/DataTable.svelte') then { default: DataTable }}
+      <DataTable {columns} {rows} caption={t('review.title')} />
+    {/await}
   </Card>
 
   {#if known.length > 0}
