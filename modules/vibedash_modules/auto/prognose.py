@@ -312,6 +312,8 @@ def rechne(fahrten, st, plan, c=None, jetzt=None, rng=None):
         "sonne": sonne,
         "entscheidung": entscheidung,
         "ladungen": ladungen[-60:],
+        # Anteil des Tagesverbrauchs je Ortsstunde 0–23 (für „Ladestand um HH:MM“ im Rechner des Hauses)
+        "stundenanteil": [round(x, 4) for x in anteil],
         "status": st,
     }
     return out
