@@ -56,7 +56,7 @@ def store(path: str, value: str, tz, now: float) -> dict:
 
 
 def section(selected: str, plan: dict | None) -> dict:
-    """The choice on the charging page (slot "plan", above the calculator)."""
+    """The choice on the charging page: at the top (something to do, not something to read)."""
     st = (plan or {}).get("stufen") or {}
     opts = []
     for v, label, alpha in LEVELS:
@@ -70,7 +70,7 @@ def section(selected: str, plan: dict | None) -> dict:
         "id": ITEM,
         "selected": selected,
         "options": opts,
-        "slot": "plan",
+        "slot": "top",
         "note": "Gilt bis Mitternacht, dann wieder „Sicher“. Wirkt ab dem nächsten Planlauf (alle 15 min).",
         "info": {
             "what": "Sicher: der Hausakku geht vor, das Auto bekommt, was auch an schlechten Tagen übrig bleibt. "

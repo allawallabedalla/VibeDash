@@ -168,8 +168,8 @@ class Module:
             plan = _load(self.path(self.cfg["plan"])) if self.cfg.get("plan") else None
             choice = risiko.section(risiko.current(self.path(rf), self.tz, now), plan)
             secs = out.get("sections") or []
-            # above the calculator (both in slot "plan")
-            i = next((k for k, s in enumerate(secs) if s.get("type") == "calc"), len(secs))
+            # at the top, right after „Laden: Automatik / Jetzt voll laden“ (controls first, information after)
+            i = 1 if secs and secs[0].get("id") == steuerung.ITEM else 0
             out["sections"] = secs[:i] + [choice] + secs[i:]
         return out
 
