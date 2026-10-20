@@ -150,6 +150,8 @@ def build(data: dict, now_ms: int, tz=None) -> dict:
                         "info": {"what": clean(a.get("name"), 200), "source": clean(a.get("vergleich"), 400)},
                     }
                     for a in daily[:8]
+                    # the source's trailing empty row gave an empty tile (Audit04 UX-16)
+                    if (a.get("kurz_name") or a.get("name")) and (a.get("kurz_wert") or a.get("wert"))
                 ],
             }
         )

@@ -19,8 +19,9 @@ from datetime import datetime
 from ..fmt import clean
 
 STEP_MS = 15 * 60_000
-EVENTS_MAX = 200
-TEL_MAX = 300
+EVENTS_MAX = 60
+TEL_MAX = 60
+REPEAT_MS = 15 * 60_000  # same room + same event within 15 min = one row „… (7×)“ (Audit04 UX-07)
 
 DEFAULTS = {
     "gruppen": [
@@ -47,6 +48,19 @@ DEFAULTS = {
     "tueren": [],
     "tuer_sonst": "Tür",
 }
+
+
+def squeeze(events):
+    """Newest first; a repeat of the same room and event within REPEAT_MS of the row's oldest one joins that row.
+    -> (ms of the newest, room, event, state, count)"""
+    out = []
+    for ms, r, e, st in events:
+        if out and out[-1][1] == r and out[-1][2] == e and out[-1][5] - ms <= REPEAT_MS:
+            last = out[-1]
+            out[-1] = (last[0], r, e, last[3] or st, last[4] + 1, ms)
+        else:
+            out.append((ms, r, e, st, 1, ms))
+    return [x[:5] for x in out]
 
 
 def _dpt9(b0, b1):
@@ -190,6 +204,7 @@ def build(data: dict, inventory: dict, cfg: dict, now_ms: int, tz) -> dict:
         label = next((d["name"] for d in c["tueren"] if d.get("enthaelt") and d["enthaelt"] in (name or "")), None)
         events.append((ms, label or c["tuer_sonst"], "Tür auf" if is_open else "Tür zu", None))
     events.sort(key=lambda e: -e[0])
+    events = squeeze(events)
 
     # telegrams without cyclic readings and valves
     switching = [t for t in tel if not (readings + valves and t[1].startswith(readings + valves))]
@@ -300,10 +315,11 @@ def build(data: dict, inventory: dict, cfg: dict, now_ms: int, tz) -> dict:
             "title": "Ereignisse",
             "columns": [{"key": "t", "label": "Zeit"}, {"key": "r", "label": "Raum"}, {"key": "e", "label": "Was"}],
             "rows": [
-                {"cells": {"t": at(ms), "r": r, "e": e}, **({"state": s} if s else {})}
-                for ms, r, e, s in events[:EVENTS_MAX]
+                {"cells": {"t": at(ms), "r": r, "e": e + (f" ({n}×)" if n > 1 else "")}, **({"state": s} if s else {})}
+                for ms, r, e, s, n in events[:EVENTS_MAX]
             ],
-            "note": f"{len(events)} Ereignisse in 24 h, neueste zuerst"
+            "note": f"{sum(x[4] for x in events)} Ereignisse in 24 h, Wiederholungen binnen 15 min zusammengefasst, "
+            "neueste zuerst"
             + (f" (die {EVENTS_MAX} neuesten)." if len(events) > EVENTS_MAX else ".")
             + " Präsenz nur oben gezählt.",
             "info": {
