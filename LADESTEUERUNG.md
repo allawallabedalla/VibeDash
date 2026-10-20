@@ -92,3 +92,22 @@ Stufe B wird erst gebaut, wenn Stufe A mindestens 4 Wochen live richtig plant (A
 | M12 Ladeplan (Stufe A) | Lastmodell, Akkusimulation, 300 Szenarien, Plan + Infografik + Rückrechnung | Rückrechnung auf Demo-Daten: 0 kWh Netzbezug durchs Auto, Plan stabil |
 | M12b Was-wäre-wenn | Schieber im Browser | Antwort < 1 s am iPhone |
 | M13 Steuerung (Stufe B) | evcc-Anbindung **oder** eigener Wächter, alle Regeln aus Abschnitt 7 | 4 Wochen Stufe A live ohne Fehlplanung; Wächter-Tests (Totmann, Stopp-Vorrang, Ausfall der Messung) grün |
+
+## 9. Der Wächter im Produkt (Sperre, öffnet sich selbst)
+
+Für Häuser mit evcc schaltet das Modul `auto` die Wallbox selbst (`modules/vibedash_modules/auto/waechter.py`,
+im Starter-Paket fertig eingerichtet). Auf der Ladeseite: **Aus** (schreibt nie etwas) · **Automatik** (nach dem
+Ladeplan: Plan will laden → evcc „PV“, sonst „Aus“; ohne Plan „Aus“ = Totmann 7.2; jeder Befehl im
+Protokoll 7.6) · **Jetzt voll laden** (evcc „Sofort“ bis abgesteckt).
+
+Die Automatik ist **gesperrt**, bis drei Dinge erfüllt sind, und öffnet sich dann von selbst:
+
+1. **Werte lesen:** an 7 Tagen plausible Werte von evcc.
+2. **Plan trifft:** Rückrechnung des Ladeplans (nur Vergangenheit) über mindestens 14 Tage, untere 95-%-Grenze der
+   Tage ohne Netzstrom fürs Auto ≥ 75 % (Wilson; 14 von 14 reicht, 13 von 14 nicht).
+3. **Pausetest:** einmal mit Ja des Menschen – beim nächsten Laden kurz pausieren und an der **Ladeleistung** sehen,
+   dass die Wallbox wirklich gehorcht (Rückmeldung statt Befehl), danach wie vorher.
+
+Sie schließt sich wieder, wenn der Plan schlechter trifft (dann einmal zurück auf evcc „PV“) oder die Wallbox ein
+Umschalten dreimal nicht bestätigt (dann Pausetest neu). Eine Änderung in der evcc- oder Wallbox-App gewinnt immer,
+bis das Auto abgesteckt wird. Häuser mit eigener Steuerung (`steuerung` in auto.json) nutzen den Wächter nicht.

@@ -4,7 +4,8 @@
 #   influxdb  – speichert die Messwerte; kein Port nach außen, nur im internen Netz der Container
 #   evcc      – liest Wechselrichter, Akku, Wallbox (Modbus, OCPP, Hersteller-APIs) und schreibt in die Datenbank
 #   vibedash  – das Dashboard; liest die Datenbank mit einem Benutzer OHNE Schreibrechte
-#   modules   – Werkzeuge mit eigenen Reitern (Wartungsplan …); kein Port nach außen, Inhalte in local/modules
+#   modules   – Werkzeuge mit eigenen Reitern (Wartungsplan, Laden-Wächter …); kein Port nach außen, Inhalte in local/modules
+#   forecast  – Sonnen- und Ladeplan-Prognose; rechnet, sobald Anlage und Akku bekannt sind; kein Port nach außen
 name: vibedash
 
 services:
@@ -52,12 +53,15 @@ services:
       INFLUX_PASSWORD: ${INFLUX_VIBEDASH_PASSWORD:?fehlt}
       EVCC_URL: http://evcc:7070
       MODULES_URL: http://modules:8091
+      # PV forecast and charge plan (they start once the plant and the battery are known)
+      FORECAST_URL: http://forecast:8090
       # Einrichtungs-Assistent (/#/einrichten): Code vom Installer, evcc-Admin-Passwort, Heimnetz für die Suche
       EVCC_ADMIN_PASSWORD: ${EVCC_ADMIN_PASSWORD:-}
       SETUP_CODE: ${SETUP_CODE:-}
       SCAN_CIDR: ${SCAN_CIDR:-}
       SETUP_DEMO: ${SETUP_DEMO:-off}
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost}
+      # + vibedash: the charge guard in the modules container reads the plan here
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost},vibedash
       ALLOWED_HOSTS_EXACT: 'on'
       LOCATION_WRITE: 'off'
       LATITUDE: ${LATITUDE:-}
@@ -69,6 +73,7 @@ services:
       - influxdb
       - evcc
       - modules
+      - forecast
 
   modules:
     build: ../modules
@@ -76,9 +81,21 @@ services:
     restart: unless-stopped
     environment:
       TZ: ${TZ:-Europe/Berlin}
+      # the charge guard switches the wallbox through evcc (locked until it has proved itself)
+      EVCC_ADMIN_PASSWORD: ${EVCC_ADMIN_PASSWORD:-}
     volumes:
       - ./local/modules:/data
 
+  forecast:
+    build: ../forecast
+    image: vibedash-forecast:local
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      - forecast-data:/data
+
 volumes:
+  forecast-data:
   influxdb-data:
   evcc-data:

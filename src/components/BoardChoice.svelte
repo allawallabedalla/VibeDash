@@ -57,7 +57,8 @@
       role="radio"
       aria-checked={current === o.value}
       class:on={current === o.value}
-      disabled={busy !== null}
+      disabled={busy !== null || o.disabled}
+      class:locked={o.disabled}
       onclick={() => void choose(o.value)}
     >
       <span class="label">{busy === o.value ? tx.saving : o.label}</span>
@@ -94,6 +95,11 @@
   }
   button:disabled {
     cursor: progress;
+  }
+  button.locked {
+    cursor: not-allowed;
+    border-style: dashed;
+    color: var(--muted);
   }
   .label {
     font-weight: 600;

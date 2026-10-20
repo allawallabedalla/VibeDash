@@ -1,0 +1,14 @@
+{
+  "$comment": "Module auto for the starter pack (starter/install.sh copies it to local/modules/auto.json once): no car account, only the charge guard (waechter) on the wallbox through evcc. The automatic stays locked until it has proved itself (vibedash_modules/auto/waechter.py); 'Aus' never writes.",
+  "betrieb": "aus",
+  "prognose": "auto/prognose.json",
+  "zeitzone": "Europe/Berlin",
+  "waechter": {
+    "evcc_url": "http://evcc:7070",
+    "passwort_env": "EVCC_ADMIN_PASSWORD",
+    "ladepunkt": 1,
+    "plan_url": "http://vibedash:8080/api/plan",
+    "guete_url": "http://vibedash:8080/api/plan/guete",
+    "zustand": "auto/waechter.json"
+  }
+}

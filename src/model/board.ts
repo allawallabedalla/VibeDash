@@ -167,7 +167,8 @@ export interface BoardChoice {
   type: 'choice';
   /** item id the choice is sent with ("<kind>:<key>") */
   id: string;
-  options: { value: string; label: string; sub?: string }[];
+  /** disabled: shown but not selectable (e.g. the automatic while it is still locked) */
+  options: { value: string; label: string; sub?: string; disabled?: boolean }[];
   selected: string | null;
 }
 
@@ -605,7 +606,12 @@ function sanitizeChoice(s: O): BoardChoice | null {
     const value = typeof x.value === 'string' && CHOICE_VALUE.test(x.value) ? x.value : null;
     if (!value || options.some((y) => y.value === value)) continue;
     const sub = opt(x.sub, 80);
-    options.push({ value, label: text(x.label, 24) || value, ...(sub ? { sub } : {}) });
+    options.push({
+      value,
+      label: text(x.label, 24) || value,
+      ...(sub ? { sub } : {}),
+      ...(x.disabled === true ? { disabled: true } : {}),
+    });
   }
   if (options.length < 2) return null;
   const sel = typeof s.selected === 'string' ? s.selected : null;

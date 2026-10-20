@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 
 /**
@@ -521,4 +522,35 @@ test('charge plan still collecting: says how many days, no plan', async ({ page 
   await page.goto('/?lang=de#/charging');
   await expect(page.getByText('9 von 21 Tagen')).toBeVisible();
   await expect(page.locator('.tile', { hasText: 'Auto laden' })).toHaveCount(0);
+});
+
+test('charge guard locked: automatic greyed out, three conditions, pause test question', async ({
+  page,
+}, info) => {
+  await influxMode(page, synthetic);
+  await page.route('**/api/health', (r) =>
+    r.fulfill(
+      json({
+        ok: true,
+        source: 'live',
+        backends: ['influx'],
+        timeZone: 'Europe/Berlin',
+        boards: [
+          { id: 'auto', title: 'Laden', icon: 'plugCar', onPage: 'charging', actions: true },
+        ],
+      }),
+    ),
+  );
+  // made with the module itself (vibedash_modules/auto/waechter.py): 5 reading days, plan 9 of 9 days
+  await page.route('**/api/board/auto', (r) =>
+    r.fulfill(json(JSON.parse(readFileSync('tests/visual/fixtures/waechter-board.json', 'utf8')))),
+  );
+  await page.goto('/?lang=de#/charging');
+  const auto = page.getByRole('radio', { name: /Automatik/ });
+  await expect(auto).toBeDisabled();
+  await expect(page.getByRole('radio', { name: /Aus/ })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByRole('heading', { name: 'Automatik gesperrt' })).toBeVisible();
+  await expect(page.getByText('5 von 7 Tagen')).toBeVisible();
+  await expect(page.getByRole('radio', { name: /Erlauben/ })).toBeVisible();
+  await page.screenshot({ path: `screenshots/waechter-${info.project.name}.png`, fullPage: true });
 });
