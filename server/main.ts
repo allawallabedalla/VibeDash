@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { createServer } from 'node:http';
 import { handleApi, type ApiDeps } from './api';
 import { fileStore } from './feedback';
+import { readTabs, writeTabs } from './tabs';
 import { codeChecker, evccAdmin, scan, stateFile } from './setup';
 import { createBackends } from './backends';
 import { encodeBody, gzipStatic } from './compress';
@@ -135,6 +136,16 @@ if (config.evcc && process.env.SETUP_CODE && process.env.EVCC_ADMIN_PASSWORD) {
 // Feedback button on every page: a local backlog for VibeDash itself (FEEDBACK=off disables it).
 if (process.env.FEEDBACK !== 'off') {
   deps.feedback = fileStore(process.env.FEEDBACK_PATH ?? 'local/feedback.json');
+}
+
+// Which tabs show and in which order (BL-272): in local/settings.json, TABS_WRITE=off makes it read-only.
+{
+  const path = process.env.SETTINGS_PATH ?? 'local/settings.json';
+  deps.tabs = {
+    writable: process.env.TABS_WRITE !== 'off',
+    read: () => readTabs(path),
+    write: (t) => writeTabs(path, t),
+  };
 }
 
 // Car charging from the house's own records (read-only), when mapped and Influx is there.

@@ -7,6 +7,7 @@
   import { currentSource, load, store } from './data.svelte';
   import { boardOf, router, type Route } from './router.svelte';
   import { iconOf } from '../components/Icon.svelte';
+  import { arrange } from './tabs';
 
   /** Pull to refresh: only on touch screens, loaded only there (not part of the first page). */
   let touch = $state(false);
@@ -20,7 +21,7 @@
 
   /** a board shown on the charging page names the charging tab */
   const cb = $derived(store.boards.find((b) => b.onPage));
-  const tabs = $derived([
+  const allTabs = $derived([
     { id: 'overview', label: t('page.overview'), icon: 'overview' as const },
     { id: 'week', label: t('page.week'), icon: 'calendar' as const },
     { id: 'now', label: t('page.now'), icon: 'bolt' as const },
@@ -42,6 +43,8 @@
       .filter((b) => !b.onPage)
       .map((b) => ({ id: `b/${b.id}`, label: b.title, icon: iconOf(b.icon) })),
   ]);
+  /** the person's choice: hidden tabs drop out, their order first (BL-272) */
+  const tabs = $derived(arrange(allTabs, store.tabPrefs));
 
   function toggleTheme() {
     const root = document.documentElement;
@@ -53,7 +56,15 @@
   const demoOnly = $derived(store.state.status === 'ready' && currentSource() === 'demo');
   /** Feedback dialog: loaded only when opened (not part of the first page). */
   let feedbackOpen = $state(false);
+  /** Tab settings: loaded only when opened. */
+  let tabsOpen = $state(false);
 </script>
+
+{#if tabsOpen}
+  {#await import('../components/TabsDialog.svelte') then { default: TabsDialog }}
+    <TabsDialog tabs={allTabs} onclose={() => (tabsOpen = false)} />
+  {/await}
+{/if}
 
 {#if feedbackOpen}
   {#await import('../components/FeedbackDialog.svelte') then { default: FeedbackDialog }}
@@ -88,6 +99,15 @@
         <Icon name="comment" />
       </button>
     {/if}
+    <button
+      type="button"
+      class="round"
+      aria-label={t('tabs.settings')}
+      title={t('tabs.settings')}
+      onclick={() => (tabsOpen = true)}
+    >
+      <Icon name="sliders" />
+    </button>
     <button type="button" class="round" aria-label={t('toggle.theme')} onclick={toggleTheme}>
       <Icon name="contrast" />
     </button>

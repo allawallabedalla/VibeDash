@@ -39,6 +39,7 @@
     comment:
       'M4.5 5h15a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-9l-4.5 3.5V16h-1.5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z',
     undo: 'M9 5.5 4.5 10 9 14.5M4.5 10H15a4.5 4.5 0 0 1 0 9h-3.5',
+    sliders: 'M4 7h9M17 7h3M15 5v4M4 17h3M11 17h9M9 15v4',
   } as const;
   export type IconName = keyof typeof paths;
   /** A name from outside (e.g. a board's tab) as an icon; unknown names get "info". */

@@ -11,6 +11,7 @@ import { newBuild } from '../model/release';
 import { counterResets, findGaps } from '../model/series';
 import type { Entity, Series } from '../model/types';
 import { loading, thin } from './loading';
+import { NO_PREFS, type TabPrefs } from './tabs';
 
 export type HouseData = DemoData;
 export type Source = 'demo' | 'live';
@@ -48,10 +49,15 @@ export interface BoardTab {
   calc?: boolean;
   /** shown on that page instead of a tab of its own */
   onPage?: 'charging';
+  /** the VibeDash module behind it (modules/), if any */
+  module?: string;
 }
 let boards = $state<BoardTab[]>([]);
 /** the server keeps a local feedback backlog (button on every page) */
 let feedback = $state(false);
+/** the person's tab choice (server/tabs.ts) and whether it may be changed here */
+let tabPrefs = $state<TabPrefs>(NO_PREFS);
+let tabsWritable = $state(false);
 /** the setup assistant is still open (starter pack, not finished) */
 let setupOpen = $state(false);
 let pv = $state(false);
@@ -271,6 +277,12 @@ export async function load(): Promise<void> {
     : [];
   feedback = (body as { feedback?: boolean } | undefined)?.feedback === true;
   setupOpen = (body as { setup?: boolean } | undefined)?.setup === true;
+  const tp = (body as { tabs?: Partial<TabPrefs> } | undefined)?.tabs;
+  tabPrefs = {
+    hidden: Array.isArray(tp?.hidden) ? tp.hidden.filter((x) => typeof x === 'string') : [],
+    order: Array.isArray(tp?.order) ? tp.order.filter((x) => typeof x === 'string') : [],
+  };
+  tabsWritable = (body as { tabsWritable?: boolean } | undefined)?.tabsWritable === true;
   pv = body?.pv === true;
   plan = body?.plan === true;
   if (health?.status === 200 && body?.source === 'live' && body.timeZone) {
@@ -368,6 +380,17 @@ export const store = {
   /** Feedback button on every page (local backlog on the server). */
   get feedback(): boolean {
     return feedback;
+  },
+  /** Hidden tabs and their order, as the person chose (one list for the house). */
+  get tabPrefs(): TabPrefs {
+    return tabPrefs;
+  },
+  set tabPrefs(p: TabPrefs) {
+    tabPrefs = p;
+  },
+  /** The tab choice may be changed on this server. */
+  get tabsWritable(): boolean {
+    return tabsWritable;
   },
   /** Boards (extra pages from house services), in mapping order. */
   get boards(): BoardTab[] {

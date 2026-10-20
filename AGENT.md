@@ -233,6 +233,10 @@ to `mapping.boards`. Today: **Wartung** (maintenance plan + calendar subscriptio
 `kalender_url` to the address the phone uses). A new tool that every home could use belongs
 in `modules/` as a new module, not in a house's own scripts.
 
+**Tabs on/off.** The person hides tabs and changes their order themselves (button "Reiter einstellen" in the
+header; stored as `tabs` in `local/settings.json`, one list for every device; `TABS_WRITE=off` fixes it). Hiding
+never deletes a module's contents. The same dialog lists the modules not set up yet – setting one up is your job.
+
 ### Floor plan (tab Räume, module `raeume`)
 
 The Räume tab shows the home's floor plan with live values per room, 2D and 3D. It needs one file, the

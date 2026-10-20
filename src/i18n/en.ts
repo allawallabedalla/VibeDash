@@ -378,6 +378,7 @@ export const en: Record<MessageKey, string> = {
   'item.otherDate': 'other date',
   'item.saveNote': 'Save note',
   'item.more': 'Details and buttons',
+  'tabs.settings': 'Arrange tabs',
   'fb.button': 'Feedback',
   'fb.title': 'Feedback on this page',
   'fb.idea': 'Idea',
