@@ -34,6 +34,7 @@ import {
   type FeedbackStatus,
   type FeedbackStore,
 } from './feedback';
+import { cleanPrefs, type TabPrefs } from './tabs';
 
 export const RANGES = {
   '1h': 3_600_000,
@@ -104,6 +105,8 @@ export interface ApiDeps {
   feedback?: FeedbackStore;
   /** Setup assistant (server/setup.ts): only with the starter pack (EVCC + SETUP_CODE). */
   setup?: SetupDeps;
+  /** Which tabs show and their order (server/tabs.ts), one list for the house. */
+  tabs?: { writable: boolean; read: () => TabPrefs; write: (t: TabPrefs) => TabPrefs };
   weather?: {
     /** false when WEATHER=off: no external request at all */
     enabled: boolean;
@@ -398,6 +401,23 @@ async function handleFeedback(method: string, deps: ApiDeps, req: RequestInfo): 
   return json(200, { entry: f.add({ page, kind, text }) });
 }
 
+function handleTabs(method: string, deps: ApiDeps, req: RequestInfo): ApiResult {
+  const t = deps.tabs;
+  if (!t) return json(404, { error: 'not_found' });
+  if (method === 'GET') return json(200, { tabs: t.read(), writable: t.writable });
+  if (!t.writable) return json(403, { error: 'tabs_write_off' });
+  const refused = writeGuard(req, 4096);
+  if (refused) return refused;
+  let prefs: TabPrefs | null;
+  try {
+    prefs = cleanPrefs(JSON.parse(req.body ?? ''));
+  } catch {
+    prefs = null;
+  }
+  if (!prefs) return json(400, { error: 'bad_body' });
+  return json(200, { tabs: t.write(prefs) });
+}
+
 async function handleLocation(method: string, deps: ApiDeps, req: RequestInfo): Promise<ApiResult> {
   const w = deps.weather;
   if (!w) return json(404, { error: 'not_found' });
@@ -478,6 +498,9 @@ export async function handleApi(
   if (path === '/api/setup' || path.startsWith('/api/setup/')) {
     return handleSetup(path, method, deps, req);
   }
+  if (path === '/api/tabs' && (method === 'GET' || method === 'POST')) {
+    return handleTabs(method, deps, req);
+  }
   if (path === '/api/feedback' && (method === 'GET' || method === 'POST')) {
     return handleFeedback(method, deps, req);
   }
@@ -526,12 +549,14 @@ export async function handleApi(
           id,
           title,
           icon,
+          ...(module ? { module } : {}),
           ...((actionUrl || module) && deps.boardAction ? { actions: true } : {}),
           ...(calcUrl && deps.boardCalc ? { calc: true } : {}),
           ...(onPage ? { onPage } : {}),
         }),
       ),
       feedback: Boolean(deps.feedback),
+      ...(deps.tabs ? { tabs: deps.tabs.read(), tabsWritable: deps.tabs.writable } : {}),
       build: deps.build ?? null,
       setup: deps.setup ? !deps.setup.state.read().done : false,
     });

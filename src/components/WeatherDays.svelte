@@ -42,7 +42,8 @@
               : d.sunHours >= 2
                 ? 'cloudSun'
                 : 'cloud';
-  const deg = (v: number | null) => (v === null ? '–' : `${num(v)}°`);
+  // -0.3 rounds to "-0": shown as 0 (Intl keeps the sign of a negative zero)
+  const deg = (v: number | null) => (v === null ? '–' : `${num(Math.round(v) || 0)}°`);
 </script>
 
 <div class="days">

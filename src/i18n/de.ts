@@ -382,6 +382,7 @@ export const de = {
   'item.otherDate': 'anderes Datum',
   'item.saveNote': 'Notiz speichern',
   'item.more': 'Details und Knöpfe',
+  'tabs.settings': 'Reiter einstellen',
   'fb.button': 'Feedback',
   'fb.title': 'Feedback zu dieser Seite',
   'fb.idea': 'Idee',
