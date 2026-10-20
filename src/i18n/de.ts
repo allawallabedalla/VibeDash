@@ -60,7 +60,7 @@ export const de = {
   'info.battery.what': 'Ladestand des Hausakkus.',
   'info.battery.source': 'Batteriespeicher, Ladestand in Prozent.',
   'info.battery.capacity':
-    'kWh = Ladestand × Nennkapazität laut Wechselrichter ({cap} kWh). Das ist keine gemessene Kapazität: ein gealterter Akku speichert weniger.',
+    'kWh = Ladestand × Kapazität ({cap} kWh) aus der Zuordnung des Hauses: gemessen oder Nennwert des Wechselrichters (dann eher zu hoch).',
   'info.grid.what': 'Plus = Strom geht ins Netz. Minus = Strom kommt aus dem Netz.',
   'info.grid.source':
     'Netzzähler. Zwei Meldungen in derselben Sekunde bleiben in Eingangsreihenfolge.',
