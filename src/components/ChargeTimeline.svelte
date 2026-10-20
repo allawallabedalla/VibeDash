@@ -58,6 +58,8 @@
       legendGrid: 'Netzbezug',
       inWin: '{v} kWh Netz',
       noGrid: 'ohne Netz',
+      noSun:
+        'An diesem Tag reicht die Sonne an keiner Stelle sicher fürs Auto – jedes Fenster bräuchte Netzstrom.',
     },
     en: {
       car: 'Car gets',
@@ -78,6 +80,8 @@
       legendGrid: 'Grid import',
       inWin: '{v} kWh grid',
       noGrid: 'no grid',
+      noSun:
+        'On this day the sun is nowhere reliably enough for the car – every window would need grid power.',
     },
   };
   const tx = $derived(TEXT[i18n.locale === 'de' ? 'de' : 'en']);
@@ -199,9 +203,19 @@
     windows = windows.filter((w) => w.id !== id);
     selected = windows.at(-1)?.id ?? null;
   }
+  let noSun = $state(false);
   function best() {
-    const kw = windows.find((w) => w.id === selected)?.kw ?? kwOptions[1] ?? kwOptions[0] ?? 7;
-    windows = suggest(cases, house, kw).map((w) => ({ ...w, id: nextId++ }));
+    // the chosen power first, then smaller ones: on a grey day only a small one may fit the sun
+    const want = windows.find((w) => w.id === selected)?.kw ?? kwOptions[1] ?? kwOptions[0] ?? 7;
+    const tries = [want, ...[...kwOptions].sort((a, b) => b - a).filter((k) => k < want)];
+    let found: Window[] = [];
+    for (const kw of tries) {
+      found = suggest(cases, house, kw);
+      if (found.length) break;
+    }
+    noSun = !found.length;
+    if (noSun) return;
+    windows = found.map((w) => ({ ...w, id: nextId++ }));
     selected = windows[0]?.id ?? null;
   }
   const setKw = (id: number, kw: number) =>
@@ -334,6 +348,7 @@
     {#if selIndex >= 0}<span class="sr">{selIndex + 1}/{windows.length}</span>{/if}
   </div>
 {/if}
+{#if noSun}<p class="hint warn" role="status">{tx.noSun}</p>{/if}
 <p class="hint">{tx.hint}</p>
 
 <style>
@@ -548,6 +563,9 @@
   .sr {
     color: var(--muted);
     font-size: var(--small);
+  }
+  .hint.warn {
+    color: var(--fair-text);
   }
   .hint {
     color: var(--muted);

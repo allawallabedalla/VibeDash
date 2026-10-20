@@ -393,3 +393,45 @@ describe('choice sections', () => {
     expect(s).toMatchObject({ selected: null });
   });
 });
+
+describe('charge timeline sections', () => {
+  const row = (v = 1) => new Array(96).fill(v);
+  const tl = (extra: Record<string, unknown>) =>
+    sanitizeBoard({
+      sections: [
+        {
+          type: 'chargetimeline',
+          title: 'Ladefenster',
+          days: [
+            {
+              label: 'Heute',
+              startStep: 35,
+              startKwh: 4.8,
+              pv: [row(), row(2)],
+              load: [row(), row()],
+            },
+          ],
+          battery: { kwh: 19.2, reserveKwh: 3, eta: 0.98, kw: 12.5 },
+          carNeedKwh: 30,
+          powers: [4.3, 7.1, 11.4],
+          ...extra,
+        },
+      ],
+    })!.sections;
+
+  it('keeps a valid timeline', () => {
+    const [s] = tl({});
+    expect(s).toMatchObject({ type: 'chargetimeline', carNeedKwh: 30, powers: [4.3, 7.1, 11.4] });
+  });
+
+  it('drops broken rows, too many cases and impossible batteries', () => {
+    expect(tl({ days: [{ label: 'x', pv: [row(), [1, 2]], load: [row(), row()] }] })).toEqual([]);
+    expect(
+      tl({
+        days: [{ label: 'x', pv: new Array(41).fill(row()), load: new Array(41).fill(row()) }],
+      }),
+    ).toEqual([]);
+    expect(tl({ battery: { kwh: 10, reserveKwh: 12, eta: 0.9, kw: 5 } })).toEqual([]);
+    expect(tl({ days: [{ label: 'x', pv: [row(-1), row()], load: [row(), row()] }] })).toEqual([]);
+  });
+});
