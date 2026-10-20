@@ -337,7 +337,7 @@ def build(p, jetzt, t, calc=None):
         sections.append(
             {
                 "type": "bars",
-                "title": "Geladen laut Auto",
+                "title": "Im Autoakku angekommen",
                 "unit": "kWh",
                 **lad_bars(lad),
                 "color": "battery",
@@ -353,8 +353,8 @@ def build(p, jetzt, t, calc=None):
                 "note": f"Zuletzt {lt(lad[-1]['bis'])}: {de(lad[-1]['von'])} → {de(lad[-1]['auf'])} %.",
                 "info": {
                     "what": "Ladestand-Sprung zwischen zwei Fahrten × Kapazität = was im Akku ankam "
-                    "(ohne Ladeverlust). "
-                    "Fremdladungen sähen gleich aus. "
+                    "(ohne Ladeverlust). Datum = nächste Meldung des Autos, nicht der Ladetag – darum passt es "
+                    "nicht Tag für Tag zu „An der Wallbox geladen“. Fremdladungen sähen gleich aus. "
                     + " · ".join(f"{lt(x['bis'])} {de(x['von'])}→{de(x['auf'])} %" for x in lad),
                     "source": f"Fahrten im {t['konto']}.",
                 },
