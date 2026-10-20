@@ -645,13 +645,13 @@ export function validateMapping(
       ) {
         errors.push(`${at}.maxKw: number of kW, e.g. 11`);
       }
-      const starters = ['auto', 'app', 'card'];
+      const starters = ['auto', 'app', 'card', 'force'];
       if (
         c.sources !== undefined &&
         (!isObj(c.sources) ||
           !Object.values(c.sources).every((v) => typeof v === 'string' && starters.includes(v)))
       ) {
-        errors.push(`${at}.sources: { "<raw value>": "auto" | "app" | "card" }`);
+        errors.push(`${at}.sources: { "<raw value>": "auto" | "app" | "card" | "force" }`);
       }
       // plan.fields: same shape as PLAN_FIELDS, every key a text
       let fields: PlanFields | undefined;
@@ -689,6 +689,7 @@ export function validateMapping(
           ...opt('duration'),
           ...opt('source'),
           ...opt('id'),
+          ...opt('forced'),
         },
         ...(typeof c.power === 'string' ? { power: c.power } : {}),
         ...(typeof c.maxKw === 'number' ? { maxKw: c.maxKw } : {}),

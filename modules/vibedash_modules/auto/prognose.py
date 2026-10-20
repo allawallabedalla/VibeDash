@@ -132,7 +132,7 @@ def zaehler(c, ts):
 
 def wirkungsgrad(c, fahrten, kap):
     """Ladestand-Sprung zwischen zwei Fahrten ÷ Wallbox-kWh in derselben Zeit (nur Lücken mit ≥ 5 Punkten Sprung)."""
-    werte = []
+    werte, verworfen = [], 0
     for a, b in zip(fahrten, fahrten[1:], strict=False):
         if a.get("soc_ende") is None or b.get("soc_start") is None or b["soc_start"] - a["soc_ende"] < 5:
             continue
@@ -142,6 +142,8 @@ def wirkungsgrad(c, fahrten, kap):
         eta = (b["soc_start"] - a["soc_ende"]) * kap / 100 / ((z2 - z1) / 1000)
         if 0.6 <= eta <= 1.05:  # sonst lag eine fremde Ladung oder ein Messfehler dazwischen
             werte.append(round(eta, 3))
+        else:
+            verworfen += 1
     if len(werte) >= ETA_MIN_N:
         return {
             "wert": round(median(werte), 3),
@@ -149,8 +151,9 @@ def wirkungsgrad(c, fahrten, kap):
             "min": min(werte),
             "max": max(werte),
             "quelle": "gemessen",
+            "verworfen": verworfen,
         }
-    return {"wert": ETA_ANNAHME, "n": len(werte), "werte": werte, "quelle": "angenommen"}
+    return {"wert": ETA_ANNAHME, "n": len(werte), "werte": werte, "quelle": "angenommen", "verworfen": verworfen}
 
 
 # ── Planer: wo lädt die Sonne? ───────────────────────────────────────────────────────────────────────────────────

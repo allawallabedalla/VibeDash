@@ -52,6 +52,30 @@ describe('car charging from house records (read-only)', () => {
     ]);
   });
 
+  it('a charge the house marks as forced shows as "charge now" (EM-02)', async () => {
+    const values = [
+      [1000, 4, false, 60, 'pi', 3, true],
+      [9000, 1, false, 10, 'pi', 4, null],
+    ];
+    const q = async (sql: string) => {
+      expect(sql).toContain('"erzwungen"');
+      return {
+        results: [
+          {
+            series: [
+              {
+                columns: ['time', 'kwh', 'laeuft', 'dauer_min', 'quelle', 'tid', 'erzwungen'],
+                values,
+              },
+            ],
+          },
+        ],
+      };
+    };
+    const mf = { ...m, sessions: { ...m.sessions, forced: 'erzwungen' } };
+    expect((await chargeSessions(q, mf, 0, 1e6)).map((x) => x.source)).toEqual(['force', 'auto']);
+  });
+
   it('reads an external plan by the field names of the mapping, drops broken blocks', () => {
     const fields = {
       text: 'kurz',

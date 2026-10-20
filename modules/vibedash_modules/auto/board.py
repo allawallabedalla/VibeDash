@@ -432,14 +432,22 @@ def build(p, jetzt, t, calc=None):
             "unit": "%",
             "icon": "bolt",
             "approx": eta.get("quelle") != "gemessen",
+            # „angenommen · gemessen 92 / 87 % (n = 2)“ statt „erst 2 von 3 gemessen“ (Audit04 EM-14)
             "sub": (
                 f"gemessen, n = {eta['n']} ({de(100 * eta['min'])}–{de(100 * eta['max'])} %)"
                 if eta.get("quelle") == "gemessen"
-                else f"angenommen, erst {eta.get('n', 0)} von 3 Ladungen gemessen"
-                + (f" ({', '.join(de(100 * w) for w in eta.get('werte') or [])} %)" if eta.get("werte") else "")
-            ),
+                else "angenommen"
+                + (
+                    f" · gemessen {' / '.join(de(100 * w) for w in eta['werte'])} % (n = {len(eta['werte'])})"
+                    if eta.get("werte")
+                    else " · noch keine Messung"
+                )
+            )
+            + (f", {eta['verworfen']} unplausibel verworfen" if eta.get("verworfen") else ""),
             "info": {
-                "what": "Was von den Wallbox-kWh im Autoakku ankommt (Ladestand-Sprung ÷ Wallbox-Zähler).",
+                "what": "Was von den Wallbox-kWh im Autoakku ankommt (Ladestand-Sprung ÷ Wallbox-Zähler). "
+                "Gemessen wird ab 3 brauchbaren Ladungen; Werte unter 60 % oder über 105 % (fremde Ladung, "
+                "Messfehler) werden verworfen.",
                 "source": f"Fahrten im {t['konto']} + " + t["wallbox_zaehler"],
             },
         },

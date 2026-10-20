@@ -6,10 +6,12 @@
  * mapping.charging (all house specifics live there, none in the code):
  *   power:    series id of the car's charging power (W)
  *   maxKw:    end of the power scale, e.g. 11 for 3 × 16 A (no scale without it)
- *   sessions: { measurement, energy, running, duration?, source?, id? } – one
+ *   sessions: { measurement, energy, running, duration?, source?, id?, forced? } – one
  *             row per start (running = true) and one per end (running =
  *             false, with energy in kWh), both stamped at the start
- *   sources:  { "<raw value>": "auto" | "app" | "card" } – who started a charge
+ *   sources:  { "<raw value>": "auto" | "app" | "card" | "force" } – who started a charge
+ *   (forced: a true/false field on the session rows; true = started with
+ *   "charge now" – shown as such whatever `source` says)
  *   gridMeter: series id of the grid import meter (kWh) – grid energy during
  *             each charge, an upper bound for what the car took from the grid
  *   plan:     { summaryUrl, blocksUrl?, fields?, span? } – an external planner's
@@ -18,7 +20,7 @@
  */
 import type { FetchLike } from '../src/adapters/influx1';
 
-export type Starter = 'auto' | 'app' | 'card';
+export type Starter = 'auto' | 'app' | 'card' | 'force';
 
 /** JSON keys of the planner's answer. */
 export interface PlanFields {
@@ -61,6 +63,7 @@ export interface ChargingMapping {
     duration?: string;
     source?: string;
     id?: string;
+    forced?: string;
   };
   plan?: { summaryUrl: string; blocksUrl?: string; fields?: PlanFields; span?: PlanSpan };
 }
@@ -123,7 +126,9 @@ export async function chargeSessions(
   to: number,
 ): Promise<ChargeSession[]> {
   const f = m.sessions;
-  const cols = [f.energy, f.running, f.source, f.id, f.duration].filter(Boolean) as string[];
+  const cols = [f.energy, f.running, f.source, f.id, f.duration, f.forced].filter(
+    Boolean,
+  ) as string[];
   const res = await query(
     `SELECT ${cols.map(ident).join(', ')} FROM ${ident(f.measurement)} WHERE time >= ${Math.floor(from)}ms AND time < ${Math.floor(to)}ms`,
   );
@@ -143,6 +148,8 @@ export async function chargeSessions(
     ) {
       s.source = m.sources[raw]!;
     }
+    // a forced charge ("charge now") is marked on its rows by the house (Audit04 EM-02)
+    if (f.forced && r[f.forced] === true) s.source = 'force';
     if (r[f.running] === false) {
       // a second end row of the same charge (e.g. a repeated stop) without
       // energy never wipes the first one's energy (Audit02 N-06)
