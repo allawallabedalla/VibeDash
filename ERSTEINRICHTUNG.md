@@ -9,7 +9,8 @@ Ja/Nein-Fragen, schaust in eine App oder machst ein Foto. Alles ist **risikofrei
 > in Alltagssprache. Gib **nie** eigene Befehle aus dem Gedächtnis – nur die eine Zeile aus Schritt 2B, wörtlich aus
 > diesem Repo. Bei Unsicherheit: Foto anfordern statt raten.
 
-**Entschieden (16.10.2026):** Betriebssystem **Ubuntu Server LTS** · gebrauchte Geräte werden **immer neu
+**Neu (20.10.2026): der VibeDash-Stick** – mit Claude Code am Laptop der einfachste Weg (Abschnitt „Stufe 0“).
+Ohne Stick gilt weiter: **Entschieden (16.10.2026):** Betriebssystem **Ubuntu Server LTS** · gebrauchte Geräte werden **immer neu
 aufgesetzt** · ohne Agent: **Installer + Einrichtungs-Assistent im Browser**.
 
 Stand: Stufe 1, Weg A und Weg B (Installer-Zeile + Einrichtungs-Assistent im Browser) funktionieren – auf frischem
@@ -25,6 +26,32 @@ Wallbox und Steuerung kommen später über den Agenten (LADESTEUERUNG.md).
 - einen USB-Stick mit mind. 8 GB – **er wird gelöscht**
 - für die Einrichtung einmal: Bildschirm und Tastatur am Mini-PC (danach nicht mehr)
 - einen anderen Computer (Laptop) für Schritt 1.2
+
+## Stufe 0 · Der VibeDash-Stick (empfohlen, wenn du Claude Code hast)
+
+Du brauchst nur: Claude Code am Laptop, den Mini-PC, ein Netzwerkkabel und einen leeren USB-Stick (mind. 2 GB).
+Kein Bildschirm, keine Tastatur, kein BIOS-Menü, keine Router-Einstellung.
+
+> **Für den Helfer (Agent):** Baue den Stick am Laptop mit `image/build.sh --key <öffentlicher SSH-Schlüssel>`
+> (gibt es keinen, vorher `ssh-keygen -t ed25519` – nach Ja des Menschen). Es lädt Debian, prüft Prüfsumme und
+> Signatur und schreibt `vibedash.iso` plus `vibedash-zugang.txt` (Einrichtungs-Code, Passwort – persönlich, nie
+> weitergeben, nie committen). Schreiben auf den Stick: balenaEtcher, der Mensch klickt; vorher fragen „Ist das
+> ausgewählte Laufwerk wirklich der USB-Stick (Name und Größe)? (Ja/Nein)“. Nach der Installation erreichst du das
+> Gerät per `ssh vibedash@vibedash.local` (nur mit dem Schlüssel; `sudo` ohne Passwort). Was der Stick tut:
+> `image/` (Debian 13, Antworten in `preseed.cfg`, danach `starter/install.sh` beim ersten Start).
+
+1. Helfer fragt: **„Ist auf dem Mini-PC etwas, das du behalten willst – auch ein vorinstalliertes Windows?
+   (Ja/Nein)“** Bei Ja: Stopp, erst sichern. Der Stick löscht die eingebaute Festplatte.
+2. Stick, Netzwerkkabel (zum Router) und Strom in den Mini-PC stecken.
+3. Einschalten und sofort mehrmals die **Startmenü-Taste** drücken (oft F7, F10, F11 oder F12 – der Helfer sagt dir,
+   welche bei deinem Modell; im Zweifel ein Foto vom Startbild) und den USB-Stick wählen.
+4. Warten. Nach 10 Sekunden installiert sich alles von selbst. **Wenn sich das Gerät von selbst ausschaltet**
+   (nach etwa 10–30 Minuten): Stick abziehen, wieder einschalten. Hast du den Stick vergessen, passiert nichts – der
+   Stick merkt, dass VibeDash schon drauf ist, löscht nichts und schaltet wieder aus.
+5. Nach dem Einschalten richtet sich VibeDash selbst ein (etwa 5–15 Minuten, braucht Internet). Dann am Handy oder
+   Laptop öffnen: **http://vibedash.local:8095/#/einrichten** und den **Einrichtungs-Code** vom Zugangszettel eingeben. Ab hier wie unten in Weg B, Schritt 2 (Assistent) – oder der Helfer macht es mit dir.
+
+Klappt `vibedash.local` nicht: Der Helfer findet die Adresse in der Router-App (Gerät „vibedash“).
 
 ## Stufe 1 · Vom Karton zum laufenden Mini-PC
 

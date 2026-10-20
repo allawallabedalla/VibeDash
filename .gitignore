@@ -25,3 +25,7 @@ __pycache__/
 starter/.env
 starter/evcc.yaml
 starter/local/
+
+# VibeDash-Stick: Abbilder und persönliche Zugangszettel (Passwort, Code) nie ins Repo
+*.iso
+*-zugang.txt

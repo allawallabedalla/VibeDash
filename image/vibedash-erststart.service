@@ -1,0 +1,16 @@
+[Unit]
+Description=VibeDash: erste Einrichtung nach der Installation vom Stick
+After=network-online.target docker.service
+Wants=network-online.target
+ConditionPathExists=!/var/lib/vibedash/erststart.fertig
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/vibedash-erststart
+Restart=on-failure
+RestartSec=300
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
