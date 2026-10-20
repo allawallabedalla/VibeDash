@@ -140,7 +140,7 @@ class TestKorrelation(unittest.TestCase):
             check[0],
             {
                 "text": "Temperatur Bad ~ Feuchte Bad",
-                "meta": "r −0,71 · ohne Tagesgang −0,55 · Stunden",
+                "meta": "Stärke −0,71 · ohne Tagesgang −0,55 · Stunden",
             },
         )
         # a pair that only follows the daily rhythm is not listed, only counted (Audit04 ST-04); no "look" anywhere
