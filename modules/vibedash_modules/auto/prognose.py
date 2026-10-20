@@ -415,6 +415,18 @@ def entscheide(soc, vh, sonne, heute, fahrten=None):
         wann = tag_wort(date.fromisoformat(s["tag"]), heute)
         ab = f" ab {s['start']}" if s.get("start") else ""
         weg_text, weg_kurz = zu_hause_hinweis(fahrten, s, heute)
+        if frueh <= len(sonne) and s["k"] == 1:
+            # Sonne morgen: heute Abend anstecken kostet nichts, der Wächter startet morgen von selbst – eine
+            # Handlung jetzt statt eines Termins morgen (ADHS, Audit04 EM-04)
+            return {
+                "stufe": "look",
+                "wort": "Heute anstecken",
+                "reicht": reicht,
+                "sonne": s,
+                "text": f"Ladestand {reicht}. Heute Abend anstecken – {wann}{ab} lädt die Sonne ≈ {de(s['kwh'])} kWh "
+                "ohne Netzstrom, von selbst." + weg_text,
+                "kurz": f"{gross(reicht_kurz)} · anstecken, lädt {wann}{ab} von selbst ≈ {de(s['kwh'])} kWh" + weg_kurz,
+            }
         if frueh <= len(sonne):  # wird innerhalb des Planer-Blicks knapp: Sonne nutzen
             return {
                 "stufe": "look",
