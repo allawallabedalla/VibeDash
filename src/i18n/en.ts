@@ -660,7 +660,7 @@ export const en: Record<MessageKey, string> = {
   'hc.trace.aria': 'Car charging with {car} kW, feed-in {feed} kW',
   'hc.planTitle': 'Charge plan',
   'hc.planNote':
-    'Plan of {made} · house battery now {soc} %, minimum line {min} %. Display only, VibeDash switches nothing.',
+    'Plan of {made} · house battery now {soc} %, cautious plan lowest {min} % in the next 24 h. Display only, VibeDash switches nothing.',
   'hc.pastTitle': 'Charges',
   'hc.perDay': 'Charged per day (14 days)',
   'hc.gridNote':

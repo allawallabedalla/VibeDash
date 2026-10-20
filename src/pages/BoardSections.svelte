@@ -112,6 +112,9 @@
         }
       : {}),
   });
+  /** Bars show bare numbers, so the unit goes into the title unless it is already there (Audit04 EM-10). */
+  const unitTitle = (s: BoardSection, title: string) =>
+    s.type === 'bars' && s.unit && !title.includes(s.unit) ? `${title}, ${s.unit}` : title;
   const columnsOf = (cols: { key: string; label: string; align?: 'right' }[]): Column[] =>
     cols.map((c, i) => ({ ...c, ...(i >= 3 ? { phone: false } : {}) }));
   const rowsOf = (rows: { cells: Record<string, string> }[]): Row[] =>
@@ -243,7 +246,9 @@
     {#if s.note}<p class="muted-note">{s.note}</p>{/if}
   {:else}
     <Card
-      title={s.type === 'accuracy' ? t('board.models') : ((s.title || tab?.title) ?? '')}
+      title={s.type === 'accuracy'
+        ? t('board.models')
+        : unitTitle(s, (s.title || tab?.title) ?? '')}
       icon={s.type === 'list' ? 'info' : s.type === 'table' ? 'calendar' : 'forecast'}
       color="var(--muted)"
       note={s.note}
