@@ -109,6 +109,11 @@
     {#await import('../gallery/Gallery.svelte') then { default: Gallery }}
       <Gallery />
     {/await}
+  {:else if router.route === 'zeitstrahl'}
+    <!-- Prototype with made-up data (charge windows); not in the tabs, loaded only here. -->
+    {#await import('../pages/ChargeTimelinePage.svelte') then { default: ChargeTimelinePage }}
+      <ChargeTimelinePage />
+    {/await}
   {:else if router.route === 'einrichten'}
     <!-- Setup assistant: works before any data exists; loaded only here. -->
     {#await import('../pages/SetupPage.svelte') then { default: SetupPage }}<SetupPage />{/await}
