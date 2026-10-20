@@ -8,6 +8,7 @@
   import { currentSource, store } from '../app/data.svelte';
   import type { DemoData } from '../demo';
   import { valueAt } from '../model/series';
+  import { balanceW } from '../model/balance';
   import { energyFlows, type FlowInput } from '../model/flows';
   import { batteryNext, carNext, duration, type PlanBlock } from '../model/outlook';
   import { batteryCapacityKwh } from '../app/tiles';
@@ -95,10 +96,7 @@
           pv: v('pv_power')!,
           // consumption incl. conversion losses = balance of the meters (guideline "Verbrauch", Audit04 EN-02);
           // the inverter's house load lacks the losses and left a fake "feed-in" rest in the flow
-          load:
-            v('battery_power') === null
-              ? v('load_power')!
-              : Math.max(0, v('pv_power')! - v('battery_power')! - v('grid_power')!),
+          load: balanceW(v('pv_power'), v('battery_power'), v('grid_power')) ?? v('load_power')!,
           battery: v('battery_power') ?? 0,
           grid: v('grid_power')!,
           car,

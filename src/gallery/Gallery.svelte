@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { sourcesAt } from '../app/sources';
   import {
     batteryNowTile,
     batteryTile,
@@ -32,7 +33,6 @@
     mulberry32,
     outlook,
     pvTimeSeries,
-    sourcesAt,
     type Period,
     last24h,
     typicalProfile,

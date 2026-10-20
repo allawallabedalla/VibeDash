@@ -224,32 +224,6 @@ export function outlook(data: DemoData, rand: () => number): OutlookDay[] {
 }
 
 /**
- * Where the house's power comes from at time t: sun, battery, grid (W).
- * Returns null if a sensor was silent at t: a gap is not "unchanged".
- */
-export function sourcesAt(
-  data: DemoData,
-  t: number,
-): { sun: number; battery: number; grid: number; total: number } | null {
-  const at = (id: string): number | null => {
-    const series = data.series[id]!;
-    const s = valueAt(series.samples, t);
-    return s && t - s.t <= freshFor(series.stepMs) ? s.v : null;
-  };
-  const pv = at('pv_power');
-  const bat = at('battery_power');
-  const net = data.series.grid_power ? at('grid_power') : null;
-  // consumption incl. conversion losses (balance), else the house load (Audit04 EN-02)
-  const load =
-    pv !== null && bat !== null && net !== null ? Math.max(0, pv - bat - net) : at('load_power');
-  if (load === null || pv === null || bat === null) return null;
-  const sun = Math.min(pv, load);
-  const battery = Math.min(Math.max(-bat, 0), load - sun);
-  const grid = Math.max(load - sun - battery, 0);
-  return { sun, battery, grid, total: load };
-}
-
-/**
  * day: today · week/month: last 7/30 days · span1/span: one or three days
  * back to one or three days ahead, hourly
  */

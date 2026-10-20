@@ -18,6 +18,7 @@ import { sunToday, type SunForecast } from './sun-forecast';
 export { demoSunForecast, type SunForecast } from './sun-forecast';
 import { i18n, num, t, time } from '../i18n/index.svelte';
 import { freshFor, lastReport, steadyValue } from '../model/series';
+import { balanceW } from '../model/balance';
 import { addDays, localDateKey, localMidnight } from '../model/time';
 
 const kw = (w: number | null) => (w === null ? null : w / 1000);
@@ -157,25 +158,9 @@ export function sunTile(data: DemoData, fc?: SunForecast | null): TileProps {
  * balance 0.5 kW at the same time.
  */
 export function consumptionNowW(data: DemoData): number {
-  const pv = freshValue(data, 'pv_power');
-  const bat = freshValue(data, 'battery_power');
-  const grid = freshValue(data, 'grid_power');
-  return pv !== null && bat !== null && grid !== null
-    ? Math.max(0, pv - bat - grid)
-    : nowValue(data, 'load_power');
-}
-
-/** The same balance for the last 24 h (15-min grid), else the house load. */
-export function consumption24h(data: DemoData): (number | null)[] {
-  if (!['pv_power', 'battery_power', 'grid_power'].every((id) => data.series[id]?.samples.length))
-    return last24h(data, 'load_power');
-  const [pv, bat, grid] = ['pv_power', 'battery_power', 'grid_power'].map((id) =>
-    last24h(data, id),
-  );
-  return pv!.map((p, i) =>
-    p === null || bat![i] == null || grid![i] == null
-      ? null
-      : Math.max(0, p - bat![i]! - grid![i]!),
+  const f = (id: string) => freshValue(data, id);
+  return (
+    balanceW(f('pv_power'), f('battery_power'), f('grid_power')) ?? nowValue(data, 'load_power')
   );
 }
 
@@ -190,7 +175,7 @@ export function loadTile(data: DemoData): TileProps {
     sub: t('sub.now'),
     graphic: {
       kind: 'spark',
-      values: consumption24h(data).map(kw),
+      values: last24h(data, 'load_power').map(kw),
       min: 0,
       span: last24hSpan(data),
     },
