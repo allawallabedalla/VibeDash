@@ -21,6 +21,8 @@
   import { i18n, num, t } from '../i18n/index.svelte';
   import PageHead from './PageHead.svelte';
   import WeatherCard from './WeatherCard.svelte';
+  import WeatherDaysCard from './WeatherDaysCard.svelte';
+  import { hasWeatherDays } from '../app/weather-days';
   import ServiceForecasts from './ServiceForecasts.svelte';
   import PvForecastCard from './PvForecastCard.svelte';
   import PlanAccuracyCard from './PlanAccuracyCard.svelte';
@@ -175,6 +177,12 @@
     {#if store.plan}
       <div class="cards"><PlanAccuracyCard demo={false} /></div>
     {/if}
-    <WeatherCard timeZone={tz} />
+    <!-- one weather source per house (G-13, Audit04 DA-03): the house's own weather days when it has them,
+         like Overview and Week; else the server's Open-Meteo forecast -->
+    {#if hasWeatherDays(house)}
+      <WeatherDaysCard {house} />
+    {:else}
+      <WeatherCard timeZone={tz} />
+    {/if}
   {/if}
 </div>
