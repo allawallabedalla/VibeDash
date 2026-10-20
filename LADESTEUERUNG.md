@@ -103,8 +103,8 @@ Protokoll 7.6) · **Jetzt voll laden** (evcc „Sofort“ bis abgesteckt).
 Die Automatik ist **gesperrt**, bis drei Dinge erfüllt sind, und öffnet sich dann von selbst:
 
 1. **Werte lesen:** an 7 Tagen plausible Werte von evcc.
-2. **Plan trifft:** Rückrechnung des Ladeplans (nur Vergangenheit) über mindestens 14 Tage, untere 95-%-Grenze der
-   Tage ohne Netzstrom fürs Auto ≥ 75 % (Wilson; 14 von 14 reicht, 13 von 14 nicht).
+2. **Plan trifft:** Rückrechnung des Ladeplans (nur Vergangenheit) über mindestens 28 Tage (RISIKEN.md: vier Wochen
+   nur anzeigen), untere 95-%-Grenze der Tage ohne Netzstrom fürs Auto ≥ 75 % (Wilson; 26 von 28 reicht, 25 nicht).
 3. **Pausetest:** einmal mit Ja des Menschen – beim nächsten Laden kurz pausieren und an der **Ladeleistung** sehen,
    dass die Wallbox wirklich gehorcht (Rückmeldung statt Befehl), danach wie vorher.
 
