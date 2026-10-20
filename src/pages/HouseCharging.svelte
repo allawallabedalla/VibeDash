@@ -24,7 +24,7 @@
     start: number;
     end: number | null;
     kwh: number | null;
-    source: 'auto' | 'app' | 'card' | null;
+    source: 'auto' | 'app' | 'card' | 'force' | null;
     gridKwh: number | null;
   }
   interface Plan {
@@ -86,7 +86,9 @@
         ? t('hc.src.app')
         : s === 'card'
           ? t('hc.src.rfid')
-          : t('hc.src.unknown');
+          : s === 'force'
+            ? t('hc.src.force')
+            : t('hc.src.unknown');
 
   const today = localMidnight(house.now, tz);
   const days = Array.from({ length: 14 }, (_, i) => addDays(today, i - 13, tz));
@@ -230,11 +232,25 @@
 
   const columns: Column[] = $derived([
     { key: 'start', label: t('hc.col.start') },
-    { key: 'dur', label: t('hc.col.duration'), align: 'right' },
+    // on the phone the starter is worth more than the duration (Audit04 EM-12)
+    { key: 'dur', label: t('hc.col.duration'), align: 'right', phone: false },
     { key: 'kwh', label: 'kWh', align: 'right' },
     { key: 'grid', label: t('hc.col.grid'), align: 'right' },
-    { key: 'who', label: t('hc.col.who'), phone: false },
+    { key: 'who', label: t('hc.col.who') },
   ]);
+  // records may start later than the 31-day window – then say since when (Audit04 EM-18)
+  const tableTitle = $derived.by(() => {
+    const first = view.s === 'ready' ? view.a.sessions[0]?.start : undefined;
+    return first !== undefined && first - (house.now - 31 * 86_400_000) > 2 * 86_400_000
+      ? t('hc.tableSince', {
+          date: new Intl.DateTimeFormat(locale, {
+            timeZone: tz,
+            day: 'numeric',
+            month: 'numeric',
+          }).format(first),
+        })
+      : t('hc.table');
+  });
   const rows = $derived<Row[]>(
     view.s === 'ready'
       ? [...view.a.sessions].reverse().map((s) => ({
@@ -332,7 +348,7 @@
     {/if}
 
     <h2>{t('hc.pastTitle')}</h2>
-    <Card title={t('hc.perDay')} icon="battery" color="var(--battery)" note={t('hc.gridNote')}>
+    <Card title={t('hc.perDay')} icon="battery" color="var(--battery)">
       <DayBars
         values={perDay}
         labels={days.map(dayLabel)}
@@ -343,9 +359,14 @@
       />
     </Card>
     <div class="row-gap"></div>
-    <Card title={t('hc.table')} icon="clock" color="var(--muted)">
+    <Card
+      title={tableTitle}
+      icon="clock"
+      color="var(--muted)"
+      note={rows.length ? t('hc.gridNote') : undefined}
+    >
       {#if rows.length}
-        <DataTable {columns} {rows} caption={t('hc.table')} />
+        <DataTable {columns} {rows} caption={tableTitle} />
       {:else}
         <p class="muted-note">{t('hc.noSessions')}</p>
       {/if}
