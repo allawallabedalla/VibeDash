@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import tempfile
@@ -130,7 +131,7 @@ class TestKorrelation(unittest.TestCase):
         tiles = {t["label"]: t for t in s["Zusammenhänge diese Woche"]["tiles"]}
         self.assertEqual(tiles["Robust"]["sub"], "|r| ≥ 0,5 von 1.234 getesteten")
         self.assertEqual(
-            (tiles["Prüfen"]["value"], tiles["Neu"]["value"], tiles["Entfallen"]["value"]), ("2", "3", "1")
+            (tiles["Prüfen"]["value"], tiles["Neu"]["value"], tiles["Entfallen"]["value"]), ("1", "3", "1")
         )
         self.assertEqual((tiles["Stand"]["value"], tiles["Stand"]["sub"]), ("19.10.", "Lauf 05:20 Uhr"))
         self.assertEqual(s["Paare je Einordnung"]["values"], [2, 1, 1, 1])
@@ -140,10 +141,12 @@ class TestKorrelation(unittest.TestCase):
             {
                 "text": "Temperatur Bad ~ Feuchte Bad",
                 "meta": "r −0,71 · ohne Tagesgang −0,55 · Stunden",
-                "state": "look",
             },
         )
-        self.assertEqual(check[1]["text"], "s7 ~ s8")  # no name: the signal id
+        # a pair that only follows the daily rhythm is not listed, only counted (Audit04 ST-04); no "look" anywhere
+        self.assertIn("nur dem Tagesrhythmus", s["Prüfen"]["note"])
+        self.assertNotIn('"look"', json.dumps(b))
+        self.assertEqual(len(check), 1)  # s7 ~ s8 only follows the daily rhythm
         self.assertEqual([i["text"] for i in s["Neu diese Woche"]["items"]], ["s9 ~ s10", "s5 ~ s6", "s7 ~ s8"])
         self.assertEqual(s["Weggefallen"]["items"][0]["text"], "s11 ~ s12")
         rows = s["Rangliste ohne Technik"]["rows"]

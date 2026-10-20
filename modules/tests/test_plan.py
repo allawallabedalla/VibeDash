@@ -17,7 +17,21 @@ class TestState(unittest.TestCase):
     def test_move_in_counts_as_last_done(self):
         z = state({"intervall": "monatl."}, IV, date(2026, 10, 19), date(2026, 1, 1))
         self.assertEqual(z["zustand"], "faellig")
-        self.assertIn("ab Einzug", z["stand"])
+        # overdue only because nothing was ticked off since moving in: calm text and flag (Audit04)
+        self.assertTrue(z.get("seit_einzug"))
+        self.assertIn("seit Einzug", z["stand"])
+        # due soon from the move-in date keeps the hint; a real tick off clears the flag
+        soon = state({"intervall": "jährl."}, IV, date(2026, 12, 20), date(2026, 1, 1))
+        self.assertEqual(soon["zustand"], "bald")
+        self.assertIn("ab Einzug", soon["stand"])
+        real = state({"intervall": "monatl.", "zuletzt": "2026-08-01"}, IV, date(2026, 10, 19), date(2026, 1, 1))
+        self.assertFalse(real.get("seit_einzug"))
+
+    def test_board_shows_move_in_tasks_calmly(self):
+        from vibedash_modules.wartung.board import _state
+
+        self.assertEqual(_state({"zustand": "faellig", "seit_einzug": True}), "open")
+        self.assertEqual(_state({"zustand": "faellig"}), "act")
 
     def test_season_and_month(self):
         self.assertEqual(state({"intervall": "jährl.", "saison": "Winter"}, IV, date(2026, 7, 1))["zustand"], "ruht")
