@@ -249,7 +249,7 @@ def rechne(fahrten, st, plan, c=None, jetzt=None, rng=None):
         }
 
     sonne = sonnentage(plan, heute)
-    entscheidung = entscheide(soc_jetzt, vorhersage, sonne, heute)
+    entscheidung = entscheide(soc_jetzt, vorhersage, sonne, heute, fahrten)
 
     # Profil
     je_wt = []
@@ -312,14 +312,58 @@ def rechne(fahrten, st, plan, c=None, jetzt=None, rng=None):
         "sonne": sonne,
         "entscheidung": entscheidung,
         "ladungen": ladungen[-60:],
+        # Anteil des Tagesverbrauchs je Ortsstunde 0–23 (für „Ladestand um HH:MM“ im Rechner des Hauses)
+        "stundenanteil": [round(x, 4) for x in anteil],
         "status": st,
     }
     return out
 
 
-def entscheide(soc, vh, sonne, heute):
+def unterwegs(fahrten, tag, stunde, bis_tag):
+    """Wie oft war das Auto an früheren Tagen desselben Wochentags um `stunde` (Ortszeit) unterwegs? -> (k, n).
+    „Unterwegs“ = zwischen erster Abfahrt und letzter Rückkehr des Tages (Näherung: die Fahrten haben keinen
+    Standort – ein Zwischenhalt zu Hause zählt mit). Tage ohne Fahrt zählen als zu Hause. Nutzer 20.10.2026: an manchen
+    Arbeitstagen Home-Office -> eine Frage nach Häufigkeit, kein Ja/Nein."""
+    if not fahrten:
+        return 0, 0
+    je_tag = defaultdict(list)
+    for f in fahrten:
+        je_tag[lokal(f["start"]).date()].append(f)
+    d0 = lokal(fahrten[0]["start"]).date()
+    k = n = 0
+    d = d0
+    while d < bis_tag:
+        if d.weekday() == tag.weekday():
+            n += 1
+            fs = je_tag.get(d) or []
+            if fs:
+                t = datetime(d.year, d.month, d.day, int(stunde), int(stunde % 1 * 60), tzinfo=TZ).timestamp()
+                if min(f["start"] for f in fs) <= t <= max(f["ende"] for f in fs):
+                    k += 1
+        d += timedelta(days=1)
+    return k, n
+
+
+def zu_hause_hinweis(fahrten, s, heute):
+    """Satzteil für die Ansage, wenn das Auto zur geplanten Sonnen-Ladung meist unterwegs war (≥ 50 %, n ≥ 4)."""
+    if not fahrten or not s.get("start"):
+        return "", ""
+    d = date.fromisoformat(s["tag"])
+    hh, mm = (int(x) for x in s["start"].split(":"))
+    k, n = unterwegs(fahrten, d, hh + mm / 60 + 1, heute)  # Blockmitte ≈ Start + 1 h
+    if n < 4 or k < n / 2:
+        return "", ""
+    wt = WT[d.weekday()]
+    return (
+        f" Nur wenn das Auto dann zu Hause ist – {wt} um {hh + 1} Uhr war es an {k} von {n} {wt}-Tagen unterwegs.",
+        " · falls zu Hause",
+    )
+
+
+def entscheide(soc, vh, sonne, heute, fahrten=None):
     """Eine Ansage: Hat Zeit / <Tag> anstecken / <Tag> laden / Jetzt laden – immer nach dem frühen Fall.
-    text = ganzer Satz, kurz = für die Kachel (≤ 110 Zeichen)."""
+    text = ganzer Satz, kurz = für die Kachel (≤ 110 Zeichen). Mit fahrten: Hinweis, wenn das Auto zur geplanten
+    Sonnen-Ladung meist unterwegs war."""
     if soc is None:
         return {
             "stufe": None,
@@ -367,22 +411,25 @@ def entscheide(soc, vh, sonne, heute):
         s = gute[0]
         wann = tag_wort(date.fromisoformat(s["tag"]), heute)
         ab = f" ab {s['start']}" if s.get("start") else ""
+        weg_text, weg_kurz = zu_hause_hinweis(fahrten, s, heute)
         if frueh <= len(sonne):  # wird innerhalb des Planer-Blicks knapp: Sonne nutzen
             return {
                 "stufe": "look",
                 "wort": f"{gross(wann)} anstecken",
                 "reicht": reicht,
                 "sonne": s,
-                "text": f"Ladestand {reicht}. {gross(wann)}{ab} lädt die Sonne ≈ {de(s['kwh'])} kWh ohne Netzstrom.",
-                "kurz": f"{gross(reicht_kurz)} · {wann}{ab} Sonne ≈ {de(s['kwh'])} kWh",
+                "text": f"Ladestand {reicht}. {gross(wann)}{ab} lädt die Sonne ≈ {de(s['kwh'])} kWh ohne Netzstrom."
+                + weg_text,
+                "kurz": f"{gross(reicht_kurz)} · {wann}{ab} Sonne ≈ {de(s['kwh'])} kWh" + weg_kurz,
             }
         return {
             "stufe": "ok",
             "wort": "Hat Zeit",
             "reicht": reicht,
             "sonne": s,
-            "text": f"Ladestand {reicht}. Gratis-Strom: {wann}{ab} ≈ {de(s['kwh'])} kWh, wenn das Auto steckt.",
-            "kurz": f"{gross(reicht_kurz)} · gratis {wann}{ab} ≈ {de(s['kwh'])} kWh",
+            "text": f"Ladestand {reicht}. Gratis-Strom: {wann}{ab} ≈ {de(s['kwh'])} kWh, wenn das Auto steckt."
+            + weg_text,
+            "kurz": f"{gross(reicht_kurz)} · gratis {wann}{ab} ≈ {de(s['kwh'])} kWh" + weg_kurz,
         }
     if frueh <= 2:
         return {

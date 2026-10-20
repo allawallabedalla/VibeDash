@@ -14,6 +14,8 @@ from zoneinfo import ZoneInfo
 
 TZ = ZoneInfo("Europe/Berlin")
 WT_LANG = {"Mon": "Mo", "Tue": "Di", "Wed": "Mi", "Thu": "Do", "Fri": "Fr", "Sat": "Sa", "Sun": "So"}
+# Audit04 DA-16/EM-19: "Failure" ist ein Fehler, kein „aus“
+VORKLIMA = {"Enabled": "läuft", "Disabled": "aus", "Failure": "Fehler gemeldet"}
 LADE = {
     "Disconnected": "nicht angesteckt",
     "InProgress": "lädt",
@@ -186,7 +188,9 @@ def build(p, jetzt, t, calc=None):
 
     # ── Ladestand ohne Laden ────────────────────────────────────────────────────────────────────────────────────
     if vh.get("tage"):
-        x = [ms_tag(t) for t in vh["tage"]]
+        # 8 Tage: die Legende nennt den Endwert, nach 14 Tagen stand dort nur noch „0,0 %“ (Audit04 EM-11/ST-06)
+        TAGE = 8
+        x = [ms_tag(t) for t in vh["tage"][:TAGE]]
         sections.append(
             {
                 "type": "series",
@@ -195,9 +199,19 @@ def build(p, jetzt, t, calc=None):
                 "x": x,
                 "slot": "plan",
                 "lines": [
-                    {"label": "Mitte", "values": vh["soc_p50"], "color": "battery"},
-                    {"label": "Viel gefahren (10 %)", "values": vh["soc_p10"], "color": "import", "dashed": True},
-                    {"label": "Wenig gefahren (90 %)", "values": vh["soc_p90"], "color": "climate", "dashed": True},
+                    {"label": "Mitte", "values": vh["soc_p50"][:TAGE], "color": "battery"},
+                    {
+                        "label": "Viel gefahren (10 %)",
+                        "values": vh["soc_p10"][:TAGE],
+                        "color": "import",
+                        "dashed": True,
+                    },
+                    {
+                        "label": "Wenig gefahren (90 %)",
+                        "values": vh["soc_p90"][:TAGE],
+                        "color": "climate",
+                        "dashed": True,
+                    },
                     {"label": "Reserve", "values": [vh.get("reserve_pct")] * len(x), "color": "grid", "dashed": True},
                 ],
                 "note": f"Je Tagesende, wenn nicht geladen wird · {vh.get('szenarien')} Durchläufe aus {n_tage} Tagen.",
@@ -469,7 +483,7 @@ def build(p, jetzt, t, calc=None):
                 "type": "list",
                 "title": "Vorklimatisierung",
                 "items": items,
-                "note": f"Jetzt: {'läuft' if st.get('vorklima') == 'Enabled' else 'aus'}. Programme stellst "
+                "note": f"Jetzt: {VORKLIMA.get(st.get('vorklima'), 'aus')}. Programme stellst "
                 f"du in der {t['app']} ein.",
                 "info": {"what": "Zeitpläne der Vorklimatisierung im Auto (nur anzeigen).", "source": t["konto"] + "."},
             }

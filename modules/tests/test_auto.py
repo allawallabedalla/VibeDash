@@ -315,3 +315,44 @@ class TestAccountAndForecast(unittest.TestCase):
         finally:
             app.load_modules = orig
         self.assertEqual(runs, [950.0, 1900.0])
+
+
+class TestUnterwegs(unittest.TestCase):
+    def test_share_of_same_weekdays_away_and_hint(self):
+        from datetime import date
+
+        # Tuesdays: away 06:30–15:30 on 4 of 5, one Tuesday without a trip (home office)
+        trips = []
+        for w in range(5):
+            d = at(2026, 9, 1 + 7 * w, 6)  # Tue 01.09., 08.09., …
+            if w == 4:
+                continue
+            trips.append(
+                {
+                    "id": f"a{w}",
+                    "start": int(d + 1800),
+                    "ende": int(d + 2 * 3600),
+                    "km": 20,
+                    "soc_start": 60,
+                    "soc_ende": 57,
+                }
+            )
+            trips.append(
+                {
+                    "id": f"b{w}",
+                    "start": int(d + 9.5 * 3600),
+                    "ende": int(d + 10 * 3600),
+                    "km": 20,
+                    "soc_start": 57,
+                    "soc_ende": 54,
+                }
+            )
+        k, n = prognose.unterwegs(trips, date(2026, 10, 6), 11, date(2026, 10, 6))
+        self.assertEqual((k, n), (4, 5))
+        text, kurz = prognose.zu_hause_hinweis(trips, {"tag": "2026-10-06", "start": "10:00"}, date(2026, 10, 5))
+        self.assertIn("4 von 5", text)
+        self.assertEqual(kurz, " · falls zu Hause")
+        # Saturday: never away -> no hint
+        self.assertEqual(
+            prognose.zu_hause_hinweis(trips, {"tag": "2026-10-10", "start": "10:00"}, date(2026, 10, 5)), ("", "")
+        )
