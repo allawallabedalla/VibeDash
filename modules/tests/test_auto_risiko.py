@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import unittest
+from unittest import mock
 from zoneinfo import ZoneInfo
 
 from vibedash_modules.auto import risiko
@@ -55,10 +56,18 @@ class TestModuleAction(unittest.TestCase):
         self.assertEqual(m.action({"item": "laden:risiko", "action": "choose", "value": "mittel"})[0], 200)
         self.assertEqual(m.action({"item": "laden:risiko", "action": "choose", "value": "wild"})[0], 400)
         self.assertEqual(m.action({"item": "plan:x", "action": "choose", "value": "mittel"})[0], 404)
-        c = next(s for s in m.board()["sections"] if s.get("type") == "choice")
+        secs = m.board()["sections"]
+        c = next(s for s in secs if s.get("type") == "choice")
         self.assertEqual(c["selected"], "mittel")
+        # a control: first on the page, in the top slot
+        self.assertIs(secs[0], c)
+        self.assertEqual(c["slot"], "top")
         no = Module({k: v for k, v in cfg.items() if k != "risiko"}, m.path, clock=m.clock)
         self.assertFalse(any(s.get("type") == "choice" for s in no.board()["sections"]))
+        both = Module({**cfg, "steuerung": {"status_url": "http://h/s"}}, m.path, clock=m.clock)
+        with mock.patch("vibedash_modules.auto.steuerung.status", return_value={"knoepfe": {"aktiv": "automatik"}}):
+            secs = both.board()["sections"]
+        self.assertEqual([s.get("id") for s in secs[:2]], ["laden:modus", "laden:risiko"])
 
 
 if __name__ == "__main__":
