@@ -7,7 +7,7 @@
  * - All forecasts share the same lead time, so the evaluation is fair.
  * - The forecast is checked against the meter reading, never against itself.
  */
-import { estimate, freshFor, quantile, toGrid, valueAt } from '../model/series';
+import { estimate, quantile, toGrid } from '../model/series';
 import type { Estimate, Forecast } from '../model/types';
 import { addDays, dayStart, localDateKey, localHour, localMidnight } from '../model/time';
 import { CLEAR_SKY_DAY_KWH, clearSkyPower, type DemoData } from './generate';
@@ -221,29 +221,6 @@ export function outlook(data: DemoData, rand: () => number): OutlookDay[] {
       energy: { value, low: value * range.low, high: value * range.high, n: range.n },
     };
   });
-}
-
-/**
- * Where the house's power comes from at time t: sun, battery, grid (W).
- * Returns null if a sensor was silent at t: a gap is not "unchanged".
- */
-export function sourcesAt(
-  data: DemoData,
-  t: number,
-): { sun: number; battery: number; grid: number; total: number } | null {
-  const at = (id: string): number | null => {
-    const series = data.series[id]!;
-    const s = valueAt(series.samples, t);
-    return s && t - s.t <= freshFor(series.stepMs) ? s.v : null;
-  };
-  const load = at('load_power');
-  const pv = at('pv_power');
-  const bat = at('battery_power');
-  if (load === null || pv === null || bat === null) return null;
-  const sun = Math.min(pv, load);
-  const battery = Math.min(Math.max(-bat, 0), load - sun);
-  const grid = Math.max(load - sun - battery, 0);
-  return { sun, battery, grid, total: load };
 }
 
 /**

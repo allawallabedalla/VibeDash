@@ -10,8 +10,8 @@ import {
   mulberry32,
   outlook,
   powerCurve,
-  sourcesAt,
 } from '../../src/demo';
+import { sourcesAt } from '../../src/app/sources';
 
 const demo = generateDemo();
 const DAY = 86_400_000;

@@ -16,7 +16,8 @@
   import Sparkline from '../components/Sparkline.svelte';
   import Tile from '../components/Tile.svelte';
   import TileRow from '../components/TileRow.svelte';
-  import { last24h, sourcesAt, typicalProfile } from '../demo';
+  import { last24h, typicalProfile } from '../demo';
+  import { sourcesAt } from '../app/sources';
   import { num, t, time } from '../i18n/index.svelte';
   import PageHead from './PageHead.svelte';
 

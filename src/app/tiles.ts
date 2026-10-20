@@ -18,6 +18,7 @@ import { sunToday, type SunForecast } from './sun-forecast';
 export { demoSunForecast, type SunForecast } from './sun-forecast';
 import { i18n, num, t, time } from '../i18n/index.svelte';
 import { freshFor, lastReport, steadyValue } from '../model/series';
+import { balanceW } from '../model/balance';
 import { addDays, localDateKey, localMidnight } from '../model/time';
 
 const kw = (w: number | null) => (w === null ? null : w / 1000);
@@ -149,13 +150,27 @@ export function sunTile(data: DemoData, fc?: SunForecast | null): TileProps {
   });
 }
 
+/**
+ * Consumption now in W, including conversion losses (guideline: "Verbrauch" is
+ * everything the house uses, losses included): sun − battery charging + battery
+ * discharging − feed-in + import. Without fresh sun, battery and grid values the
+ * inverter's house load. Audit04 EN-02: tile and flow showed 0.3 kW, the
+ * balance 0.5 kW at the same time.
+ */
+export function consumptionNowW(data: DemoData): number {
+  const f = (id: string) => freshValue(data, id);
+  return (
+    balanceW(f('pv_power'), f('battery_power'), f('grid_power')) ?? nowValue(data, 'load_power')
+  );
+}
+
 export function loadTile(data: DemoData): TileProps {
   return staleOr(data, 'load_power', {
     label: t('tile.home'),
     icon: 'home',
     color: 'var(--home)',
     zoom: zoomKw('load_power', t('tile.home'), 'var(--home)'),
-    value: num(nowValue(data, 'load_power') / 1000, 1),
+    value: num(consumptionNowW(data) / 1000, 1),
     unit: 'kW',
     sub: t('sub.now'),
     graphic: {
@@ -348,7 +363,7 @@ export function humidityTile(data: DemoData): TileProps {
   const src = humiditySource(data);
   const humidity = nowValue(data, src.id);
   const notes = sensorNotes(data, src.id);
-  return staleOr(data, src.id, {
+  const tile = staleOr(data, src.id, {
     label: t('tile.humidity'),
     icon: 'droplet',
     color: 'var(--climate)',
@@ -376,6 +391,11 @@ export function humidityTile(data: DemoData): TileProps {
         .join(' '),
     },
   });
+  // the age replaces the sub line: keep the room in front of it, or the value reads as the living room's
+  // (Audit04 DA-05: "61 % · zuletzt gemeldet 20:16" came from the dressing room)
+  return src.room && tile.sub && !tile.sub.includes(src.room)
+    ? { ...tile, sub: `${src.room} · ${tile.sub}` }
+    : tile;
 }
 
 /** The house's own daily PV forecast (series pv_forecast_day, optional _low/_high). */
@@ -565,7 +585,7 @@ export function sunNowTile(data: DemoData): TileProps {
 
 /** Consumption now: where it comes from (sun directly, battery, grid). */
 export function loadNowTile(data: DemoData): TileProps {
-  const load = Math.max(0, nowValue(data, 'load_power') || 0);
+  const load = consumptionNowW(data);
   const fromBattery = Math.max(0, -(freshValue(data, 'battery_power') ?? 0));
   const grid = freshValue(data, 'grid_power') ?? 0;
   const fromGrid = Math.abs(grid) < 50 ? 0 : Math.max(0, -grid);

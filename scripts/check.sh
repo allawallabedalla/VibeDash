@@ -4,7 +4,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 echo "== pnpm lint / check / test / build / budget"
-pnpm lint && pnpm check && pnpm test && pnpm build >/dev/null && pnpm budget
+# one command per line: with `set -e`, a failure early in an `a && b` chain does NOT stop the script
+pnpm lint
+pnpm check
+pnpm test
+pnpm build >/dev/null
+pnpm budget
 echo "== visual tests (pages, states: overflow, contrast, ≈ with n, touch targets)"
 pnpm test:visual 2>&1 | tail -3
 echo "== forecast + modules + tools/grundriss (Python)"
