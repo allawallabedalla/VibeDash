@@ -13,7 +13,6 @@
     checkForecasts,
     dayAheadForecasts,
     dayAheadLoad,
-    houseDayForecasts,
     mulberry32,
     outlook,
     pvTimeSeries,
@@ -26,6 +25,7 @@
   import PvForecastCard from './PvForecastCard.svelte';
   import PlanAccuracyCard from './PlanAccuracyCard.svelte';
   import { store } from '../app/data.svelte';
+  import { houseDayForecasts } from '../app/houseForecast';
 
   const house = currentData();
 
@@ -118,7 +118,7 @@
     <h2>{t('page.models')}</h2>
     <div class="cards">
       <AccuracyCard
-        label={own.length ? t('model.sunHouse') : t('model.sunRule')}
+        label={own.length ? t('model.sun') : t('model.sunRule')}
         pct={sun.pct}
         n={sun.n}
         interval={sun.interval}

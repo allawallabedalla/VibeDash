@@ -184,7 +184,7 @@ describe('three days back to three days ahead (span)', () => {
 
 describe("the house's own day-ahead forecast", () => {
   it('is judged instead of the rule when the house has one (G-13)', async () => {
-    const { houseDayForecasts } = await import('../../src/demo');
+    const { houseDayForecasts } = await import('../../src/app/houseForecast');
     const { localMidnight } = await import('../../src/model/time');
     const days = completeDays(demo, 'pv_energy').slice(-5);
     const series = (k: number) =>
@@ -200,7 +200,7 @@ describe("the house's own day-ahead forecast", () => {
         pv_forecast_day_low: { id: 'pv_forecast_day_low', samples: series(0.8) },
         pv_forecast_day_high: { id: 'pv_forecast_day_high', samples: series(1.2) },
       },
-    } as typeof demo;
+    } as unknown as typeof demo;
     const own = houseDayForecasts(data);
     expect(own.map((f) => f.day)).toEqual(days.map((d) => d.day));
     expect(own[0]!.energy.low).toBeCloseTo(days[0]!.value * 0.8);
