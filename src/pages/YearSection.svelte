@@ -61,10 +61,12 @@
   };
   const tz = $derived(house.timeZone);
   const demo = currentSource() === 'demo';
-  let rows = $state<Record<string, [number, number | null][]>>({});
+  /** [day end, energy or null, energy over a gap of days before it (counted by the meter)] */
+  type Row = [number, number | null] | [number, null, number];
+  let rows = $state<Record<string, Row[]>>({});
 
   onMount(async () => {
-    const out: Record<string, [number, number | null][]> = {};
+    const out: Record<string, Row[]> = {};
     for (const k of ['pv', 'import', 'feed'] as const) {
       const id = { pv: 'pv_energy', import: 'import_energy', feed: 'feed_in_energy' }[k];
       if (demo) {
@@ -75,7 +77,7 @@
         const res = await fetch(`/api/daily/${id}?days=800`, {
           signal: AbortSignal.timeout(20_000),
         });
-        if (res.ok) out[id] = ((await res.json()) as { days: [number, number | null][] }).days;
+        if (res.ok) out[id] = ((await res.json()) as { days: Row[] }).days;
       } catch {
         // no card for this one
       }
@@ -95,6 +97,7 @@
       .filter((tp) => rows[tp.id]?.length)
       .map((tp) => {
         const r = rows[tp.id]!.filter(([t0]) => localDateKey(t0 + 12 * 3_600_000, tz) !== today);
+        const pairs: [number, number | null][] = r.map((x) => [x[0], x[1]]);
         const last = [...r].reverse().find(([, v]) => v !== null);
         const year = new Date(house.now).getUTCFullYear();
         // this year: only days with a value count, a missing day is not 0 (N-01)
@@ -102,22 +105,31 @@
           localDateKey(t0 + 12 * 3_600_000, tz).startsWith(String(year)),
         );
         const known = thisYear.filter(([, v]) => v !== null);
-        const sum = known.reduce((s, [, v]) => s + v!, 0);
+        // over a gap of days the meter kept counting: that energy is in the total (G-15, Audit04
+        // DA-06: the sum of days alone was 7–8 % short of the meter), its days count as covered
+        const gaps = thisYear.filter((x) => x.length === 3 && known.length && x[0] > known[0]![0]);
+        let covered = 0;
+        for (const g of gaps) {
+          const i = thisYear.indexOf(g);
+          if (i > 0) covered += Math.round((g[0] - thisYear[i - 1]![0]) / 86_400_000);
+        }
+        const sum =
+          known.reduce((s, [, v]) => s + v!, 0) + gaps.reduce((s, x) => s + (x[2] ?? 0), 0);
         const fromDay = known[0]?.[0];
-        // calendar days from the first known day to yesterday without a value
+        // calendar days from the first known day to yesterday whose energy is unknown
         // (also days the server has no row for at all)
         const span = known.length
           ? Math.round((localMidnight(house.now, tz) - localMidnight(fromDay!, tz)) / 86_400_000)
           : 0;
-        const missing = Math.max(0, span - known.length);
+        const missing = Math.max(0, span - known.length - covered);
         const sums = known.length
-          ? t('year.since', { from: dm(fromDay!), sum: num(sum), n: known.length }) +
+          ? t('year.since', { from: dm(fromDay!), sum: num(sum) }) +
             (missing ? ` · ${t('year.missing', { n: missing })}` : '')
           : '';
         return {
           ...tp,
           value: last ? num(last[1]!, last[1]! < 10 ? 1 : 0) : '–',
-          lines: yearLines(r, tz),
+          lines: yearLines(pairs, tz),
           caption: [demo ? t('year.demo') : '', t('year.caption'), sums]
             .filter(Boolean)
             .join(' · '),

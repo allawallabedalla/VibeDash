@@ -7,6 +7,10 @@ import type { Series } from '../src/model/types';
 import type { ServerConfig } from './config';
 import { ENERGY_TO_KWH, POWER_TO_KW, sourcesOf, type Mapping, type SeriesMapping } from './mapping';
 
+/** One day of a meter: [local day end, energy or null]; a row after a gap of days also carries the
+ * energy counted over the whole gap (third element) – for totals, never split into days. */
+export type DailyRow = [number, number | null] | [number, null, number];
+
 export function createBackends(
   mapping: Mapping,
   config: ServerConfig,
@@ -15,7 +19,7 @@ export function createBackends(
   | {
       ok: true;
       series: (m: SeriesMapping, from: number, to: number) => Promise<Series>;
-      daily: (m: SeriesMapping, from: number, to: number) => Promise<[number, number | null][]>;
+      daily: (m: SeriesMapping, from: number, to: number) => Promise<DailyRow[]>;
       /** raw InfluxQL for read-only helpers (charging records); null without Influx */
       query: ((q: string) => Promise<InfluxResponse>) | null;
     }
@@ -85,11 +89,7 @@ export function createBackends(
    * (null), never a negative or a giant day; a single reading below both
    * neighbours (a dip) is dropped, so it makes neither a gap nor a giant day.
    */
-  const dailyOf = async (
-    m: SeriesMapping,
-    from: number,
-    to: number,
-  ): Promise<[number, number | null][]> => {
+  const dailyOf = async (m: SeriesMapping, from: number, to: number): Promise<DailyRow[]> => {
     if (m.source !== 'influx' || m.entity.kind !== 'energy_counter') {
       throw new Error('daily values only for Influx meters');
     }
@@ -107,7 +107,7 @@ export function createBackends(
         !(i > 0 && i < all.length - 1 && r.v < all[i - 1]!.v && all[i + 1]!.v >= all[i - 1]!.v),
     );
     const max = m.entity.maxPerDay ?? Infinity;
-    const out: [number, number | null][] = [];
+    const out: DailyRow[] = [];
     for (let i = 1; i < readings.length; i++) {
       const a = readings[i - 1]!;
       const b = readings[i]!;
@@ -115,7 +115,12 @@ export function createBackends(
       const d = b.v - a.v;
       // a day without a reading in between (gap of days) is not split up
       const oneDay = b.t - a.t <= 26 * 3_600_000;
-      out.push([b.t, oneDay && d >= 0 && d <= max ? d : null]);
+      if (oneDay) out.push([b.t, d >= 0 && d <= max ? d : null]);
+      else {
+        // the meter kept counting over the gap: its energy belongs in a total (G-15), not split into days
+        const days = Math.round((b.t - a.t) / 86_400_000);
+        out.push(d >= 0 && d <= max * days ? [b.t, null, d] : [b.t, null]);
+      }
     }
     return out;
   };

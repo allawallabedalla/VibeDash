@@ -16,6 +16,7 @@ import type { ResolvedLocation } from './location';
 import { thinBefore } from '../src/model/series';
 import type { Series } from '../src/model/types';
 import { sourcesOf, type BoardMapping, type Mapping, type SeriesMapping } from './mapping';
+import type { DailyRow } from './backends';
 import { ITEM_ID, sanitizeCalcResult, type Board } from '../src/model/board';
 import {
   deviceBody,
@@ -66,7 +67,7 @@ export interface ApiDeps {
   /** A board's content from its house service, checked (src/model/board.ts). */
   board?: (b: BoardMapping) => Promise<Board | null>;
   /** Daily energy of a meter, [local day start, kWh or null]. */
-  daily?: (m: SeriesMapping, fromMs: number, toMs: number) => Promise<[number, number | null][]>;
+  daily?: (m: SeriesMapping, fromMs: number, toMs: number) => Promise<DailyRow[]>;
   now: () => number;
   log: (msg: string) => void;
   /**

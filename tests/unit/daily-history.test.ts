@@ -58,7 +58,7 @@ describe('daily values from an older series (N-01)', () => {
     );
     expect(days).toEqual([
       [D, 40],
-      [3 * D, null], // two days in one step: not split up
+      [3 * D, null, 10], // two days in one step: not split up, but the 10 kWh count in a total (G-15)
       [4 * D, null], // the wrap is a drop, never a negative day
       [5 * D, 30],
       [6 * D, 10],
