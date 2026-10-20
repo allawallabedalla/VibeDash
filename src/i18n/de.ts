@@ -295,6 +295,7 @@ export const de = {
   'source.influx': 'InfluxDB',
   'source.homeassistant': 'Home Assistant',
   'state.loading': 'Lade Daten …',
+  'state.refreshing': 'wird aktualisiert …',
   'state.noData': 'keine Daten',
   'state.stale': 'keine aktuellen Daten',
   'state.lastReport': 'zuletzt gemeldet {when}',

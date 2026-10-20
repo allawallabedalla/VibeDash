@@ -29,20 +29,22 @@
   import { store } from '../app/data.svelte';
   import { houseDayForecasts } from '../app/houseForecast';
 
-  const house = currentData();
+  const house = $derived(currentData());
 
-  const tz = house.timeZone;
+  const tz = $derived(house.timeZone);
   const locale = $derived(i18n.locale === 'de' ? 'de-DE' : 'en-GB');
 
   // the house's own PV forecast is judged when there is one; else the built-in rule (G-13, Audit04 ST-02)
-  const own = houseDayForecasts(house);
-  const sun = accuracy(
-    checkForecasts(house, own.length ? own : dayAheadForecasts(house), 'pv_energy'),
+  const own = $derived(houseDayForecasts(house));
+  const sun = $derived(
+    accuracy(checkForecasts(house, own.length ? own : dayAheadForecasts(house), 'pv_energy')),
   );
   // the house without the car when it has that meter: charging days made the range 19–35 kWh (Audit04 ST-14)
-  const loadId = house.series.home_energy?.samples.length ? 'home_energy' : 'load_energy';
-  const load = accuracy(checkForecasts(house, dayAheadLoad(house, loadId), loadId));
-  const loadTomorrow = dayAheadLoad(house, loadId).find((f) => f.day === 'tomorrow')?.energy;
+  const loadId = $derived(house.series.home_energy?.samples.length ? 'home_energy' : 'load_energy');
+  const load = $derived(accuracy(checkForecasts(house, dayAheadLoad(house, loadId), loadId)));
+  const loadTomorrow = $derived(
+    dayAheadLoad(house, loadId).find((f) => f.day === 'tomorrow')?.energy,
+  );
 
   const tiles = $derived([
     yieldTodayTile(house),
@@ -89,7 +91,7 @@
   let serviceActive = $state(false);
   const tsData = $derived(pvTimeSeries(house, period));
 
-  const days = showOutlook ? outlook(house, mulberry32(7)) : [];
+  const days = $derived(showOutlook ? outlook(house, mulberry32(7)) : []);
   const dayRows = $derived<DayRow[]>(
     days.map((d) => ({
       label:

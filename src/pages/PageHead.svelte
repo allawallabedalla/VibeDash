@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { currentBackends, currentData, currentSource } from '../app/data.svelte';
+  import { currentBackends, currentData, currentSource, store } from '../app/data.svelte';
   import { i18n, t, time } from '../i18n/index.svelte';
 
-  const house = currentData();
+  const house = $derived(currentData());
 
   let { title }: { title: string } = $props();
 
@@ -11,7 +11,7 @@
       timeZone: house.timeZone,
       day: 'numeric',
       month: 'long',
-    }).format(house.now),
+    }).format(store.stale ?? house.now),
   );
 </script>
 
@@ -19,7 +19,7 @@
 <p class="lead">
   {t('page.asOf', {
     date,
-    time: time(house.now, house.timeZone),
+    time: time(store.stale ?? house.now, house.timeZone),
     source:
       currentSource() === 'demo'
         ? t('source.demo')
@@ -27,4 +27,11 @@
             .map((b) => t(b === 'influx' ? 'source.influx' : 'source.homeassistant'))
             .join(' + '),
   })}
+  {#if store.stale}<span class="refresh"> · {t('state.refreshing')}</span>{/if}
 </p>
+
+<style>
+  .refresh {
+    color: var(--accent);
+  }
+</style>

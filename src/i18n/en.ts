@@ -291,6 +291,7 @@ export const en: Record<MessageKey, string> = {
   'source.influx': 'InfluxDB',
   'source.homeassistant': 'Home Assistant',
   'state.loading': 'Loading data …',
+  'state.refreshing': 'updating …',
   'state.noData': 'no data',
   'state.stale': 'no current data',
   'state.lastReport': 'last reported {when}',
