@@ -41,6 +41,10 @@
  *   A tap sends POST /api/board/<id>/action { item: id, action: "choose", value }; the service
  *   stores the choice and shows it on the next load. A setting for the house's own logic (e.g. how
  *   cautious a charge plan is) – never a direct switch.
+ * "chargetimeline": charge windows to try on the house's weather cases (shown only, switches nothing) –
+ *   { "type": "chargetimeline", "title": "…", "days": [ { "label": "Heute", "startStep": 35, "startKwh": 4.8,
+ *     "pv": [[96 kW values] × cases], "load": [[96] × cases] } ], "battery": { "kwh", "reserveKwh", "eta", "kw" },
+ *     "carNeedKwh": 30, "powers": [4.3, 7.1, 11.4] } – 15-minute steps from 0:00, at most 2 days and 40 cases.
  * Every section may carry "note" (one line under it) and "info" ({ what, source } behind ⓘ), and
  * "slot": "top" | "plan" – where a page that embeds the board (the charging page, mapping
  * boards[].onPage) puts it: above its own content, after its plan; without slot at the end.
@@ -148,7 +152,16 @@ export type BoardSection =
   | (Base & { type: 'text'; text: string })
   | (Base & BoardCalc)
   | (Base & BoardChoice)
+  | (Base & BoardChargeTimeline)
   | (Base & BoardPlan);
+
+export interface BoardChargeTimeline {
+  type: 'chargetimeline';
+  days: { label: string; startStep: number; startKwh: number; pv: number[][]; load: number[][] }[];
+  battery: { kwh: number; reserveKwh: number; eta: number; kw: number };
+  carNeedKwh: number;
+  powers: number[];
+}
 
 export interface BoardChoice {
   type: 'choice';
@@ -486,6 +499,11 @@ export function sanitizeBoard(raw: unknown): Board | null {
         if (c) sections.push({ ...base, ...c });
         break;
       }
+      case 'chargetimeline': {
+        const c = sanitizeTimeline(s);
+        if (c) sections.push({ ...base, ...c });
+        break;
+      }
       case 'choice': {
         const c = sanitizeChoice(s);
         if (c) sections.push({ ...base, ...c });
@@ -527,6 +545,54 @@ function sanitizeCalc(s: O): BoardCalc | null {
   };
 }
 
+const kwRow = (r: unknown): number[] | null =>
+  Array.isArray(r) && r.length === 96 && r.every((v) => typeof v === 'number' && v >= 0 && v <= 200)
+    ? (r as number[])
+    : null;
+/** Check a charge timeline: up to 2 days, 2–40 cases of 96 steps each, sane battery numbers. */
+function sanitizeTimeline(s: O): BoardChargeTimeline | null {
+  const b = s.battery as O | undefined;
+  const kwh = num(b?.kwh);
+  const reserve = num(b?.reserveKwh);
+  const eta = num(b?.eta);
+  const kw = num(b?.kw);
+  if (!b || !kwh || kwh <= 0 || kwh > 500 || reserve === null || reserve < 0 || reserve >= kwh)
+    return null;
+  if (!eta || eta <= 0.5 || eta > 1 || !kw || kw <= 0 || kw > 200) return null;
+  if (!Array.isArray(s.days)) return null;
+  const days: BoardChargeTimeline['days'] = [];
+  for (const d of s.days.slice(0, 2)) {
+    if (!d || typeof d !== 'object') continue;
+    const x = d as O;
+    if (!Array.isArray(x.pv) || !Array.isArray(x.load) || x.pv.length !== x.load.length) continue;
+    if (x.pv.length < 2 || x.pv.length > 40) continue;
+    const pv = x.pv.map(kwRow);
+    const load = x.load.map(kwRow);
+    if (pv.some((r) => !r) || load.some((r) => !r)) continue;
+    const st = Math.round(num(x.startStep) ?? 0);
+    const sk = num(x.startKwh);
+    days.push({
+      label: text(x.label, 16),
+      startStep: Math.max(0, Math.min(95, st)),
+      startKwh: sk === null ? reserve : Math.max(0, Math.min(kwh, sk)),
+      pv: pv as number[][],
+      load: load as number[][],
+    });
+  }
+  if (!days.length) return null;
+  const need = num(s.carNeedKwh);
+  const powers = Array.isArray(s.powers)
+    ? s.powers.filter((p): p is number => typeof p === 'number' && p > 0 && p <= 50).slice(0, 4)
+    : [];
+  return {
+    type: 'chargetimeline',
+    days,
+    battery: { kwh, reserveKwh: reserve, eta, kw },
+    carNeedKwh: need && need > 0 && need <= 200 ? need : 40,
+    powers: powers.length ? powers : [3.7, 7.4, 11],
+  };
+}
+
 const CHOICE_VALUE = /^[a-z0-9_-]{1,32}$/;
 /** Check a choice (2–5 options with unique values); null otherwise. */
 function sanitizeChoice(s: O): BoardChoice | null {
@@ -556,7 +622,13 @@ export function sanitizeCalcResult(raw: unknown): BoardSection[] | null {
   const b = sanitizeBoard(raw);
   return b
     ? b.sections
-        .filter((x) => x.type !== 'calc' && x.type !== 'plan' && x.type !== 'choice')
+        .filter(
+          (x) =>
+            x.type !== 'calc' &&
+            x.type !== 'plan' &&
+            x.type !== 'choice' &&
+            x.type !== 'chargetimeline',
+        )
         .slice(0, 8)
     : null;
 }

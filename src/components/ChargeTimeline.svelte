@@ -16,7 +16,18 @@
   } from '../app/charge-timeline';
   import { i18n } from '../i18n/index.svelte';
 
-  let { cases, house }: { cases: Cases; house: House } = $props();
+  let {
+    cases,
+    house,
+    startStep = 0,
+    kwOptions = [3.7, 7.4, 11],
+  }: {
+    cases: Cases;
+    house: House;
+    /** steps before this are the past: shaded, no windows there */
+    startStep?: number;
+    kwOptions?: number[];
+  } = $props();
 
   // the drawing has the size of its box in CSS pixels: crisp text and finger-sized handles on a phone
   let boxW = $state(0);
@@ -26,7 +37,6 @@
   const PLOT = $derived(narrow ? 230 : 230); // bottom of the power area
   const GRID_H = $derived(narrow ? 64 : 70); // grid import area below
   const H = $derived(PLOT + GRID_H + 28);
-  const KW_OPTIONS = [3.7, 7.4, 11];
 
   const TEXT = {
     de: {
@@ -48,6 +58,8 @@
       legendGrid: 'Netzbezug',
       inWin: '{v} kWh Netz',
       noGrid: 'ohne Netz',
+      noSun:
+        'An diesem Tag reicht die Sonne an keiner Stelle sicher fürs Auto – jedes Fenster bräuchte Netzstrom.',
     },
     en: {
       car: 'Car gets',
@@ -68,6 +80,8 @@
       legendGrid: 'Grid import',
       inWin: '{v} kWh grid',
       noGrid: 'no grid',
+      noSun:
+        'On this day the sun is nowhere reliably enough for the car – every window would need grid power.',
     },
   };
   const tx = $derived(TEXT[i18n.locale === 'de' ? 'de' : 'en']);
@@ -79,7 +93,12 @@
   const fill = (s: string, v: Record<string, string>) =>
     s.replace(/\{(\w+)\}/g, (_, k: string) => v[k] ?? '');
 
-  let windows = $state<Window[]>([{ id: 1, from: 44, to: 56, kw: 7.4 }]);
+  // svelte-ignore state_referenced_locally (the first window only needs the start once)
+  const first = Math.min(Math.max(startStep, 44), 88);
+  // svelte-ignore state_referenced_locally
+  let windows = $state<Window[]>([
+    { id: 1, from: first, to: first + 8, kw: kwOptions[1] ?? kwOptions[0] ?? 7 },
+  ]);
   let selected = $state<number | null>(1);
   let nextId = 2;
 
@@ -160,10 +179,11 @@
       if (w.id !== d.id) return w;
       if (d.mode === 'move') {
         const len = d.to - d.from;
-        const from = Math.max(0, Math.min(STEPS - len, d.from + delta));
+        const from = Math.max(startStep, Math.min(STEPS - len, d.from + delta));
         return { ...w, from, to: from + len };
       }
-      if (d.mode === 'from') return { ...w, from: Math.max(0, Math.min(d.to - 1, d.from + delta)) };
+      if (d.mode === 'from')
+        return { ...w, from: Math.max(startStep, Math.min(d.to - 1, d.from + delta)) };
       return { ...w, to: Math.min(STEPS, Math.max(d.from + 1, d.to + delta)) };
     });
   }
@@ -172,17 +192,30 @@
   }
 
   function add(at = 48) {
-    const from = Math.max(0, Math.min(STEPS - 8, at - 4));
-    windows = [...windows, { id: nextId, from, to: from + 8, kw: 7.4 }];
+    const from = Math.max(startStep, Math.min(STEPS - 8, at - 4));
+    windows = [
+      ...windows,
+      { id: nextId, from, to: Math.min(STEPS, from + 8), kw: kwOptions[1] ?? kwOptions[0] ?? 7 },
+    ];
     selected = nextId++;
   }
   function remove(id: number) {
     windows = windows.filter((w) => w.id !== id);
     selected = windows.at(-1)?.id ?? null;
   }
+  let noSun = $state(false);
   function best() {
-    const kw = windows.find((w) => w.id === selected)?.kw ?? 7.4;
-    windows = suggest(cases, house, kw).map((w) => ({ ...w, id: nextId++ }));
+    // the chosen power first, then smaller ones: on a grey day only a small one may fit the sun
+    const want = windows.find((w) => w.id === selected)?.kw ?? kwOptions[1] ?? kwOptions[0] ?? 7;
+    const tries = [want, ...[...kwOptions].sort((a, b) => b - a).filter((k) => k < want)];
+    let found: Window[] = [];
+    for (const kw of tries) {
+      found = suggest(cases, house, kw);
+      if (found.length) break;
+    }
+    noSun = !found.length;
+    if (noSun) return;
+    windows = found.map((w) => ({ ...w, id: nextId++ }));
     selected = windows[0]?.id ?? null;
   }
   const setKw = (id: number, kw: number) =>
@@ -241,6 +274,13 @@
     {/each}
     <line class="base" x1="0" x2={W} y1={PLOT} y2={PLOT} />
 
+    {#if startStep > 0}<rect
+        class="past"
+        x="0"
+        y={TOP}
+        width={x(startStep)}
+        height={PLOT + GRID_H - TOP}
+      />{/if}
     <!-- windows (under the curves, so the sun stays readable) -->
     {#each windows as w, k (w.id)}
       {@const st = windowState(k)}
@@ -299,7 +339,7 @@
   <div class="selbar">
     <span class="when">{clock(sel.from)}–{clock(sel.to)}</span>
     <span class="pw">{tx.power}</span>
-    {#each KW_OPTIONS as k (k)}
+    {#each kwOptions as k (k)}
       <button type="button" class:on={sel.kw === k} onclick={() => setKw(sel.id, k)}
         >{f(k, 1)} kW</button
       >
@@ -308,6 +348,7 @@
     {#if selIndex >= 0}<span class="sr">{selIndex + 1}/{windows.length}</span>{/if}
   </div>
 {/if}
+{#if noSun}<p class="hint warn" role="status">{tx.noSun}</p>{/if}
 <p class="hint">{tx.hint}</p>
 
 <style>
@@ -376,6 +417,9 @@
   }
   .hour {
     stroke: var(--line);
+  }
+  .past {
+    fill: var(--gap);
   }
   .base {
     stroke: var(--faint);
@@ -519,6 +563,9 @@
   .sr {
     color: var(--muted);
     font-size: var(--small);
+  }
+  .hint.warn {
+    color: var(--fair-text);
   }
   .hint {
     color: var(--muted);

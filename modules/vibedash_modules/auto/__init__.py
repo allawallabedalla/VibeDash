@@ -23,6 +23,7 @@ Config (local/modules/auto.json, template modules/templates/auto.json):
                this file (the house's planner reads it); without it there is no choice
   steuerung    optional {status_url, jetzt_url, automatik_url} – the house's own charge control (steuerung.py):
                a choice „Automatik / Jetzt voll laden“ that forwards the tap; the house switches by its own rules
+  zeitstrahl   optional path of the house's weather cases for the charge timeline (zeitstrahl.py; shown only)
   texte        optional wording overrides (keys of board.TEXT, CALC)
 """
 
@@ -36,7 +37,7 @@ import urllib.request
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from . import board, hersteller, prognose, risiko, steuerung
+from . import board, hersteller, prognose, risiko, steuerung, zeitstrahl
 from .quellen import Influx, zeile
 
 STEP_MIN = 15
@@ -160,6 +161,19 @@ class Module:
     def board(self) -> dict:
         now = self.clock()
         out = board.build(_load(self.path(self.cfg["prognose"])), now, self.t, self._calc_section(now))
+        zp = self.cfg.get("zeitstrahl")
+        if zp:
+            p = self.path(zp)
+            try:
+                mt = os.path.getmtime(p)
+            except OSError:
+                mt = None
+            tl = zeitstrahl.section(p, datetime.fromtimestamp(now, self.tz).date(), now, mt) if mt else None
+            if tl:
+                secs = out.get("sections") or []
+                # after the house's plan (slot "plan"), before the calculator
+                i = next((k for k, s in enumerate(secs) if s.get("type") == "calc"), len(secs))
+                out["sections"] = secs[:i] + [tl] + secs[i:]
         sc = self.cfg.get("steuerung") or {}
         if sc.get("status_url"):
             out["sections"] = [steuerung.section(steuerung.status(sc))] + (out.get("sections") or [])
