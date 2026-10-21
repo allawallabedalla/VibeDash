@@ -84,7 +84,11 @@ export const en: Record<MessageKey, string> = {
   'spark.home': 'Usage today and usual',
   'spark.homeBand': 'Band: usual (8 in 10 days, n = {n})',
   'spark.grid': 'Grid, 24 h',
-  'spark.gridNote': 'up feed-in · down import',
+  'spark.gridImport': 'Import {v} kWh',
+  'spark.gridFeed': 'Feed-in {v} kWh',
+  'spark.gridOpen': 'open',
+  'spark.gridInfo':
+    'Curve: up = power to the grid, down = power from the grid. Peak import {peak} kW. Totals from the grid meter, last 24 hours.',
   'spark.temp': 'Living room, 24 h',
   'spark.gap': 'Gap {from}–{to}',
 

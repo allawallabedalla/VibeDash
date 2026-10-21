@@ -16,9 +16,10 @@
   import Sparkline from '../components/Sparkline.svelte';
   import Tile from '../components/Tile.svelte';
   import TileRow from '../components/TileRow.svelte';
-  import { last24h, typicalProfile } from '../demo';
+  import { last24h, last24hEnergy, typicalProfile } from '../demo';
   import { sourcesAt } from '../app/sources';
   import { num, t, time } from '../i18n/index.svelte';
+  import GridCard from './GridCard.svelte';
   import PageHead from './PageHead.svelte';
 
   const house = $derived(currentData());
@@ -95,15 +96,12 @@
         label={t('spark.sun')}
       />
     </Card>
-    <Card title={t('spark.grid')} icon="grid" color="var(--feed)" note={t('spark.gridNote')}>
-      <Sparkline
-        values={last24h(house, 'grid_power').map(kw)}
-        signed
-        color="var(--feed)"
-        height={72}
-        label={t('spark.grid')}
-      />
-    </Card>
+    <GridCard
+      values={last24h(house, 'grid_power').map(kw)}
+      importKwh={last24hEnergy(house, 'import_energy')}
+      feedKwh={last24hEnergy(house, 'feed_in_energy')}
+      height={72}
+    />
   </div>
 
   <h2>{t('area.climate')}</h2>

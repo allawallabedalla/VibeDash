@@ -35,8 +35,10 @@
     pvTimeSeries,
     type Period,
     last24h,
+    last24hEnergy,
     typicalProfile,
   } from '../demo';
+  import GridCard from '../pages/GridCard.svelte';
   import { i18n, num, t, time } from '../i18n/index.svelte';
   import { localMidnight } from '../model/time';
 
@@ -253,9 +255,11 @@
         label={t('spark.home')}
       />
     </Card>
-    <Card title={t('spark.grid')} icon="grid" color="var(--feed)" note={t('spark.gridNote')}>
-      <Sparkline values={grid24} signed color="var(--feed)" label={t('spark.grid')} />
-    </Card>
+    <GridCard
+      values={grid24}
+      importKwh={last24hEnergy(demo, 'import_energy')}
+      feedKwh={last24hEnergy(demo, 'feed_in_energy')}
+    />
     <Card
       title={t('spark.temp')}
       icon="thermometer"

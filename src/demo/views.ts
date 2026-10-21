@@ -1,5 +1,12 @@
 /** Views on the demo data that the gallery and later pages share. */
-import { dailyFromCounter, estimate, quantile, toGrid, valueAt } from '../model/series';
+import {
+  dailyFromCounter,
+  dropCounterGlitches,
+  estimate,
+  quantile,
+  toGrid,
+  valueAt,
+} from '../model/series';
 import { localDateKey } from '../model/time';
 import type { Estimate, Sample } from '../model/types';
 import type { DemoData } from './generate';
@@ -20,6 +27,21 @@ export function last24hSpan(data: DemoData, stepMs = 15 * 60_000): { from: numbe
 
 export function last24h(data: DemoData, id: string, stepMs = 15 * 60_000): (number | null)[] {
   return toGrid(data.series[id]!.samples, data.now - 24 * HOUR, data.now, stepMs);
+}
+
+/**
+ * Energy of the last 24 h from the meter reading (rises only, glitches dropped).
+ * null without the meter or when its readings start more than an hour late.
+ */
+export function last24hEnergy(data: DemoData, counterId: string): number | null {
+  const samples = data.series[counterId]?.samples;
+  if (!samples) return null;
+  const from = data.now - 24 * HOUR;
+  const clean = dropCounterGlitches(samples.filter((s) => s.t >= from && s.t <= data.now));
+  if (clean.length < 2 || clean[0]!.t > from + HOUR) return null;
+  let sum = 0;
+  for (let i = 1; i < clean.length; i++) sum += Math.max(clean[i]!.v - clean[i - 1]!.v, 0);
+  return sum;
 }
 
 /** Daily energy per local day from the meter reading. */

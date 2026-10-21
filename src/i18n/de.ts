@@ -83,7 +83,11 @@ export const de = {
   'spark.home': 'Verbrauch heute und üblich',
   'spark.homeBand': 'Band: üblich (8 von 10 Tagen, n = {n})',
   'spark.grid': 'Netz, 24 h',
-  'spark.gridNote': 'oben Einspeisung · unten Bezug',
+  'spark.gridImport': 'Bezug {v} kWh',
+  'spark.gridFeed': 'Einspeisung {v} kWh',
+  'spark.gridOpen': 'offen',
+  'spark.gridInfo':
+    'Kurve: oben Strom ins Netz, unten Strom aus dem Netz. Spitze Bezug {peak} kW. Summen aus dem Netzzähler, letzte 24 Stunden.',
   'spark.temp': 'Wohnzimmer, 24 h',
   'spark.gap': 'Lücke {from}–{to}',
 
