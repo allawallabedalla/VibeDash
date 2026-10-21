@@ -114,7 +114,16 @@ case "${1:-}" in
 esac
 
 cd "$(dirname "$0")/.."
-[ -z "$(git status --porcelain --untracked-files=no)" ] || { echo "uncommitted changes – commit first" >&2; exit 1; }
+# nothing uncommitted, also no new files the build would pick up (ignored files such as node_modules do not count)
+[ -z "$(git status --porcelain)" ] || { git status --short >&2; echo "uncommitted changes or new files – commit first" >&2; exit 1; }
+# only what is on main goes live (Audit04, BL-237): the commit must be on the published main branch.
+# VIBEDASH_RELEASE_ANY=1 lets an emergency fix through, on purpose and visibly.
+main="${VIBEDASH_RELEASE_MAIN:-https://github.com/allawallabedalla/VibeDash.git}"
+if [ "${VIBEDASH_RELEASE_ANY:-}" != 1 ]; then
+  git fetch -q "$main" main || { echo "cannot read main ($main) – VIBEDASH_RELEASE_ANY=1 to go live anyway" >&2; exit 1; }
+  git merge-base --is-ancestor HEAD FETCH_HEAD || {
+    echo "$(git rev-parse --short HEAD) is not on main – merge first (or VIBEDASH_RELEASE_ANY=1)" >&2; exit 1; }
+fi
 id="$(git rev-parse --short HEAD)-$(date +%Y%m%d%H%M%S)"
 tmp="$(mktemp -d "$HOME_DIR/releases/.build-XXXXXX")"
 trap 'rm -rf "$tmp"' EXIT
