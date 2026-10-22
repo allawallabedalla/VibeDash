@@ -1,12 +1,14 @@
-"""Board of the module "korrelation": the weekly correlation atlas – robust signal pairs, what is worth a look,
-what is new or gone since last week, a ranking without technically coupled pairs. Pure function:
+"""Board of the module "korrelation": the weekly correlation atlas in plain words – what moves together, the likely
+reason behind an ⓘ per line, what is unexplained, what is new or gone since last week. Pure function:
 
   build(data, now_ms, t, tz)
 
 data (house service, config "einschub_url"): {"stand_ms", "aktuell": {"statistik": [{ebene: h|d, signale,
-paare_getestet, zeitraum}], "paare": [{ebene: Stunden|Tage, a, b, r, rb, einordnung, nur_tagesgang}]},
-"vorwoche": same | null, "namen": {signal: readable name}}. einordnung: prüfen | erwartet | gleicher Sensor |
-technisch gekoppelt.
+paare_getestet, zeitraum}], "paare": [{ebene: Stunden|Tage, a, b, r, rb, n, einordnung, nur_tagesgang, abgeleitet,
+gruppe, warum}]}, "vorwoche": same | null, "namen": {signal: everyday name}}.
+einordnung: prüfen | erwartet | gleicher Sensor | technisch gekoppelt (the atlas' own rules).
+gruppe (optional, from the house): unklar | erklaert | zeit | technik – what is most likely behind the pair;
+warum (optional): one sentence why. Without them the group follows from einordnung and a general sentence is shown.
 """
 
 from __future__ import annotations
@@ -15,30 +17,36 @@ from datetime import datetime
 
 from ..fmt import clean
 
-KINDS = (
-    ("prüfen", "prüfen"),
-    ("erwartet", "erwartet"),
-    ("gleicher Sensor", "gl. Sensor"),
-    ("technisch gekoppelt", "technisch"),
-)
+# most interesting first; the bar chart and every list keep this order (technical ones at the end)
+GROUPS = ("unklar", "erklaert", "zeit", "technik")
 
 TEXT = {
     "none_title": "Noch kein Ergebnis",
     "none_text": "Der Wochenlauf des Korrelationsatlas hat noch nichts geschrieben.",
     "source": "Korrelationsatlas des Hauses",
-    "robust_what": "Signalpaare mit starkem Gleichlauf (Korrelation |r| ≥ 0,5), die roh oder nach Abzug des "
-    "Tagesgangs signifikant sind (Autokorrelation und Mehrfachtest berücksichtigt). Ohne Paare, bei denen ein "
-    "Signal aus dem anderen gerechnet ist.",
+    "g_unklar": "unklar",
+    "g_erklaert": "erklärt",
+    "g_zeit": "Sonne/Zeit",
+    "g_technik": "Technik",
+    "why_unklar": "Kein naheliegender Grund bekannt – ein Blick lohnt.",
+    "why_erklaert": "Physikalisch naheliegend: das eine wirkt direkt auf das andere.",
+    "why_zeit": "Beide folgen nur Sonne, Tages- oder Jahreszeit – keine direkte Wirkung.",
+    "why_technik": "Messtechnik: dasselbe Gerät oder derselbe Wert, doppelt gezählt.",
+    "found_what": "Messwerte, die deutlich gemeinsam steigen oder fallen (Stärke |r| ≥ 0,5 von 1), geprüft gegen "
+    "Zufall und stabil in beiden Hälften des Zeitraums. Ohne Paare, bei denen ein Wert aus dem anderen gerechnet "
+    "ist.",
     "stand_what": "Wird jede Woche neu gerechnet.",
-    "kinds_note": "Technisch gekoppelt = Kanäle desselben Geräts; prüfen = nicht erklärbar.",
-    "kinds_what": "Einordnung nach Regeln: technisch gekoppelt, gleicher Sensor auf zwei Wegen, physikalisch erwartet, "
-    "sonst prüfen.",
-    "check_what": "Paare, die weder technisch noch physikalisch naheliegen. Korrelation ist keine Ursache – "
-    "Hinweis, wo man hinschauen kann.",
-    "rank_note": "Stärke = Korrelation r von −1 bis 1, roh / ohne Tagesgang bzw. Saison. Stärkste 150; alles mit "
-    "Filter im Korrelationsatlas.",
-    "rank_what": "Ohne technisch gekoppelte Kanäle, ohne Paare aus demselben Sensor und ohne Paare, bei denen ein "
-    "Signal aus dem anderen gerechnet ist (z. B. WP-Strom aus der Außentemperatur).",
+    "kinds_note": "Links lohnt der Blick, rechts ist es Messtechnik.",
+    "kinds_what": "unklar: kein naheliegender Grund. erklärt: eins wirkt aufs andere (Heizung wärmt Raum, Bewegung "
+    "schaltet Licht). Sonne/Zeit: beide folgen nur Sonne, Tages- oder Jahreszeit. Technik: dasselbe Gerät, "
+    "derselbe Messwert zweimal oder Busmeldungen, die das Schalten selbst sind.",
+    "unclear_what": "Gleichlauf ohne naheliegenden Grund. Gleichlauf ist keine Ursache – nur ein Hinweis, wo man "
+    "hinschauen kann. Stärke von −1 bis 1; „ohne Tagesgang“: was bleibt, wenn man den üblichen Tagesverlauf "
+    "(bei Tageswerten: die Saison) abzieht.",
+    "known_what": "Die stärksten Paare mit naheliegender Erklärung. ⓘ je Zeile: warum.",
+    "rank_note": "Stärke roh / ohne Tagesgang bzw. Saison. Ohne Technik; unklar zuerst.",
+    "rank_what": "Ohne Messtechnik (dasselbe Gerät, derselbe Wert zweimal) und ohne Paare, bei denen ein Wert aus "
+    "dem anderen gerechnet ist (z. B. WP-Strom aus der Außentemperatur). Stärkste 150.",
 }
 
 
@@ -48,6 +56,32 @@ def de(x, nd=2) -> str:
 
 def _key(p):
     return (p["ebene"],) + tuple(sorted((p["a"], p["b"])))
+
+
+def group(p) -> str:
+    g = p.get("gruppe")
+    if g in GROUPS:
+        return g
+    k = p.get("einordnung")
+    if k in ("gleicher Sensor", "technisch gekoppelt"):
+        return "technik"
+    if p.get("nur_tagesgang"):
+        return "zeit"
+    return "unklar" if k == "prüfen" else "erklaert"
+
+
+def strength(p) -> float:
+    return max(abs(p["r"]), abs(p.get("rb") or 0))
+
+
+def _plural(name: str) -> bool:
+    # counts are named in the plural ("Busmeldungen Dimmer 4", "Tastendrücke Büro"): the verb follows
+    w = name.split(" ", 1)[0].lower()
+    return w == "alle" or w.endswith(("ungen", "drücke", "hinweise", "meldungen"))
+
+
+def _cap(s: str) -> str:
+    return s[:1].upper() + s[1:]
 
 
 def build(data: dict, now_ms: int, t: dict, tz) -> dict:
@@ -66,45 +100,73 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
         return names.get(sig, sig)
 
     def pair(p):
-        return clean(f"{name(p['a'])} ~ {name(p['b'])}", 160)
+        # direction as words; the sign of the stronger of raw and without-daily-rhythm
+        r = p["rb"] if p.get("rb") is not None and abs(p["rb"]) > abs(p["r"]) else p["r"]
+        a, b = name(p["a"]), name(p["b"])
+        if r >= 0:
+            return clean(_cap(f"{a} und {b} steigen gemeinsam"), 160)
+        if _plural(a) and not _plural(b):
+            a, b = b, a
+        verb = "sinken" if _plural(a) else "sinkt"
+        return clean(_cap(f"{a} {verb}, wenn {b} {'steigen' if _plural(b) else 'steigt'}"), 160)
 
-    def rtext(p):
+    def rtext(p, with_group=False):
         # plain words in the first line, with n (Audit04 ST-19, UX-06)
-        part = [f"Stärke {de(p['r'])}"]
+        part = [t[f"g_{group(p)}"]] if with_group else []
+        part.append(f"Stärke {de(p['r'])}")
         if p.get("rb") is not None:
             part.append(f"ohne Tagesgang {de(p['rb'])}")
         part.append(f"{p['n']} {'Std.' if p['ebene'] == 'Stunden' else 'Tage'}" if p.get("n") else p["ebene"])
-        return " · ".join(part)
+        return clean(" · ".join(part), 80)
 
-    # compare with last week (only once last week comes from an earlier run)
+    def item(p, with_group=False):
+        return {
+            "text": pair(p),
+            "meta": rtext(p, with_group),
+            "info": clean(p.get("warum") or t[f"why_{group(p)}"], 300),
+        }
+
+    def ordered(items):
+        # unclear first, technical last; strongest first within a group
+        return sorted(items, key=lambda p: (GROUPS.index(group(p)), -strength(p)))
+
+    def distinct(items):
+        # the same two values by the hour and by the day: one line in a list (the stronger, as sorted)
+        seen = set()
+        out = []
+        for p in items:
+            k = tuple(sorted((p["a"], p["b"])))
+            if k not in seen:
+                seen.add(k)
+                out.append(p)
+        return out
+
+    # compare with last week (only once last week comes from an earlier run); technical pairs are not news
     cmp = None
     if v and v.get("statistik") and [s["zeitraum"] for s in v["statistik"]] != [s["zeitraum"] for s in e["statistik"]]:
-        old = {_key(p): p for p in v.get("paare") or []}
+        old = {_key(p): p for p in v.get("paare") or [] if not p.get("abgeleitet")}
         new = {_key(p): p for p in pairs}
         cmp = {
-            "neu": [new[k] for k in new if k not in old and new[k]["einordnung"] != "technisch gekoppelt"],
-            "weg": [old[k] for k in old if k not in new and old[k]["einordnung"] != "technisch gekoppelt"],
+            "neu": [new[k] for k in new if k not in old and group(new[k]) != "technik"],
+            "weg": [old[k] for k in old if k not in new and group(old[k]) != "technik"],
         }
-    # "check" = not explained beforehand AND still there without the daily rhythm (Audit04 ST-04: 19 of 31 were only
-    # the daily rhythm); a correlation is never a task, so nothing here carries a "look" state (Audit04 UX-10)
-    check_all = [p for p in pairs if p["einordnung"] == "prüfen"]
-    check = [p for p in check_all if not p.get("nur_tagesgang")]
-    rhythm_only = len(check_all) - len(check)
+    by = {g: sorted((p for p in pairs if group(p) == g), key=lambda p: -strength(p)) for g in GROUPS}
+    unclear = by["unklar"]
     tested = st.get("h", {}).get("paare_getestet", 0) + st.get("d", {}).get("paare_getestet", 0)
     tiles = [
         {
-            "label": "Robust",
+            "label": "Gefunden",
             "value": f"{len(pairs):,}".replace(",", "."),
             "icon": "target",
             "color": "home",
-            "sub": "starke Paare von " + f"{tested:,}".replace(",", ".") + " getesteten",
-            "info": {"what": t["robust_what"], "source": t["source"]},
+            "sub": "Paare von " + f"{tested:,}".replace(",", ".") + " geprüften",
+            "info": {"what": t["found_what"], "source": t["source"]},
         },
         {
-            "label": "Prüfen",
-            "value": str(len(check)),
+            "label": "Unklar",
+            "value": str(len(unclear)),
             "icon": "eye",
-            "sub": "nicht von vornherein erklärbar",
+            "sub": "ohne naheliegenden Grund",
         },
         {
             "label": "Neu",
@@ -119,10 +181,10 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
             "sub": "seit Vorwoche (ohne Technik)" if cmp else "Vergleich ab nächster Woche",
         },
         {
-            "label": "Signale",
+            "label": "Messreihen",
             "value": f"{st.get('h', {}).get('signale', '–')}/{st.get('d', {}).get('signale', '–')}",
             "icon": "overview",
-            "sub": "Stunden / Tage",
+            "sub": "stündlich / täglich",
         },
         {
             "label": "Stand",
@@ -136,47 +198,52 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
     sections.append(
         {
             "type": "bars",
-            "title": "Paare je Einordnung",
+            "title": "Was steckt dahinter",
             "unit": "",
-            "labels": [k[1] for k in KINDS],
-            "values": [sum(1 for p in pairs if p["einordnung"] == k[0]) for k in KINDS],
+            "labels": [t[f"g_{g}"] for g in GROUPS],
+            "values": [len(by[g]) for g in GROUPS],
             "color": "home",
             "note": t["kinds_note"],
             "info": {"what": t["kinds_what"], "source": t["source"]},
         }
     )
+    # a correlation is never a task, so nothing here carries a "look" state (Audit04 UX-10)
     sections.append(
         {
             "type": "list",
-            "title": "Prüfen",
-            "items": [{"text": pair(p), "meta": clean(rtext(p), 60)} for p in check[:20]],
-            "note": (f"Die {min(20, len(check))} stärksten von {len(check)}." if check else "Keine.")
-            + (
-                f" Dazu {rhythm_only} Paare, die nur dem Tagesrhythmus folgen (nicht aufgeführt)."
-                if rhythm_only
-                else ""
-            ),
-            "info": {"what": t["check_what"], "source": t["source"]},
+            "title": "Unklar",
+            "items": [item(p) for p in distinct(unclear)[:20]],
+            "note": f"{len(unclear)} Paare, stärkste zuerst." if unclear else "Keine – alles erklärbar.",
+            "info": {"what": t["unclear_what"], "source": t["source"]},
         }
     )
+    if by["erklaert"]:
+        sections.append(
+            {
+                "type": "list",
+                "title": "Erklärt",
+                "items": [item(p) for p in distinct(by["erklaert"])[:10]],
+                "note": f"Die stärksten von {len(by['erklaert'])}.",
+                "info": {"what": t["known_what"], "source": t["source"]},
+            }
+        )
     if cmp:
         for title, items in (("Neu diese Woche", cmp["neu"]), ("Weggefallen", cmp["weg"])):
-            items = sorted(items, key=lambda p: -max(abs(p["r"]), abs(p.get("rb") or 0)))
             sections.append(
                 {
                     "type": "list",
                     "title": title,
-                    "items": [{"text": pair(p), "meta": clean(rtext(p), 60)} for p in items[:15]],
-                    "note": f"{len(items)} Paare (ohne technisch gekoppelte)" if items else "Keine Änderung.",
+                    "items": [item(p, True) for p in distinct(ordered(items))[:15]],
+                    "note": f"{len(items)} Paare (ohne Technik)" if items else "Keine Änderung.",
                 }
             )
-    rank = [p for p in pairs if p["einordnung"] not in ("technisch gekoppelt", "gleicher Sensor")][:150]
+    rank = ordered(p for p in pairs if group(p) != "technik")[:150]
     sections.append(
         {
             "type": "table",
-            "title": "Rangliste ohne Technik",
+            "title": "Alle nach Art",
             "columns": [
-                {"key": "p", "label": "Paar"},
+                {"key": "p", "label": "Zusammenhang"},
                 {"key": "r", "label": "Stärke", "align": "right"},
                 {"key": "k", "label": "Art"},
             ],
@@ -185,9 +252,7 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
                     "cells": {
                         "p": pair(p),
                         "r": f"{de(p['r'])} / {de(p.get('rb'))}",
-                        "k": ("prüfen" if p["einordnung"] == "prüfen" else "erwartet")
-                        + (" · Tag" if p["ebene"] == "Tage" else "")
-                        + (" · nur Tagesgang" if p["nur_tagesgang"] else ""),
+                        "k": t[f"g_{group(p)}"] + (" · täglich" if p["ebene"] == "Tage" else ""),
                     },
                 }
                 for p in rank
