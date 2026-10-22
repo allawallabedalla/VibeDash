@@ -97,6 +97,29 @@ class TestAuto(unittest.TestCase):
         tile = next(x for x in self.mod.board()["sections"][0]["tiles"] if x["label"] == "Ladestand")
         self.assertEqual((tile["spark"], tile["sparkFrom"], tile["sparkTo"]), ([50.0, None, 41.5], 1000, 8200000))
 
+    def _kabel(self, status, wallbox=None):
+        pr = _prognose()
+        pr["status"].update(status)
+        if wallbox is not None:
+            pr["wallbox"] = wallbox
+        with open(os.path.join(self.base, "prognose.json"), "w", encoding="utf-8") as f:
+            json.dump(pr, f)
+        return next(x for x in self.mod.board()["sections"][0]["tiles"] if x["label"] == "Ladekabel")
+
+    def test_cable_failure_while_the_automatic_waits(self):
+        """22.10.2026: plugged in, nothing flows, car says Failure – only the automatic waits."""
+        steckt = {"lade_status": "Failure", "angesteckt": True}
+        wartet = {"laeuft": False, "erzwungen": False, "stand": NOW - 60}
+        tile = self._kabel(steckt, wartet)
+        self.assertEqual((tile["value"], tile["sub"]), ("steckt", "wartet auf Automatik"))
+        # forced charging and still nothing: a real fault
+        self.assertEqual(self._kabel(steckt, {**wartet, "erzwungen": True})["sub"], "Fehler")
+        # charging, stale state of the house or none at all: the car's own word
+        self.assertEqual(self._kabel(steckt, {**wartet, "laeuft": True})["sub"], "Fehler")
+        self.assertEqual(self._kabel(steckt, {**wartet, "stand": NOW - 3600})["sub"], "Fehler")
+        self.assertEqual(self._kabel(steckt)["sub"], "Fehler")
+        self.assertEqual(self._kabel({"lade_status": "Failure", "angesteckt": False}, wartet)["sub"], "Fehler")
+
     def test_soc_curve_query(self):
         from vibedash_modules.auto.quellen import Influx
 
