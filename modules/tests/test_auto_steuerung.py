@@ -51,5 +51,43 @@ class TestSteuerung(unittest.TestCase):
         self.assertIsNone(steuerung.status(CFG, down))
 
 
+class TestKabelAusSteuerung(unittest.TestCase):
+    def test_module_hands_the_house_state_to_the_cable_tile_and_asks_once(self):
+        import json
+        import os
+        import tempfile
+        from unittest import mock
+
+        from vibedash_modules.auto import Module
+
+        from .helpers import at
+
+        now = at(2026, 10, 22, 10)
+        base = tempfile.mkdtemp(prefix="vd-kabel-")
+        with open(os.path.join(base, "prognose.json"), "w") as fh:
+            json.dump({"jetzt": now, "status": {"lade_status": "Failure", "angesteckt": True}}, fh)
+        cfg = {"prognose": "prognose.json", "zeitzone": "Europe/Berlin", "steuerung": {"status_url": "http://h/s"}}
+        m = Module(cfg, lambda p: os.path.join(base, p), clock=lambda: now)
+        lage = {
+            "knoepfe": {"aktiv": "automatik"},
+            "text": "wartet",
+            "laeuft": False,
+            "erzwungen": False,
+            "stand_ms": int((now - 30) * 1000),
+        }
+
+        def kabel(st):
+            with mock.patch("vibedash_modules.auto.steuerung.status", return_value=st) as get:
+                secs = m.board()["sections"]
+            self.assertEqual(get.call_count, 1)
+            tiles = next(s for s in secs if s.get("type") == "tiles")["tiles"]
+            return next(x for x in tiles if x["label"] == "Ladekabel")["sub"]
+
+        self.assertEqual(kabel(lage), "wartet auf Automatik")
+        self.assertEqual(kabel({**lage, "erzwungen": True}), "Fehler")
+        self.assertEqual(kabel({k: v for k, v in lage.items() if k != "laeuft"}), "Fehler")  # older house
+        self.assertEqual(kabel(None), "Fehler")  # house unreachable
+
+
 if __name__ == "__main__":
     unittest.main()

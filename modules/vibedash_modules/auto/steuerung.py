@@ -39,6 +39,17 @@ def status(cfg: dict, get=_req) -> dict | None:
         return None
 
 
+def wallbox(st: dict, now: float) -> dict:
+    """The house's status as the cable tile needs it: is the wallbox charging, is "Jetzt voll laden" on, how fresh.
+    "laeuft" stays None when the house does not say it (older house); the tile then keeps the car's own word."""
+    stand = st.get("stand_ms")
+    return {
+        "laeuft": st.get("laeuft") if isinstance(st.get("laeuft"), bool) else None,
+        "erzwungen": bool(st.get("erzwungen")),
+        "stand": stand / 1000 if isinstance(stand, (int, float)) else None,
+    }
+
+
 def section(st: dict | None) -> dict:
     mode = ((st or {}).get("knoepfe") or {}).get("aktiv")
     selected = mode if mode in {v for v, _, _ in OPTIONS} else None

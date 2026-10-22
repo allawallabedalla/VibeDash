@@ -205,6 +205,11 @@ class Module:
     def board(self) -> dict:
         now = self.clock()
         data = _load(self.path(self.cfg["prognose"]))
+        sc = self.cfg.get("steuerung") or {}
+        lage = steuerung.status(sc) if sc.get("status_url") else None
+        if data is not None and lage is not None:
+            # the house's charge control right now -> cable tile ("Failure" while the automatic only waits)
+            data = {**data, "wallbox": steuerung.wallbox(lage, now)}
         if data is None and (self.cfg.get("betrieb") or "aus") == "aus" and self._waechter() is not None:
             # no car account here (only the wallbox through evcc): no "waiting for the car" text
             out = {"updated": int(now * 1000), "sections": []}
@@ -223,9 +228,8 @@ class Module:
                 # after the house's plan (slot "plan"), before the calculator
                 i = next((k for k, s in enumerate(secs) if s.get("type") == "calc"), len(secs))
                 out["sections"] = secs[:i] + [tl] + secs[i:]
-        sc = self.cfg.get("steuerung") or {}
         if sc.get("status_url"):
-            out["sections"] = [steuerung.section(steuerung.status(sc))] + (out.get("sections") or [])
+            out["sections"] = [steuerung.section(lage)] + (out.get("sections") or [])
         w = self._waechter()
         if w is not None:
             out["sections"] = w.sections() + (out.get("sections") or [])
