@@ -1,12 +1,12 @@
-"""Board of the module "auto": the car's state of charge, when to plug in, the course without charging, sun for
-the car, driving profile, charges seen by the car, model accuracy and the car's own data. Only reads.
+"""Board of the module "auto": the car's state of charge, when to plug in, the course without charging, sun for the car,
+driving profile, charges seen by the car, model accuracy and the car's own data. Only reads.
 
-Input: one forecast file (config "prognose") the house writes every 15 min – {jetzt, meldung, soc_jetzt,
-soc_meldung, kap_kwh, geladen_seit_meldung_kwh, wirkungsgrad, status{…}, vorhersage{…}, entscheidung{…}, profil{…},
-sonne[…], ladungen[…], rueckblick{…}, wallbox?{laeuft, erzwungen, stand}}. "wallbox" (optional, the house's charge
-control right now): the car reports "Failure" as soon as it is plugged in and gets nothing – while the automatic
-only waits that is no fault, so the cable tile says so. Field meanings: see the house's car forecast (step 2 of
-BL-257 moves it here). Sections carry "slot" so the charging page can place them (top / plan / rest at the end).
+Input: one forecast file (config "prognose") the house writes every 15 min – {jetzt, meldung, soc_jetzt, soc_meldung,
+kap_kwh, geladen_seit_meldung_kwh, wirkungsgrad, status{…}, vorhersage{…}, entscheidung{…}, profil{…}, sonne[…],
+ladungen[…], rueckblick{…}} plus, added by the module from the house's charge control (config "steuerung"),
+wallbox?{laeuft, erzwungen, stand}: the car reports "Failure" as soon as it is plugged in and gets nothing – while the
+automatic only waits that is no fault, so the cable tile says so. Field meanings: see the house's car forecast (step 2
+of BL-257 moves it here). Sections carry "slot" so the charging page can place them (top / plan / rest at the end).
 """
 
 from __future__ import annotations
