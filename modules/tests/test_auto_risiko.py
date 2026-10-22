@@ -33,6 +33,29 @@ class TestRisiko(unittest.TestCase):
             fh.write("{kaputt")
         self.assertEqual(risiko.current(self.f, TZ, at(2026, 10, 20)), "sicher")
 
+    def test_until_kwh_holds_over_midnight_and_ends_after_max_days(self):
+        d = risiko.store(self.f, "mittel", TZ, at(2026, 10, 22, 7), bis_kwh=10)
+        self.assertEqual((d["stufe"], d["bis_kwh"]), ("mittel", 10))
+        self.assertNotIn("bis", d)
+        self.assertEqual(risiko.current(self.f, TZ, at(2026, 10, 23, 9)), "mittel")
+        self.assertEqual(risiko.current(self.f, TZ, at(2026, 10, 29, 6)), "mittel")
+        self.assertEqual(risiko.current(self.f, TZ, at(2026, 10, 29, 8)), "sicher")
+        # the house's planner ended it: file says sicher
+        with open(self.f, "w") as fh:
+            json.dump({"stufe": "sicher", "vorher": "mittel", "gesetzt": d["gesetzt"]}, fh)
+        self.assertEqual(risiko.current(self.f, TZ, at(2026, 10, 22, 9)), "sicher")
+        # "sicher" itself is never stored "until x kWh"
+        self.assertNotIn("bis_kwh", risiko.store(self.f, "sicher", TZ, at(2026, 10, 22, 9), bis_kwh=10))
+
+    def test_note_names_the_limit_and_progress(self):
+        self.assertIn("Mitternacht", risiko.section("mittel", None)["note"])
+        plan = {"risiko": {"stufe": "mittel", "geladen_kwh": 3.4, "bis_kwh": 10}}
+        n = risiko.section("mittel", plan, 10)["note"]
+        self.assertIn("bis das Auto 10 kWh geladen hat (bisher 3,4 kWh)", n)
+        self.assertIn("„Mittel“ und „Mutig“ gelten", risiko.section("sicher", plan, 10)["note"])
+        self.assertNotIn("bisher", risiko.section("sicher", plan, 10)["note"])
+        self.assertNotIn("bisher", risiko.section("mittel", None, 10)["note"])
+
     def test_section_shows_kwh_per_level_when_the_plan_has_them(self):
         plan = {
             "stufen": {"sicher": {"tage_kwh": [18.1]}, "mittel": {"tage_kwh": [23.4]}, "mutig": {"tage_kwh": [28.4]}}
@@ -62,6 +85,12 @@ class TestModuleAction(unittest.TestCase):
         # a control: first on the page, in the top slot
         self.assertIs(secs[0], c)
         self.assertEqual(c["slot"], "top")
+        kwh = Module({**cfg, "risiko": {"datei": "auto/risiko.json", "bis_kwh": 10}}, m.path, clock=m.clock)
+        st, body = kwh.action({"item": "laden:risiko", "action": "choose", "value": "mutig"})
+        self.assertEqual((st, body["text"]), (200, "Laden: Mutig bis 10 kWh geladen"))
+        self.assertEqual(
+            kwh.action({"item": "laden:risiko", "action": "choose", "value": "sicher"})[1]["text"], "Laden: Sicher"
+        )
         no = Module({k: v for k, v in cfg.items() if k != "risiko"}, m.path, clock=m.clock)
         self.assertFalse(any(s.get("type") == "choice" for s in no.board()["sections"]))
         both = Module({**cfg, "steuerung": {"status_url": "http://h/s"}}, m.path, clock=m.clock)
