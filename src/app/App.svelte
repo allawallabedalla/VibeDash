@@ -4,7 +4,7 @@
   import { i18n, t } from '../i18n/index.svelte';
   import Overview from '../pages/Overview.svelte';
   import { onMount } from 'svelte';
-  import { currentSource, load, store } from './data.svelte';
+  import { currentSource, keepFresh, load, store } from './data.svelte';
   import { boardOf, router, type Route } from './router.svelte';
   import { iconOf } from '../components/Icon.svelte';
   import { arrange } from './tabs';
@@ -13,6 +13,7 @@
   let touch = $state(false);
   onMount(() => {
     void load();
+    keepFresh();
     touch = matchMedia('(pointer: coarse)').matches;
   });
 

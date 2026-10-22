@@ -8,7 +8,7 @@
 import { ENTITIES, generateDemo, type DemoData, type DemoIssue } from '../demo';
 import { explainedBy, type Note } from '../model/notes';
 import { newBuild } from '../model/release';
-import { counterResets, findGaps } from '../model/series';
+import { counterResets, findGaps, joinRecent } from '../model/series';
 import type { Entity, Series } from '../model/types';
 import { loading, thin } from './loading';
 import { NO_PREFS, type TabPrefs } from './tabs';
@@ -248,7 +248,31 @@ function watchBuild(first: unknown) {
   document.addEventListener('visibilitychange', () => void check());
 }
 
-export async function load(): Promise<void> {
+/**
+ * Keep an open page current (Nutzer 22.10.2026: a tab open since the morning still showed the morning's battery
+ * level next to a fresh energy-flow card). Every minute while visible the last day is fetched again, the month only
+ * every 15 minutes; a page that comes back after a while is refreshed at once. Never while something is typed.
+ */
+const REFRESH_MS = 60_000;
+const REFRESH_MONTH_MS = 15 * 60_000;
+let lastLoad = 0;
+let lastMonth = 0;
+let refreshTimer: ReturnType<typeof setInterval> | undefined;
+export function keepFresh(): void {
+  if (refreshTimer || typeof window === 'undefined') return;
+  const tick = () => {
+    if (document.visibilityState !== 'visible' || busyTyping() || state.status !== 'ready') return;
+    if (Date.now() - lastLoad < REFRESH_MS - 1_000) return;
+    void load({ month: Date.now() - lastMonth >= REFRESH_MONTH_MS });
+  };
+  refreshTimer = setInterval(tick, REFRESH_MS);
+  document.addEventListener('visibilitychange', tick);
+}
+
+export async function load(opts: { month?: boolean } = {}): Promise<void> {
+  const month = opts.month ?? true;
+  lastLoad = Date.now();
+  if (month) lastMonth = lastLoad;
   const run = ++loads;
   // a page that is there stays there while it is refreshed
   if (state.status !== 'ready') state = { status: 'loading' };
@@ -309,6 +333,20 @@ export async function load(): Promise<void> {
       stale = null;
       saveSnapshot(quick);
     } else if (state.status !== 'ready') state = quick;
+    if (!month) {
+      // only the last day was fetched: keep the older part of the month the page already has
+      if (quick.status === 'ready' && keep) {
+        const series = Object.fromEntries(
+          Object.entries(quick.data.series).map(([id, x]) => [id, joinRecent(keep[id], x)]),
+        );
+        const d = quick.data;
+        state = {
+          ...quick,
+          data: { ...d, series, issues: detectIssues(series, d.entities, d.now, d.notes) },
+        };
+      }
+      return;
+    }
     const full = await loadLive(body.timeZone, body.backends ?? [], '31d');
     if (run !== loads) return;
     // a failed month must not replace a working day
