@@ -88,8 +88,9 @@ class TestModuleAction(unittest.TestCase):
         kwh = Module({**cfg, "risiko": {"datei": "auto/risiko.json", "bis_kwh": 10}}, m.path, clock=m.clock)
         st, body = kwh.action({"item": "laden:risiko", "action": "choose", "value": "mutig"})
         self.assertEqual((st, body["text"]), (200, "Laden: Mutig bis 10 kWh geladen"))
-        self.assertEqual(kwh.action({"item": "laden:risiko", "action": "choose", "value": "sicher"})[1]["text"],
-                         "Laden: Sicher")
+        self.assertEqual(
+            kwh.action({"item": "laden:risiko", "action": "choose", "value": "sicher"})[1]["text"], "Laden: Sicher"
+        )
         no = Module({k: v for k, v in cfg.items() if k != "risiko"}, m.path, clock=m.clock)
         self.assertFalse(any(s.get("type") == "choice" for s in no.board()["sections"]))
         both = Module({**cfg, "steuerung": {"status_url": "http://h/s"}}, m.path, clock=m.clock)
