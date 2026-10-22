@@ -309,3 +309,19 @@ export function holdForward(
   }
   return out;
 }
+
+/** A fresh last day on top of the older part of a longer series (the month stays between month loads). */
+export function joinRecent(older: Series | undefined, fresh: Series): Series {
+  const first = fresh.samples[0]?.t;
+  if (!older || first === undefined) return fresh;
+  const head = older.samples.filter((x) => x.t < first);
+  if (!head.length) return fresh;
+  const held =
+    fresh.held && older.held
+      ? {
+          ...fresh.held,
+          reports: [...older.held.reports.filter((t) => t < first), ...fresh.held.reports],
+        }
+      : fresh.held;
+  return { ...fresh, samples: [...head, ...fresh.samples], ...(held ? { held } : {}) };
+}

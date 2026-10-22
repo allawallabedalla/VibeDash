@@ -6,6 +6,7 @@ import {
   estimate,
   findGaps,
   holdForward,
+  joinRecent,
   meanAbsPctError,
   quantile,
   thinBefore,
@@ -232,5 +233,29 @@ describe('holdForward (sensors that report on change)', () => {
       [2, 20],
       [3, 20],
     ]);
+  });
+});
+
+describe('joinRecent', () => {
+  const s = (ts: number[], held?: number[]) => ({
+    entityId: 'x',
+    source: 'live' as const,
+    stepMs: 1000,
+    samples: ts.map((t) => ({ t, v: t })),
+    ...(held ? { held: { reports: held, holdMs: 5000 } } : {}),
+  });
+  it('keeps the older part of the month and takes the fresh day as it is', () => {
+    const j = joinRecent(s([1, 2, 3, 4]), s([3, 5]));
+    expect(j.samples.map((x) => x.t)).toEqual([1, 2, 3, 5]);
+  });
+  it('joins the real reports of held sensors the same way', () => {
+    const j = joinRecent(s([1, 2, 3], [1, 3]), s([3, 4], [3, 4]));
+    expect(j.held?.reports).toEqual([1, 3, 4]);
+  });
+  it('without older data or without a fresh day: the fresh series', () => {
+    const fresh = s([3, 4]);
+    expect(joinRecent(undefined, fresh)).toBe(fresh);
+    const empty = s([]);
+    expect(joinRecent(s([1, 2]), empty)).toBe(empty);
   });
 });
