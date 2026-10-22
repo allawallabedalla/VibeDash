@@ -44,7 +44,8 @@ TEXT = {
     "hinschauen kann. Stärke von −1 bis 1; „ohne Tagesgang“: was bleibt, wenn man den üblichen Tagesverlauf "
     "(bei Tageswerten: die Saison) abzieht.",
     "known_what": "Die stärksten Paare mit naheliegender Erklärung. ⓘ je Zeile: warum.",
-    "rank_note": "Stärke von −1 bis 1; ohne Tagesgang: bei Tageswerten ohne Saison. Ohne Technik; unklar zuerst.",
+    "rank_note": "Stärke von −1 bis 1; ohne Tagesgang: bei Tageswerten ohne Saison; Daten: Stunden bzw. Tage mit "
+    "Werten; graue Zeile: Art. Ohne Technik; unklar zuerst.",
     "rank_what": "Ohne Messtechnik (dasselbe Gerät, derselbe Wert zweimal) und ohne Paare, bei denen ein Wert aus "
     "dem anderen gerechnet ist (z. B. WP-Strom aus der Außentemperatur). Stärkste 150.",
 }
@@ -110,13 +111,16 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
         verb = "sinken" if _plural(a) else "sinkt"
         return clean(_cap(f"{a} {verb}, wenn {b} {'steigen' if _plural(b) else 'steigt'}"), 160)
 
+    def n_text(p):
+        return f"{p['n']} {'Std.' if p['ebene'] == 'Stunden' else 'Tage'}" if p.get("n") else p["ebene"]
+
     def rtext(p, with_group=False):
         # plain words in the first line, with n (Audit04 ST-19, UX-06)
         part = [t[f"g_{group(p)}"]] if with_group else []
         part.append(f"Stärke {de(p['r'])}")
         if p.get("rb") is not None:
             part.append(f"ohne Tagesgang {de(p['rb'])}")
-        part.append(f"{p['n']} {'Std.' if p['ebene'] == 'Stunden' else 'Tage'}" if p.get("n") else p["ebene"])
+        part.append(n_text(p))
         return clean(" · ".join(part), 80)
 
     def item(p, with_group=False):
@@ -248,16 +252,14 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
             "title": "Alle nach Art",
             "columns": [
                 {"key": "p", "label": "Zusammenhang"},
-                {"key": "r", "label": "Kennzahlen", "align": "right"},
-                {"key": "k", "label": "Art"},
+                {"key": "r", "label": "Stärke", "align": "right"},
+                {"key": "rb", "label": "ohne Tagesgang", "align": "right"},
+                {"key": "n", "label": "Daten", "align": "right", "phone": True},
             ],
             "rows": [
                 {
-                    "cells": {
-                        "p": pair(p),
-                        "r": rtext(p),
-                        "k": t[f"g_{group(p)}"],
-                    },
+                    "cells": {"p": pair(p), "r": de(p["r"]), "rb": de(p.get("rb")), "n": n_text(p)},
+                    "note": t[f"g_{group(p)}"],
                 }
                 for p in rank
             ],

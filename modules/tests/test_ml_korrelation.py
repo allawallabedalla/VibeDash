@@ -160,9 +160,13 @@ class TestKorrelation(unittest.TestCase):
         self.assertTrue(new[1]["meta"].startswith("Sonne/Zeit · "))
         self.assertEqual(s["Weggefallen"]["items"][0]["text"], "S11 und s12 steigen gemeinsam")
         rows = s["Alle nach Art"]["rows"]
-        self.assertEqual([r["cells"]["k"] for r in rows], ["unklar", "erklärt", "Sonne/Zeit"])
-        # every figure named, n with its unit
-        self.assertEqual(rows[0]["cells"]["r"], "Stärke −0,71 · ohne Tagesgang −0,55 · 95 Std.")
+        # the kind as a muted line under the pair; one column per figure, named in the heading, n with its unit
+        self.assertEqual([r["note"] for r in rows], ["unklar", "erklärt", "Sonne/Zeit"])
+        cols = s["Alle nach Art"]["columns"]
+        self.assertEqual([c["label"] for c in cols], ["Zusammenhang", "Stärke", "ohne Tagesgang", "Daten"])
+        self.assertTrue(cols[3]["phone"])
+        self.assertEqual(rows[0]["cells"], {"p": rows[0]["cells"]["p"], "r": "−0,71", "rb": "−0,55", "n": "95 Std."})
+        self.assertEqual(rows[1]["cells"]["n"], "Tage")
         self.assertEqual(s["Was steckt dahinter"]["unit"], "Paare")
         self.assertEqual(b["updated"], self.data["stand_ms"])
 

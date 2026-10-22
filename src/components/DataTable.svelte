@@ -96,6 +96,20 @@
     .no-phone {
       display: none;
     }
+    /* number columns stay narrow: their heading may take two lines */
+    th.right {
+      white-space: normal;
+    }
+    th,
+    td {
+      padding-left: 5px;
+      padding-right: 5px;
+    }
+    /* long words in the first column (names) may break with a hyphen instead of widening the table */
+    td:first-child {
+      hyphens: auto;
+      overflow-wrap: anywhere;
+    }
     table {
       font-size: 14px;
     }

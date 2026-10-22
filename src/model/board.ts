@@ -16,8 +16,10 @@
  *     { "type": "series", "title": "…", "unit": "kW", "x": [ms…],
  *       "lines": [ { "label": "…", "values": [1,null,2], "color": "sun", "dashed": false } ] },
  *     { "type": "bars", "title": "…", "unit": "kWh", "labels": ["Mo", …], "values": [1, null, …], "color": "home" },
- *     { "type": "table", "title": "…", "columns": [ { "key": "a", "label": "A", "align": "right" } ],
- *       "rows": [ { "cells": { "a": "1" }, "state": "look" } ] },
+ *     { "type": "table", "title": "…", "columns": [ { "key": "a", "label": "A", "align": "right", "phone": true } ],
+ *       "rows": [ { "cells": { "a": "1" }, "state": "look", "note": "…" } ] },
+ *       (on the phone columns from the fourth on are hidden unless "phone": true; "note": a short muted line
+ *        under the first cell)
  *     { "type": "list", "title": "…", "items": [ { "text": "…", "meta": "…", "state": "act", "info": "…" } ] },
  *     { "type": "accuracy", "title": "…", "models": [ { "label": "…", "pct": 82, "n": 31,
  *         "history": [80, 82], "note": "…", "collecting": { "have": 12, "need": 30 },
@@ -135,8 +137,8 @@ export type BoardSection =
       })
   | (Base & {
       type: 'table';
-      columns: { key: string; label: string; align?: 'right' }[];
-      rows: { cells: Record<string, string>; state?: BoardState }[];
+      columns: { key: string; label: string; align?: 'right'; phone?: boolean }[];
+      rows: { cells: Record<string, string>; state?: BoardState; note?: string }[];
     })
   | (Base & { type: 'list'; items: BoardListItem[] })
   | (Base & {
@@ -407,6 +409,7 @@ export function sanitizeBoard(raw: unknown): Board | null {
             key: text(c.key, 30),
             label: text(c.label, 40),
             ...(c.align === 'right' ? { align: 'right' as const } : {}),
+            ...(typeof c.phone === 'boolean' ? { phone: c.phone } : {}),
           }))
           .filter((c) => c.key);
         sections.push({
@@ -420,6 +423,7 @@ export function sanitizeBoard(raw: unknown): Board | null {
               return {
                 cells: Object.fromEntries(columns.map((c) => [c.key, text(cells[c.key], 200)])),
                 ...(state(r.state) ? { state: state(r.state) } : {}),
+                ...(opt(r.note, 80) ? { note: opt(r.note, 80) } : {}),
               };
             }),
         });

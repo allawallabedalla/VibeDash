@@ -122,10 +122,12 @@
   /** Bars show bare numbers, so the unit goes into the title unless it is already there (Audit04 EM-10). */
   const unitTitle = (s: BoardSection, title: string) =>
     s.type === 'bars' && s.unit && !title.includes(s.unit) ? `${title}, ${s.unit}` : title;
-  const columnsOf = (cols: { key: string; label: string; align?: 'right' }[]): Column[] =>
-    cols.map((c, i) => ({ ...c, ...(i >= 3 ? { phone: false } : {}) }));
-  const rowsOf = (rows: { cells: Record<string, string> }[]): Row[] =>
-    rows.map((r, i) => ({ id: String(i), cells: r.cells }));
+  // on the phone the first three columns, plus those the board marks "phone": true
+  const columnsOf = (
+    cols: { key: string; label: string; align?: 'right'; phone?: boolean }[],
+  ): Column[] => cols.map((c, i) => ({ ...c, phone: c.phone ?? i < 3 }));
+  const rowsOf = (rows: { cells: Record<string, string>; note?: string }[]): Row[] =>
+    rows.map((r, i) => ({ id: String(i), cells: r.cells, ...(r.note ? { note: r.note } : {}) }));
   /**
    * Time-span switches: sections with the same "group" share one choice; the
    * switch sits above the first of them that brings ranges.
