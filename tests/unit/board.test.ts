@@ -253,6 +253,36 @@ describe('board list items that take clicks', () => {
   });
 });
 
+describe('board tables', () => {
+  it('keeps a column phone flag and a row note, drops wrong types', () => {
+    const b = sanitizeBoard({
+      sections: [
+        {
+          type: 'table',
+          title: 'T',
+          columns: [
+            { key: 'a', label: 'A' },
+            { key: 'n', label: 'Daten', align: 'right', phone: true },
+            { key: 'x', label: 'X', phone: 'ja' },
+          ],
+          rows: [
+            { cells: { a: '1', n: '95 Std.' }, note: 'unklar' },
+            { cells: { a: '2' }, note: 3 },
+          ],
+        },
+      ],
+    });
+    const t = b!.sections[0] as unknown as { columns: unknown[]; rows: Record<string, unknown>[] };
+    expect(t.columns).toEqual([
+      { key: 'a', label: 'A' },
+      { key: 'n', label: 'Daten', align: 'right', phone: true },
+      { key: 'x', label: 'X' },
+    ]);
+    expect(t.rows[0]).toEqual({ cells: { a: '1', n: '95 Std.', x: '' }, note: 'unklar' });
+    expect(t.rows[1]).toEqual({ cells: { a: '2', n: '', x: '' }, note: '3' });
+  });
+});
+
 describe('board time spans per group', () => {
   it('keeps a group name and up to 4 ranges with own data, drops broken ones', () => {
     const b = sanitizeBoard({
