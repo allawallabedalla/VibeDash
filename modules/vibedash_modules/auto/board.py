@@ -3,8 +3,10 @@ the car, driving profile, charges seen by the car, model accuracy and the car's 
 
 Input: one forecast file (config "prognose") the house writes every 15 min – {jetzt, meldung, soc_jetzt,
 soc_meldung, kap_kwh, geladen_seit_meldung_kwh, wirkungsgrad, status{…}, vorhersage{…}, entscheidung{…}, profil{…},
-sonne[…], ladungen[…], rueckblick{…}}. Field meanings: see the house's car forecast (step 2 of BL-257 moves it
-here). Sections carry "slot" so the charging page can place them (top / plan / rest at the end).
+sonne[…], ladungen[…], rueckblick{…}, wallbox?{laeuft, erzwungen, stand}}. "wallbox" (optional, the house's charge
+control right now): the car reports "Failure" as soon as it is plugged in and gets nothing – while the automatic
+only waits that is no fault, so the cable tile says so. Field meanings: see the house's car forecast (step 2 of
+BL-257 moves it here). Sections carry "slot" so the charging page can place them (top / plan / rest at the end).
 """
 
 from __future__ import annotations
@@ -31,7 +33,9 @@ TEXT = {
     "app": "Hersteller-App",
     "verlauf": "Verlauf in der Datenbank.",
     "wallbox_zaehler": "Wallbox-Zähler (OCPP).",
+    "wartet": "wartet auf Automatik",
 }
+WALLBOX_FRISCH_S = 600  # the house's charge control state counts only this long
 
 
 def de(x, nd=0):
@@ -155,6 +159,16 @@ def build(p, jetzt, t, calc=None):
             }
         )
     lade = LADE.get(st.get("lade_status"), st.get("lade_status") or "–")
+    wb = p.get("wallbox") or {}
+    wartet = (
+        st.get("lade_status") == "Failure"
+        and st.get("angesteckt")
+        and wb.get("laeuft") is False
+        and not wb.get("erzwungen")
+        and jetzt - float(wb.get("stand") or 0) <= WALLBOX_FRISCH_S
+    )
+    if wartet:
+        lade = t["wartet"]
     tiles.append(
         {
             "label": "Ladekabel",
@@ -167,7 +181,9 @@ def build(p, jetzt, t, calc=None):
                 else ""
             ),
             "info": {
-                "what": "Stand der letzten Meldung des Autos (Restzeit nur, solange es lädt).",
+                "what": "Stand der letzten Meldung des Autos (Restzeit nur, solange es lädt). Das Auto meldet "
+                "„Fehler“, sobald es angesteckt ist und kein Strom kommt; wartet nur die Automatik des Hauses "
+                "auf ihr Ladefenster, steht hier „wartet auf Automatik“.",
                 "source": t["konto"] + ".",
             },
         }
