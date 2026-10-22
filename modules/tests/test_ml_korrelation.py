@@ -95,7 +95,11 @@ class TestKorrelation(unittest.TestCase):
                 "paare": [
                     _pair("s1", "s2", 0.98, "technisch gekoppelt"),
                     _pair("s3", "s4", -0.71, "prüfen", rb=-0.55),
-                    _pair("s5", "s6", 0.6, "erwartet", level="Tage"),
+                    {
+                        **_pair("s5", "s6", 0.6, "erwartet", level="Tage"),
+                        "gruppe": "erklaert",
+                        "warum": "Heizung wärmt den Raum.",
+                    },
                     _pair("s7", "s8", 0.52, "prüfen", daily=True),
                     _pair("s9", "s10", 0.9, "gleicher Sensor"),
                 ],
@@ -121,38 +125,55 @@ class TestKorrelation(unittest.TestCase):
             list(s),
             [
                 "Zusammenhänge diese Woche",
-                "Paare je Einordnung",
-                "Prüfen",
+                "Was steckt dahinter",
+                "Unklar",
+                "Erklärt",
                 "Neu diese Woche",
                 "Weggefallen",
-                "Rangliste ohne Technik",
+                "Alle nach Art",
             ],
         )
         tiles = {t["label"]: t for t in s["Zusammenhänge diese Woche"]["tiles"]}
-        self.assertEqual(tiles["Robust"]["sub"], "starke Paare von 1.234 getesteten")
+        self.assertEqual(tiles["Gefunden"]["sub"], "Paare von 1.234 geprüften")
         self.assertEqual(
-            (tiles["Prüfen"]["value"], tiles["Neu"]["value"], tiles["Entfallen"]["value"]), ("1", "3", "1")
+            (tiles["Unklar"]["value"], tiles["Neu"]["value"], tiles["Entfallen"]["value"]), ("1", "2", "1")
         )
         self.assertEqual((tiles["Stand"]["value"], tiles["Stand"]["sub"]), ("19.10.", "Lauf 05:20 Uhr"))
-        self.assertEqual(s["Paare je Einordnung"]["values"], [2, 1, 1, 1])
-        check = s["Prüfen"]["items"]
+        # unclear · explained · sun/time · technical (both technical pairs at the end)
+        self.assertEqual(s["Was steckt dahinter"]["labels"], ["unklar", "erklärt", "Sonne/Zeit", "Technik"])
+        self.assertEqual(s["Was steckt dahinter"]["values"], [1, 1, 1, 2])
+        # direction as a word, the reason behind the ⓘ of the line; without "warum" a general sentence
         self.assertEqual(
-            check[0],
+            s["Unklar"]["items"][0],
             {
-                "text": "Temperatur Bad ~ Feuchte Bad",
+                "text": "Temperatur Bad sinkt, wenn Feuchte Bad steigt",
                 "meta": "Stärke −0,71 · ohne Tagesgang −0,55 · Stunden",
+                "info": "Kein naheliegender Grund bekannt – ein Blick lohnt.",
             },
         )
-        # a pair that only follows the daily rhythm is not listed, only counted (Audit04 ST-04); no "look" anywhere
-        self.assertIn("nur dem Tagesrhythmus", s["Prüfen"]["note"])
+        self.assertEqual(s["Erklärt"]["items"][0]["text"], "S5 und s6 steigen gemeinsam")
+        self.assertEqual(s["Erklärt"]["items"][0]["info"], "Heizung wärmt den Raum.")
         self.assertNotIn('"look"', json.dumps(b))
-        self.assertEqual(len(check), 1)  # s7 ~ s8 only follows the daily rhythm
-        self.assertEqual([i["text"] for i in s["Neu diese Woche"]["items"]], ["s9 ~ s10", "s5 ~ s6", "s7 ~ s8"])
-        self.assertEqual(s["Weggefallen"]["items"][0]["text"], "s11 ~ s12")
-        rows = s["Rangliste ohne Technik"]["rows"]
-        self.assertEqual([r["cells"]["k"] for r in rows], ["prüfen", "erwartet · Tag", "prüfen · nur Tagesgang"])
+        # news without technical pairs, unclear first; the group is named in the line
+        new = s["Neu diese Woche"]["items"]
+        self.assertEqual([i["text"] for i in new], ["S5 und s6 steigen gemeinsam", "S7 und s8 steigen gemeinsam"])
+        self.assertTrue(new[1]["meta"].startswith("Sonne/Zeit · "))
+        self.assertEqual(s["Weggefallen"]["items"][0]["text"], "S11 und s12 steigen gemeinsam")
+        rows = s["Alle nach Art"]["rows"]
+        self.assertEqual([r["cells"]["k"] for r in rows], ["unklar", "erklärt · täglich", "Sonne/Zeit"])
         self.assertEqual(rows[0]["cells"]["r"], "−0,71 / −0,55")
         self.assertEqual(b["updated"], self.data["stand_ms"])
+
+    def test_plural_names(self):
+        self.data["namen"] = {"s3": "Busmeldungen Dimmer", "s4": "Licht Flur"}
+        s = {x["title"]: x for x in self.board()["sections"]}
+        self.assertEqual(s["Unklar"]["items"][0]["text"], "Licht Flur sinkt, wenn Busmeldungen Dimmer steigen")
+
+    def test_hour_and_day_once(self):
+        self.data["aktuell"]["paare"].append(_pair("s4", "s3", -0.6, "prüfen", level="Tage", rb=-0.52))
+        s = {x["title"]: x for x in self.board()["sections"]}
+        self.assertEqual(len(s["Unklar"]["items"]), 1)
+        self.assertEqual(len(s["Alle nach Art"]["rows"]), 4)
 
     def test_same_week_no_compare(self):
         self.data["vorwoche"]["statistik"] = self.data["aktuell"]["statistik"]

@@ -18,7 +18,7 @@
  *     { "type": "bars", "title": "…", "unit": "kWh", "labels": ["Mo", …], "values": [1, null, …], "color": "home" },
  *     { "type": "table", "title": "…", "columns": [ { "key": "a", "label": "A", "align": "right" } ],
  *       "rows": [ { "cells": { "a": "1" }, "state": "look" } ] },
- *     { "type": "list", "title": "…", "items": [ { "text": "…", "meta": "…", "state": "act" } ] },
+ *     { "type": "list", "title": "…", "items": [ { "text": "…", "meta": "…", "state": "act", "info": "…" } ] },
  *     { "type": "accuracy", "title": "…", "models": [ { "label": "…", "pct": 82, "n": 31,
  *         "history": [80, 82], "note": "…", "collecting": { "have": 12, "need": 30 },
  *         "details": [ { "label": "Daten seit", "value": "1.9." } ] } ] },
@@ -61,6 +61,8 @@ export interface BoardListItem {
   text: string;
   meta?: string;
   state?: BoardState;
+  /** one or two sentences behind an ⓘ on the line (e.g. why two values move together) */
+  info?: string;
   /** with id and actions the item gets buttons (only if the board takes actions) */
   id?: string;
   actions?: ItemAction[];
@@ -447,6 +449,7 @@ export function sanitizeBoard(raw: unknown): Board | null {
               return {
                 text: text(it.text, 400),
                 ...(opt(it.meta, 80) ? { meta: opt(it.meta, 80) } : {}),
+                ...(opt(it.info, 300) ? { info: opt(it.info, 300) } : {}),
                 ...(state(it.state) ? { state: state(it.state) } : {}),
                 ...(id && actions.length ? { id, actions: [...new Set(actions)] } : {}),
                 ...(stamp(it.done) ? { done: stamp(it.done)! } : {}),

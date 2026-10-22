@@ -231,6 +231,8 @@ describe('board list items that take clicks', () => {
             },
             { text: 'kein Knopf', id: '<script>', actions: ['done'] },
             { text: 'ohne Aktionen', id: 'plan:x' },
+            { text: 'mit Erklärung', info: 'Beide folgen der Sonne.' },
+            { text: 'leere Erklärung', info: '' },
           ],
         },
       ],
@@ -246,6 +248,8 @@ describe('board list items that take clicks', () => {
     });
     expect(items[1]).toEqual({ text: 'kein Knopf' });
     expect(items[2]).toEqual({ text: 'ohne Aktionen' });
+    expect(items[3]).toEqual({ text: 'mit Erklärung', info: 'Beide folgen der Sonne.' });
+    expect(items[4]).toEqual({ text: 'leere Erklärung' });
   });
 });
 

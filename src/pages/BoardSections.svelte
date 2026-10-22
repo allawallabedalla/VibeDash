@@ -63,6 +63,7 @@
   import Segmented from '../components/Segmented.svelte';
   import ItemActions from '../components/ItemActions.svelte';
   import Icon, { iconOf } from '../components/Icon.svelte';
+  import InfoButton from '../components/InfoButton.svelte';
   import LineChart from '../components/LineChart.svelte';
   import Tile, { type TileProps } from '../components/Tile.svelte';
   import TileRow from '../components/TileRow.svelte';
@@ -318,12 +319,31 @@
                   {/if}
                 </li>
               {:else}
-                <li class="st-{it.state ?? 'none'}">
-                  {#if it.state && it.state !== 'open'}<span class="word"
-                      >{stateWord(it.state)}</span
-                    >{/if}
-                  <span>{it.text}</span>
-                  {#if it.meta}<span class="meta">{it.meta}</span>{/if}
+                {@const why = `why|${i}|${k}`}
+                <li class="st-{it.state ?? 'none'}" class:has-why={it.info}>
+                  {#if it.info}
+                    <span class="body">
+                      {#if it.state && it.state !== 'open'}<span class="word"
+                          >{stateWord(it.state)}</span
+                        >{/if}
+                      <span>{it.text}</span>
+                      {#if it.meta}<span class="meta">{it.meta}</span>{/if}
+                    </span>
+                  {:else}
+                    {#if it.state && it.state !== 'open'}<span class="word"
+                        >{stateWord(it.state)}</span
+                      >{/if}
+                    <span>{it.text}</span>
+                    {#if it.meta}<span class="meta">{it.meta}</span>{/if}
+                  {/if}
+                  {#if it.info}
+                    <InfoButton
+                      open={opened.has(why)}
+                      ontoggle={() => toggle(why)}
+                      controls="why-{i}-{k}"
+                    />
+                    {#if opened.has(why)}<p class="why" id="why-{i}-{k}">{it.info}</p>{/if}
+                  {/if}
                 </li>
               {/if}
             {/each}
@@ -382,6 +402,27 @@
   }
   .items li:last-child {
     border-bottom: 0;
+  }
+  /* a line with an explanation: text and figures left, the ⓘ top right, the sentence opens below */
+  .items li.has-why {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 0 14px;
+  }
+  .body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 10px;
+  }
+  .items li.has-why :global(.info) {
+    margin-top: -10px;
+  }
+  .why {
+    grid-column: 1 / -1;
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: var(--small);
   }
   .items li.acc {
     display: block;
