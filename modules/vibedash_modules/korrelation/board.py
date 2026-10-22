@@ -44,7 +44,7 @@ TEXT = {
     "hinschauen kann. Stärke von −1 bis 1; „ohne Tagesgang“: was bleibt, wenn man den üblichen Tagesverlauf "
     "(bei Tageswerten: die Saison) abzieht.",
     "known_what": "Die stärksten Paare mit naheliegender Erklärung. ⓘ je Zeile: warum.",
-    "rank_note": "Stärke roh / ohne Tagesgang bzw. Saison. Ohne Technik; unklar zuerst.",
+    "rank_note": "Stärke von −1 bis 1; ohne Tagesgang: bei Tageswerten ohne Saison. Ohne Technik; unklar zuerst.",
     "rank_what": "Ohne Messtechnik (dasselbe Gerät, derselbe Wert zweimal) und ohne Paare, bei denen ein Wert aus "
     "dem anderen gerechnet ist (z. B. WP-Strom aus der Außentemperatur). Stärkste 150.",
 }
@@ -157,26 +157,30 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
         {
             "label": "Gefunden",
             "value": f"{len(pairs):,}".replace(",", "."),
+            "unit": "Paare",
             "icon": "target",
             "color": "home",
-            "sub": "Paare von " + f"{tested:,}".replace(",", ".") + " geprüften",
+            "sub": "von " + f"{tested:,}".replace(",", ".") + " geprüften",
             "info": {"what": t["found_what"], "source": t["source"]},
         },
         {
             "label": "Unklar",
             "value": str(len(unclear)),
+            "unit": "Paare",
             "icon": "eye",
             "sub": "ohne naheliegenden Grund",
         },
         {
             "label": "Neu",
             "value": str(len(cmp["neu"])) if cmp else "–",
+            **({"unit": "Paare"} if cmp else {}),
             "icon": "eye",
             "sub": "seit Vorwoche (ohne Technik)" if cmp else "Vergleich ab nächster Woche",
         },
         {
             "label": "Entfallen",
             "value": str(len(cmp["weg"])) if cmp else "–",
+            **({"unit": "Paare"} if cmp else {}),
             "icon": "undo",
             "sub": "seit Vorwoche (ohne Technik)" if cmp else "Vergleich ab nächster Woche",
         },
@@ -184,7 +188,7 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
             "label": "Messreihen",
             "value": f"{st.get('h', {}).get('signale', '–')}/{st.get('d', {}).get('signale', '–')}",
             "icon": "overview",
-            "sub": "stündlich / täglich",
+            "sub": "Anzahl stündlich / täglich",
         },
         {
             "label": "Stand",
@@ -199,7 +203,7 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
         {
             "type": "bars",
             "title": "Was steckt dahinter",
-            "unit": "",
+            "unit": "Paare",
             "labels": [t[f"g_{g}"] for g in GROUPS],
             "values": [len(by[g]) for g in GROUPS],
             "color": "home",
@@ -244,15 +248,15 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
             "title": "Alle nach Art",
             "columns": [
                 {"key": "p", "label": "Zusammenhang"},
-                {"key": "r", "label": "Stärke", "align": "right"},
+                {"key": "r", "label": "Kennzahlen", "align": "right"},
                 {"key": "k", "label": "Art"},
             ],
             "rows": [
                 {
                     "cells": {
                         "p": pair(p),
-                        "r": f"{de(p['r'])} / {de(p.get('rb'))}",
-                        "k": t[f"g_{group(p)}"] + (" · täglich" if p["ebene"] == "Tage" else ""),
+                        "r": rtext(p),
+                        "k": t[f"g_{group(p)}"],
                     },
                 }
                 for p in rank

@@ -94,7 +94,7 @@ class TestKorrelation(unittest.TestCase):
                 "statistik": stat,
                 "paare": [
                     _pair("s1", "s2", 0.98, "technisch gekoppelt"),
-                    _pair("s3", "s4", -0.71, "prüfen", rb=-0.55),
+                    {**_pair("s3", "s4", -0.71, "prüfen", rb=-0.55), "n": 95},
                     {
                         **_pair("s5", "s6", 0.6, "erwartet", level="Tage"),
                         "gruppe": "erklaert",
@@ -134,7 +134,7 @@ class TestKorrelation(unittest.TestCase):
             ],
         )
         tiles = {t["label"]: t for t in s["Zusammenhänge diese Woche"]["tiles"]}
-        self.assertEqual(tiles["Gefunden"]["sub"], "Paare von 1.234 geprüften")
+        self.assertEqual((tiles["Gefunden"]["unit"], tiles["Gefunden"]["sub"]), ("Paare", "von 1.234 geprüften"))
         self.assertEqual(
             (tiles["Unklar"]["value"], tiles["Neu"]["value"], tiles["Entfallen"]["value"]), ("1", "2", "1")
         )
@@ -147,7 +147,7 @@ class TestKorrelation(unittest.TestCase):
             s["Unklar"]["items"][0],
             {
                 "text": "Temperatur Bad sinkt, wenn Feuchte Bad steigt",
-                "meta": "Stärke −0,71 · ohne Tagesgang −0,55 · Stunden",
+                "meta": "Stärke −0,71 · ohne Tagesgang −0,55 · 95 Std.",
                 "info": "Kein naheliegender Grund bekannt – ein Blick lohnt.",
             },
         )
@@ -160,8 +160,10 @@ class TestKorrelation(unittest.TestCase):
         self.assertTrue(new[1]["meta"].startswith("Sonne/Zeit · "))
         self.assertEqual(s["Weggefallen"]["items"][0]["text"], "S11 und s12 steigen gemeinsam")
         rows = s["Alle nach Art"]["rows"]
-        self.assertEqual([r["cells"]["k"] for r in rows], ["unklar", "erklärt · täglich", "Sonne/Zeit"])
-        self.assertEqual(rows[0]["cells"]["r"], "−0,71 / −0,55")
+        self.assertEqual([r["cells"]["k"] for r in rows], ["unklar", "erklärt", "Sonne/Zeit"])
+        # every figure named, n with its unit
+        self.assertEqual(rows[0]["cells"]["r"], "Stärke −0,71 · ohne Tagesgang −0,55 · 95 Std.")
+        self.assertEqual(s["Was steckt dahinter"]["unit"], "Paare")
         self.assertEqual(b["updated"], self.data["stand_ms"])
 
     def test_plural_names(self):
