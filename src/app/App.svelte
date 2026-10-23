@@ -255,6 +255,7 @@
     background: var(--surface);
     border-radius: 22px;
     box-shadow: var(--shadow);
+    border: 2px solid var(--border);
   }
   .seg button {
     min-width: 48px;
@@ -268,14 +269,15 @@
     cursor: pointer;
   }
   .seg button[aria-pressed='true'] {
-    background: var(--surface-2);
-    color: var(--text);
-    box-shadow: inset 0 0 0 1px var(--line);
+    background: var(--accent);
+    color: var(--on-accent);
+    box-shadow: none;
+    font-weight: 600;
   }
   .round {
     width: 44px;
     height: 44px;
-    border: 0;
+    border: 2px solid var(--border);
     border-radius: 50%;
     background: var(--surface);
     box-shadow: var(--shadow);
@@ -299,6 +301,7 @@
     background: var(--surface);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
+    border: 2px solid var(--border);
     padding: 16px;
     display: flex;
     flex-direction: column;

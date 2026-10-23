@@ -536,6 +536,7 @@
     background: var(--surface);
     border-radius: 18px;
     box-shadow: var(--shadow);
+    border: 2px solid var(--border);
     padding: 20px;
     display: grid;
     gap: 14px;

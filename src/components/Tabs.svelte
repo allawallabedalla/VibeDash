@@ -60,7 +60,8 @@
     gap: 7px;
     border: 0;
     border-radius: 999px;
-    background: var(--gap);
+    background: var(--surface);
+    box-shadow: inset 0 0 0 2px var(--line);
     color: var(--text-2);
     font-size: 15px;
     font-weight: 500;
@@ -69,11 +70,12 @@
     -webkit-tap-highlight-color: transparent;
   }
   button:hover {
-    background: color-mix(in srgb, var(--gap) 160%, transparent);
+    background: var(--surface-2);
   }
   button.active {
-    background: var(--accent-bg);
-    color: var(--accent);
+    background: var(--accent);
+    box-shadow: none;
+    color: var(--on-accent);
     font-weight: 650;
   }
 

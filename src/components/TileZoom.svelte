@@ -170,7 +170,7 @@
   dialog {
     width: min(760px, calc(100vw - 24px));
     max-height: calc(100dvh - 32px);
-    border: 0;
+    border: 2px solid var(--border);
     border-radius: 20px;
     padding: 16px 20px 20px;
     background: var(--surface);

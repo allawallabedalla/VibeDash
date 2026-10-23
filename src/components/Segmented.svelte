@@ -18,9 +18,9 @@
 <style>
   .seg {
     display: inline-flex;
-    background: var(--surface-2);
+    background: var(--surface);
     border-radius: 22px;
-    box-shadow: inset 0 0 0 1px var(--line);
+    box-shadow: inset 0 0 0 2px var(--border);
   }
   button {
     min-width: 56px;
@@ -35,8 +35,9 @@
     -webkit-tap-highlight-color: transparent;
   }
   button[aria-pressed='true'] {
-    background: var(--surface);
-    color: var(--text);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    background: var(--accent);
+    color: var(--on-accent);
+    box-shadow: none;
+    font-weight: 600;
   }
 </style>

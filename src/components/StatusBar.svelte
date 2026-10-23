@@ -40,6 +40,7 @@
     border-radius: 999px;
     background: var(--surface);
     box-shadow: var(--shadow);
+    border: 2px solid var(--border);
     font-size: 14px;
     font-weight: 500;
     color: var(--text-2);
