@@ -308,7 +308,7 @@
   }
   dialog {
     width: min(420px, calc(100vw - 32px));
-    border: 0;
+    border: 2px solid var(--border);
     border-radius: 18px;
     padding: 16px 18px;
     background: var(--surface);

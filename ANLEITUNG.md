@@ -78,7 +78,7 @@ Diese Regeln sind aus echter Nutzung entstanden. Der Agent hält sie **immer** e
 2. **Tabellen nie allein** – immer mit Infografik davor; Tabellen kommen als zweiter Abschnitt unter die Kacheln.
 3. **Symbol = Outline-Icon + 1–2 Wörter.** Keine Emojis, keine Symbolketten („✓ ✓ ⏳ ✓“ → „Module ok · Akku ok · Nacht läuft“).
 4. **Details hinter ⓘ** – und ⓘ öffnet per **Antippen**, nicht per Darüberfahren (iPhone hat kein Hover).
-5. **Weich und ruhig:** abgerundete Formen, sanfte Verläufe, kräftige aber geschwungene Linien, wenige Farben. Hell- und Dunkelmodus.
+5. **Ruhig, klar, wenige Farben:** abgerundete Formen, kräftige aber geschwungene Linien. Farbschema **Creme · Nachtblau · Koralle**: Cremegrund, Karten und Kacheln mit 2-px-Rahmen in Nachtblau statt Schatten, Hauptknopf und aktive Pille nachtblau gefüllt, Koralle (`--highlight`) nur für wenige Hervorhebungen. Bedeutungsfarben (Sonne, Akku, Netz …) bleiben, wie sie sind. Hell- und Dunkelmodus.
 6. **IST zuerst**, dann Rückblick mit frei wählbarem Zeitraum.
 
 ### Zahlen ehrlich zeigen

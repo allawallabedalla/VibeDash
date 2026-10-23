@@ -46,6 +46,7 @@
     background: var(--surface);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
+    border: 2px solid var(--border);
     padding: 14px 16px 16px;
     display: flex;
     flex-direction: column;

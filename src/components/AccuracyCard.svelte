@@ -155,7 +155,7 @@
     flex-direction: column;
     gap: 6px;
     min-width: 0;
-    border: 1.5px solid transparent;
+    border: 2px solid var(--border);
   }
   .card.lv-poor:not(.collecting) {
     border-color: color-mix(in srgb, var(--poor) 45%, transparent);

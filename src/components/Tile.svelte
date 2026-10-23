@@ -236,7 +236,9 @@
     background: var(--surface);
     border-radius: 18px;
     box-shadow: var(--shadow);
-    padding: 12px 14px 14px;
+    border: 2px solid var(--border);
+    /* 2 px less than before the border came: the label keeps its width */
+    padding: 10px 12px 12px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -285,8 +287,8 @@
   /* ⓘ sits in the corner (44 px target) so the label keeps its width. */
   header > :global(.info) {
     position: absolute;
-    top: 3px;
-    right: 3px;
+    top: 1px;
+    right: 1px;
     margin: 0;
     /* stays tappable above the tile's tap target */
     z-index: 2;
@@ -377,7 +379,7 @@
 
   @media (max-width: 600px) {
     .tile {
-      padding: 10px 12px 12px;
+      padding: 8px 10px 10px;
       min-height: 130px;
       border-radius: 14px;
     }

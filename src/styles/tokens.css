@@ -1,15 +1,15 @@
 /* Design tokens. Few colours, soft surfaces, light and dark. */
 :root {
   color-scheme: light;
-  --bg: #f5f5f7;
-  --surface: #ffffff;
-  --surface-2: #f2f2f5;
-  --line: #e8e8ed;
-  --text: #1d1d1f;
-  --text-2: #424245;
-  --muted: #6c6c70;
-  --faint: #c7c7cc;
-  --track: #efeff4;
+  --bg: #f6f1e7;
+  --surface: #fffdf8;
+  --surface-2: #f1eadb;
+  --line: #ddd5c4;
+  --text: #1b2a4e;
+  --text-2: #36446a;
+  --muted: #5b647d;
+  --faint: #cfc6b3;
+  --track: #efe7d6;
 
   --sun: #e0a100;
   --sun-soft: #ffb340;
@@ -22,8 +22,8 @@
   --good: #2e9e5b;
   --fair: #e8a317;
   --poor: #d64545;
-  --accent: #0058b0;
-  --accent-bg: rgba(10, 132, 255, 0.14);
+  --accent: #1b2a4e;
+  --accent-bg: rgba(27, 42, 78, 0.1);
   /* text in status colours: darker than the bars so it reads at WCAG AA (Audit01 DE-01) */
   --good-text: #23784a;
   --fair-text: #a35f00;
@@ -33,12 +33,12 @@
   --import-text: #8a3ab9;
   --feed-text: #6c6c70;
   --icon-soft: #8e8e93;
-  --look-bg: #fff6e5;
-  --act-bg: #ffecea;
+  --look-bg: #fbe9d4;
+  --act-bg: #fbe3dc;
 
   --gap: rgba(127, 127, 127, 0.12);
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.05);
-  --shadow-high: 0 1px 2px rgba(0, 0, 0, 0.05), 0 10px 28px rgba(0, 0, 0, 0.09);
+  --shadow: none;
+  --shadow-high: 0 2px 10px rgba(27, 42, 78, 0.12);
   --radius: 20px;
   /* Small print: 13 px on large screens, never below 14 px on phones. */
   --small: 13px;
@@ -46,19 +46,24 @@
   --font:
     -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, 'Segoe UI', system-ui, Roboto,
     'Helvetica Neue', Arial, sans-serif;
+
+  --border: #1b2a4e;
+  --on-accent: #f6f1e7;
+  --highlight: #e2665a;
+  --highlight-text: #b8463b;
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #000000;
-  --surface: #1c1c1e;
-  --surface-2: #2c2c2e;
-  --line: #38383a;
-  --text: #f5f5f7;
-  --text-2: #d1d1d6;
-  --muted: #98989d;
-  --faint: #636366;
-  --track: #2c2c2e;
+  --bg: #0f1730;
+  --surface: #18223f;
+  --surface-2: #222d4d;
+  --line: #2b3758;
+  --text: #f6f1e7;
+  --text-2: #d9d4c8;
+  --muted: #aab1c5;
+  --faint: #4a5677;
+  --track: #26314f;
 
   --sun: #ffb340;
   --sun-soft: #ffc76b;
@@ -71,8 +76,8 @@
   --good: #30d158;
   --fair: #ffb340;
   --poor: #ff6961;
-  --accent: #64a8ff;
-  --accent-bg: rgba(10, 132, 255, 0.24);
+  --accent: #f6f1e7;
+  --accent-bg: rgba(246, 241, 231, 0.14);
   --good-text: #30d158;
   --fair-text: #ffb340;
   --poor-text: #ff6961;
@@ -82,25 +87,30 @@
   --feed-text: #98989d;
   --icon-soft: #8e8e93;
   --look-bg: #3a2e14;
-  --act-bg: #3d1f1d;
+  --act-bg: #3a2420;
 
   --gap: rgba(200, 200, 200, 0.08);
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
-  --shadow-high: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.35);
+  --shadow: none;
+  --shadow-high: 0 2px 12px rgba(0, 0, 0, 0.4);
+
+  --border: #3c4a72;
+  --on-accent: #1b2a4e;
+  --highlight: #f07a6e;
+  --highlight-text: #f39488;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
-    --bg: #000000;
-    --surface: #1c1c1e;
-    --surface-2: #2c2c2e;
-    --line: #38383a;
-    --text: #f5f5f7;
-    --text-2: #d1d1d6;
-    --muted: #98989d;
-    --faint: #636366;
-    --track: #2c2c2e;
+    --bg: #0f1730;
+    --surface: #18223f;
+    --surface-2: #222d4d;
+    --line: #2b3758;
+    --text: #f6f1e7;
+    --text-2: #d9d4c8;
+    --muted: #aab1c5;
+    --faint: #4a5677;
+    --track: #26314f;
 
     --sun: #ffb340;
     --sun-soft: #ffc76b;
@@ -113,8 +123,8 @@
     --good: #30d158;
     --fair: #ffb340;
     --poor: #ff6961;
-    --accent: #64a8ff;
-    --accent-bg: rgba(10, 132, 255, 0.24);
+    --accent: #f6f1e7;
+    --accent-bg: rgba(246, 241, 231, 0.14);
     --good-text: #30d158;
     --fair-text: #ffb340;
     --poor-text: #ff6961;
@@ -124,11 +134,16 @@
     --feed-text: #98989d;
     --icon-soft: #8e8e93;
     --look-bg: #3a2e14;
-    --act-bg: #3d1f1d;
+    --act-bg: #3a2420;
 
     --gap: rgba(200, 200, 200, 0.08);
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
-    --shadow-high: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.35);
+    --shadow: none;
+    --shadow-high: 0 2px 12px rgba(0, 0, 0, 0.4);
+
+    --border: #3c4a72;
+    --on-accent: #1b2a4e;
+    --highlight: #f07a6e;
+    --highlight-text: #f39488;
   }
 }
 

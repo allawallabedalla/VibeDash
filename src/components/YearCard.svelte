@@ -80,6 +80,7 @@
     background: var(--surface);
     border-radius: 18px;
     box-shadow: var(--shadow);
+    border: 2px solid var(--border);
     padding: 12px 14px 12px;
     min-width: 0;
     position: relative;
