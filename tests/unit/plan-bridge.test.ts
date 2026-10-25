@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadWithoutCar, planBridge, socAtHours } from '../../server/plan-bridge';
 import { validateMapping } from '../../server/mapping';
-import { hourlyFromCounter } from '../../server/pv-bridge';
+import { QUIET_START_STEP, hourlyFromCounter } from '../../server/pv-bridge';
 import type { Series } from '../../src/model/types';
 
 const H = 3_600_000;
@@ -136,6 +136,37 @@ describe('a counter that reports only while it moves (quietWhenIdle)', () => {
     expect([6, 7, 8].map(get)).toEqual([0, 0, 0]);
     // without the option: only hours with readings at both ends
     expect(hourlyFromCounter(series, now).length).toBeLessThan(quiet.length);
+  });
+
+  it('books the small step a wallbox makes as a charge starts in the hour the charge starts', () => {
+    // idle at 10 since 00:10; at 05:20 the charge starts: first report already 10.02 (+20 Wh),
+    // then it reports while it moves until 12 at 05:50
+    const series = s([
+      [0.17, 10],
+      [5.33, 10.02],
+      [5.5, 11],
+      [5.83, 12],
+    ]);
+    const quiet = hourlyFromCounter(series, t0 + 8 * H, true);
+    const get = (h: number) =>
+      quiet.find((r) => r.zeit === new Date(t0 + h * H).toISOString())?.wert;
+    expect([1, 2, 3, 4].map(get)).toEqual([0, 0, 0, 0]);
+    expect(get(5)).toBe(2); // step + charge, nothing lost
+    expect([6, 7].map(get)).toEqual([0, 0]);
+  });
+
+  it('leaves a gap with a step above QUIET_START_STEP or a falling reading unknown', () => {
+    const hour1 = new Date(t0 + 1 * H).toISOString();
+    const above = s([
+      [0.5, 10],
+      [3.5, 10 + QUIET_START_STEP + 0.01],
+    ]);
+    expect(hourlyFromCounter(above, t0 + 4 * H, true).map((x) => x.zeit)).not.toContain(hour1);
+    const falling = s([
+      [0.5, 10],
+      [3.5, 9.99],
+    ]);
+    expect(hourlyFromCounter(falling, t0 + 4 * H, true).map((x) => x.zeit)).not.toContain(hour1);
   });
 
   it('leaves a gap with a changed reading unknown', () => {

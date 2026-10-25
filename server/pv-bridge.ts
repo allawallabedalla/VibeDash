@@ -16,6 +16,12 @@ import type { Mapping, PvMapping, SeriesMapping } from './mapping';
 
 const H = 3_600_000;
 const DAY = 24 * H;
+/**
+ * quietWhenIdle: largest step (counter unit, e.g. kWh) across a gap that still counts as
+ * "stood still, then started". Wallboxes book 10–25 Wh as a charge starts, before they report
+ * again; a larger step across a gap is more likely lost readings and stays unknown.
+ */
+export const QUIET_START_STEP = 0.05;
 
 /**
  * kWh per UTC hour from a meter: reading at the hour end minus at the start;
@@ -35,12 +41,14 @@ export function hourlyFromCounter(
     if (h - x.t <= maxAge) boundary.set(h, x.v);
   }
   // A counter that reports only while it moves: the same reading before and after a gap
-  // means it stood still – every hour boundary in the gap has that reading. After the last
-  // reading it stands still until now (it would report if it moved).
+  // means it stood still – every hour boundary in the gap has that reading. A small step up
+  // (≤ QUIET_START_STEP) means it stood still until a charge started at the end of the gap:
+  // the step belongs to the hour the charge starts in. After the last reading it stands
+  // still until now (it would report if it moved).
   if (quietWhenIdle) {
     samples.forEach((a, i) => {
       const b = samples[i + 1];
-      if (b && b.v !== a.v) return;
+      if (b && (b.v < a.v || b.v - a.v > QUIET_START_STEP + 1e-9)) return;
       const end = b ? b.t : now;
       for (let h = Math.ceil(a.t / H) * H; h <= end; h += H)
         if (!boundary.has(h)) boundary.set(h, a.v);
