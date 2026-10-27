@@ -2,8 +2,9 @@
 „ja mach das so“).
 
 A choice with two options. It only forwards the person's tap to the house's own charge control (config "steuerung":
-{status_url, jetzt_url, automatik_url}); the house's guard does the switching with its own rules (force = 16 A, grid
-power allowed, until the car is full, unplugged or back to automatic). Without that config there is no such choice.
+{status_url, jetzt_url, automatik_url, ampere?}); the house's guard does the switching with its own rules (force at
+"ampere", grid power allowed, until the car is full, unplugged or back to automatic). Without that config there is no
+such choice; without "ampere" the text names no current (it is the house's, not ours to guess).
 """
 
 from __future__ import annotations
@@ -15,7 +16,7 @@ import urllib.request
 ITEM = "laden:modus"
 OPTIONS = (
     ("automatik", "Automatik", "nach Plan, ohne Netzstrom fürs Auto"),
-    ("jetzt", "Jetzt voll laden", "sofort 16 A, auch Netzstrom, bis voll"),
+    ("jetzt", "Jetzt voll laden", "sofort{a}, auch Netzstrom, bis voll"),
 )
 TIMEOUT_S = 8  # the VibeDash server waits 10 s; the house goes on with the request after that
 
@@ -50,11 +51,20 @@ def wallbox(st: dict, now: float) -> dict:
     }
 
 
-def section(st: dict | None) -> dict:
+def _amps(cfg: dict | None) -> str:
+    """ " 16 A" from the config's "ampere" (6–63, the house's force current), else nothing."""
+    a = (cfg or {}).get("ampere")
+    ok = isinstance(a, (int, float)) and not isinstance(a, bool) and 6 <= a <= 63
+    return f" {a:g} A" if ok else ""
+
+
+def section(st: dict | None, cfg: dict | None = None) -> dict:
+    amps = _amps(cfg)
     mode = ((st or {}).get("knoepfe") or {}).get("aktiv")
     selected = mode if mode in {v for v, _, _ in OPTIONS} else None
     opts = []
     for v, label, sub in OPTIONS:
+        sub = sub.format(a=amps)
         if v == "automatik" and (st or {}).get("plan_kurz"):
             sub = f"Plan: {st['plan_kurz']}"[:80]
         opts.append({"value": v, "label": label, "sub": sub})
@@ -69,8 +79,9 @@ def section(st: dict | None) -> dict:
         "note": (f"Jetzt: {lage}. " if lage else "Steuerung nicht erreichbar. ")
         + "„Jetzt voll laden“ endet von selbst, wenn das Auto voll ist oder abgesteckt wird.",
         "info": {
-            "what": "Automatik lädt nur nach Plan ohne Netzstrom fürs Auto. „Jetzt voll laden“ lädt sofort mit 16 A, "
-            "auch mit Netzstrom, bis das Auto voll ist, abgesteckt wird oder du wieder Automatik wählst. Ladungen "
+            "what": "Automatik lädt nur nach Plan ohne Netzstrom fürs Auto. „Jetzt voll laden“ lädt sofort"
+            + (f" mit{amps}" if amps else "")
+            + ", auch mit Netzstrom, bis das Auto voll ist, abgesteckt wird oder du wieder Automatik wählst. Ladungen "
             "aus der Wallbox-App oder mit der Karte stoppt die Automatik nie.",
             "source": "Ladesteuerung des Hauses (Wächter); VibeDash gibt nur den Wunsch weiter.",
         },

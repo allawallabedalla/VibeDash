@@ -20,6 +20,18 @@ class TestSteuerung(unittest.TestCase):
         self.assertIsNone(off["selected"])
         self.assertTrue(off["note"].startswith("Steuerung nicht erreichbar"))
 
+    def test_force_current_only_from_the_config(self):
+        st = {"plan_kurz": "{x} heute"}
+        plain = steuerung.section(st)
+        self.assertEqual(plain["options"][1]["sub"], "sofort, auch Netzstrom, bis voll")
+        self.assertNotIn(" A,", plain["info"]["what"])
+        self.assertEqual(plain["options"][0]["sub"], "Plan: {x} heute")
+        s = steuerung.section(st, {**CFG, "ampere": 16})
+        self.assertEqual(s["options"][1]["sub"], "sofort 16 A, auch Netzstrom, bis voll")
+        self.assertIn("sofort mit 16 A, auch", s["info"]["what"])
+        for bad in (2, 100, "16", True):
+            self.assertEqual(steuerung.section(st, {"ampere": bad})["options"][1]["sub"], plain["options"][1]["sub"])
+
     def test_choose_forwards_to_the_right_address(self):
         asked = []
 
