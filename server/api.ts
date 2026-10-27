@@ -34,6 +34,7 @@ import {
   type FeedbackStatus,
   type FeedbackStore,
 } from './feedback';
+import { cleanChange, type AnswerChange, type Answers } from './answers';
 import { cleanPrefs, type TabPrefs } from './tabs';
 
 export const RANGES = {
@@ -107,6 +108,8 @@ export interface ApiDeps {
   setup?: SetupDeps;
   /** Which tabs show and their order (server/tabs.ts), one list for the house. */
   tabs?: { writable: boolean; read: () => TabPrefs; write: (t: TabPrefs) => TabPrefs };
+  /** Yes/no answers to the overview's questions (server/answers.ts), one set for the house. */
+  answers?: { writable: boolean; read: () => Answers; write: (c: AnswerChange) => Answers };
   weather?: {
     /** false when WEATHER=off: no external request at all */
     enabled: boolean;
@@ -461,6 +464,23 @@ function handleTabs(method: string, deps: ApiDeps, req: RequestInfo): ApiResult 
   return json(200, { tabs: t.write(prefs) });
 }
 
+function handleAnswers(method: string, deps: ApiDeps, req: RequestInfo): ApiResult {
+  const a = deps.answers;
+  if (!a) return json(404, { error: 'not_found' });
+  if (method === 'GET') return json(200, { answers: a.read(), writable: a.writable });
+  if (!a.writable) return json(403, { error: 'answers_write_off' });
+  const refused = writeGuard(req);
+  if (refused) return refused;
+  let change: AnswerChange | null;
+  try {
+    change = cleanChange(JSON.parse(req.body ?? ''));
+  } catch {
+    change = null;
+  }
+  if (!change) return json(400, { error: 'bad_body' });
+  return json(200, { answers: a.write(change) });
+}
+
 async function handleLocation(method: string, deps: ApiDeps, req: RequestInfo): Promise<ApiResult> {
   const w = deps.weather;
   if (!w) return json(404, { error: 'not_found' });
@@ -556,6 +576,9 @@ export async function handleApi(
   }
   if (path === '/api/tabs' && (method === 'GET' || method === 'POST')) {
     return handleTabs(method, deps, req);
+  }
+  if (path === '/api/answers' && (method === 'GET' || method === 'POST')) {
+    return handleAnswers(method, deps, req);
   }
   if (path === '/api/feedback' && (method === 'GET' || method === 'POST')) {
     return handleFeedback(method, deps, req);

@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { createServer } from 'node:http';
 import { handleApi, type ApiDeps } from './api';
 import { fileStore } from './feedback';
+import { readAnswers, writeAnswer } from './answers';
 import { readTabs, writeTabs } from './tabs';
 import { claimChecker, codeChecker, evccAdmin, scan, stateFile } from './setup';
 import { createBackends } from './backends';
@@ -150,6 +151,12 @@ if (process.env.FEEDBACK !== 'off') {
     writable: process.env.TABS_WRITE !== 'off',
     read: () => readTabs(path),
     write: (t) => writeTabs(path, t),
+  };
+  // yes/no answers to the overview's questions, same file; ANSWERS_WRITE=off makes them read-only
+  deps.answers = {
+    writable: process.env.ANSWERS_WRITE !== 'off',
+    read: () => readAnswers(path),
+    write: (c) => writeAnswer(path, c),
   };
 }
 

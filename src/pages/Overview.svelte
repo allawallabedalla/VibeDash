@@ -35,7 +35,38 @@
   const tz = $derived(house.timeZone);
   const locale = $derived(i18n.locale === 'de' ? 'de-DE' : 'en-GB');
 
-  const qs = $derived(questions(house, currentSource()));
+  const allQs = $derived(questions(house, currentSource()));
+  // yes/no answers, kept on the server for the whole house (Mac and phone the same)
+  let answers = $state<Record<string, { a: 'yes' | 'no' }>>({});
+  let canAnswer = $state(false);
+  onMount(() => {
+    fetch('/api/answers')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { answers: typeof answers; writable: boolean } | null) => {
+        if (j) [answers, canAnswer] = [j.answers, j.writable];
+      })
+      .catch(() => {});
+  });
+  const answer = async (id: string, a: 'yes' | 'no' | null) => {
+    const before = answers;
+    const next = { ...answers };
+    if (a) next[id] = { a };
+    else delete next[id];
+    answers = next;
+    try {
+      const r = await fetch('/api/answers', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id, answer: a }),
+      });
+      if (!r.ok) throw new Error(String(r.status));
+      answers = ((await r.json()) as { answers: typeof answers }).answers;
+    } catch {
+      answers = before;
+    }
+  };
+  const qs = $derived(allQs.filter((q) => !answers[q.id]));
+  const answered = $derived(allQs.filter((q) => answers[q.id]));
   const qGroups = $derived(groupQuestions(qs));
   // Open on wide screens, folded on the phone (tap to open).
   let wide = $state(true);
@@ -282,32 +313,21 @@
     </Card>
   {/if}
 
-  {#if qs.length > 0}
+  {#if allQs.length > 0}
     <h2 id="fragen">{t('q.title')}</h2>
-    <Card
-      title={t('q.open', { count: qs.length === 1 ? t('q.one') : t('q.count', { n: qs.length }) })}
-      icon="info"
-      color="var(--fair)"
-    >
-      {#each qGroups as g (g.name)}
-        <details
-          class="qgroup"
-          open={(wide && qGroups.length <= 4) || g.items.some((q) => q.area === focusArea)}
-        >
-          <summary>
-            <span class="qname">{g.name}</span>
-            <span class="qn"
-              >{g.items.length === 1 ? t('q.one') : t('q.count', { n: g.items.length })}</span
-            >
-          </summary>
-          <ul class="questions">
-            {#each g.items as q (q.id)}
-              <li><span class="qicon"><Icon name="info" size={18} /></span>{q.text}</li>
-            {/each}
-          </ul>
-        </details>
-      {/each}
-    </Card>
+    <!-- below the fold: loaded after the first paint (first-page budget) -->
+    {#await import('./QuestionsCard.svelte') then { default: QuestionsCard }}
+      <QuestionsCard
+        open={qs}
+        groups={qGroups}
+        {answered}
+        {answers}
+        {canAnswer}
+        openAll={wide && qGroups.length <= 4}
+        {focusArea}
+        onanswer={answer}
+      />
+    {/await}
   {/if}
 </div>
 
@@ -328,40 +348,6 @@
   }
   .period-head h2 {
     margin: 0;
-  }
-  .qgroup + .qgroup {
-    border-top: 1px solid var(--line);
-  }
-  .qgroup summary {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 44px;
-    cursor: pointer;
-    list-style: none;
-  }
-  .qgroup summary::-webkit-details-marker {
-    display: none;
-  }
-  .qgroup summary::after {
-    content: '';
-    width: 8px;
-    height: 8px;
-    margin-left: 4px;
-    border-right: 2px solid var(--muted);
-    border-bottom: 2px solid var(--muted);
-    transform: rotate(-45deg);
-    transition: transform 0.15s;
-  }
-  .qgroup[open] summary::after {
-    transform: rotate(45deg);
-  }
-  .qname {
-    font-weight: 600;
-  }
-  .qn {
-    margin-left: auto;
-    color: var(--muted);
   }
   .questions {
     list-style: none;
