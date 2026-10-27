@@ -12,6 +12,8 @@ export interface Question {
   /** Device (or entity name) the question is about; the list is grouped by it. */
   group: string;
   text: string;
+  /** false: not a yes/no question (it asks for an action elsewhere) */
+  answerable?: false;
 }
 
 /** More gap clusters than this per device become one summary question. */
@@ -53,6 +55,9 @@ export function questions(data: DemoData, source: 'demo' | 'live' = 'demo'): Que
     const kind = data.entities.find((x) => x.id === id)?.kind;
     return kind === 'temperature' || kind === 'humidity' ? 'climate' : 'energy';
   };
+  // "bis 18:48" alone reads as the same day; a silence past midnight names the day it ended
+  const until = (from: number, to: number) =>
+    date(to) === date(from) ? time(to, tz) : `${date(to)}, ${time(to, tz)}`;
   const out: Question[] = [];
   for (const [i, issue] of data.issues.entries()) {
     const from = time(issue.from, tz);
@@ -87,7 +92,7 @@ export function questions(data: DemoData, source: 'demo' | 'live' = 'demo'): Que
     }
     if (issue.kind === 'artifact') {
       out.push({
-        id: `q${i}`,
+        id: `reset-${id}-${issue.from}`,
         area: areaOf(id),
         group: groupOf(id),
         text: t('q.reset', { name: nameOf(id), date: date(issue.from), time: from }),
@@ -112,7 +117,8 @@ export function questions(data: DemoData, source: 'demo' | 'live' = 'demo'): Que
       if (cs.length > MAX_GAPS_PER_DEVICE) {
         const longest = cs.reduce((a, b) => (b.to - b.from > a.to - a.from ? b : a));
         out.push({
-          id: `gaps-${group}`,
+          // a new silence asks again
+          id: `gaps-${group}-${cs.length}`,
           area,
           group,
           text: t('q.gapRepeat', {
@@ -121,7 +127,7 @@ export function questions(data: DemoData, source: 'demo' | 'live' = 'demo'): Que
             since: date(cs[0]!.from),
             date: date(longest.from),
             from: time(longest.from, tz),
-            to: time(longest.to, tz),
+            to: until(longest.from, longest.to),
           }),
         });
         continue;
@@ -136,7 +142,7 @@ export function questions(data: DemoData, source: 'demo' | 'live' = 'demo'): Que
             name: names(c),
             date: date(c.from),
             from: time(c.from, tz),
-            to: time(c.to, tz),
+            to: until(c.from, c.to),
           }),
         });
       }
@@ -149,6 +155,7 @@ export function questions(data: DemoData, source: 'demo' | 'live' = 'demo'): Que
       area: 'energy',
       group: t('q.groupConfirm'),
       text: unconfirmed === 1 ? t('q.unconfirmedOne') : t('q.unconfirmed', { n: unconfirmed }),
+      answerable: false,
     });
   }
   return out;
