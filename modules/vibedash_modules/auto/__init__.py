@@ -229,7 +229,7 @@ class Module:
                 i = next((k for k, s in enumerate(secs) if s.get("type") == "calc"), len(secs))
                 out["sections"] = secs[:i] + [tl] + secs[i:]
         if sc.get("status_url"):
-            out["sections"] = [steuerung.section(lage)] + (out.get("sections") or [])
+            out["sections"] = [steuerung.section(lage, sc)] + (out.get("sections") or [])
         w = self._waechter()
         if w is not None:
             out["sections"] = w.sections() + (out.get("sections") or [])
