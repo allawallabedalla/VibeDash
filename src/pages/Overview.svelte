@@ -1,6 +1,6 @@
 <script lang="ts">
   /** M2: first real page. First level tiles, then today, then look-back table, then questions. */
-  import { onMount, untrack } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { currentData, currentSource, store } from '../app/data.svelte';
   import { groupQuestions, questions } from '../app/questions';
   import { reviewNote, reviewRows } from '../app/review';
@@ -42,6 +42,13 @@
   onMount(() => {
     wide = !window.matchMedia('(max-width: 600px)').matches;
   });
+  // a pill with questions jumps to them and opens the groups of its area
+  let focusArea = $state<'energy' | 'climate' | null>(null);
+  const showQuestions = async (area: 'energy' | 'climate') => {
+    focusArea = area;
+    await tick();
+    document.getElementById('fragen')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   const status = $derived.by<StatusItem[]>(() => {
     const item = (area: 'energy' | 'battery' | 'climate'): StatusItem => {
       const n = qs.filter((q) => q.area === area).length;
@@ -54,6 +61,7 @@
               count: n === 1 ? t('q.one') : t('q.count', { n }),
             }),
             state: 'look',
+            ...(area !== 'battery' ? { onclick: () => showQuestions(area) } : {}),
           };
     };
     return [item('energy'), item('battery'), item('climate')];
@@ -275,14 +283,17 @@
   {/if}
 
   {#if qs.length > 0}
-    <h2>{t('q.title')}</h2>
+    <h2 id="fragen">{t('q.title')}</h2>
     <Card
       title={t('q.open', { count: qs.length === 1 ? t('q.one') : t('q.count', { n: qs.length }) })}
       icon="info"
       color="var(--fair)"
     >
       {#each qGroups as g (g.name)}
-        <details class="qgroup" open={wide && qGroups.length <= 4}>
+        <details
+          class="qgroup"
+          open={(wide && qGroups.length <= 4) || g.items.some((q) => q.area === focusArea)}
+        >
           <summary>
             <span class="qname">{g.name}</span>
             <span class="qn"
@@ -303,6 +314,9 @@
 <style>
   .status {
     margin: 16px 0 16px;
+  }
+  #fragen {
+    scroll-margin-top: 16px;
   }
   /* heading, then the switch on the left, right above the curve it filters */
   .period-head {
