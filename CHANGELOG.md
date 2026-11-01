@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Laden: Stärke und Ziel** (car module, `steuerung.ampere_stufen` / `ziel_stufen`): two more choices under
+  „Laden“ – current (e.g. 6/10/13/16 A, with ≈ kW) and target (e.g. 60/80 %/Voll; in kWh from now while the car's
+  charge level is unknown). A tap starts „Jetzt laden“ with it or changes the running one; the other value stays.
+
 - **Prototype `#/zeitstrahl`:** place several charge windows on a day (move, stretch, add, remove, power per window,
   best suggestion); car energy, grid import (with 10–90 % range) and solar share recomputed on every pointer move
   in the browser (31 weather cases). Made-up data, switches nothing. The review table on the overview now loads
