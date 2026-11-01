@@ -39,7 +39,8 @@ class TestSteuerung(unittest.TestCase):
             asked.append((url, is_post))
             return 200, {"ok": True, "text": "lädt jetzt"}
 
-        self.assertEqual(steuerung.choose(CFG, "jetzt", post), (200, {"ok": True, "text": "lädt jetzt"}))
+        none = lambda url, is_post: (200, None)  # noqa: E731
+        self.assertEqual(steuerung.choose(CFG, "jetzt", post, get=none), (200, {"ok": True, "text": "lädt jetzt"}))
         self.assertEqual(steuerung.choose(CFG, "automatik", post)[0], 200)
         self.assertEqual(asked, [("http://h/j", True), ("http://h/a", True)])
         self.assertEqual(steuerung.choose(CFG, "wild", post)[0], 400)
@@ -49,18 +50,75 @@ class TestSteuerung(unittest.TestCase):
         def slow(url, is_post):
             raise TimeoutError
 
-        self.assertEqual(steuerung.choose(CFG, "jetzt", slow)[0], 200)
+        self.assertEqual(steuerung.choose(CFG, "jetzt", slow, get=slow)[0], 200)
 
         def refused(url, is_post):
             raise urllib.error.HTTPError(url, 429, "x", {}, io.BytesIO(json.dumps({"fehler": "gerade erst"}).encode()))
 
-        self.assertEqual(steuerung.choose(CFG, "jetzt", refused), (502, {"ok": False, "text": "gerade erst"}))
+        self.assertEqual(
+            steuerung.choose(CFG, "jetzt", refused, get=refused), (502, {"ok": False, "text": "gerade erst"})
+        )
 
         def down(url, is_post):
             raise urllib.error.URLError("refused")
 
-        self.assertEqual(steuerung.choose(CFG, "jetzt", down)[0], 502)
+        self.assertEqual(steuerung.choose(CFG, "jetzt", down, get=down)[0], 502)
         self.assertIsNone(steuerung.status(CFG, down))
+
+
+STUFEN = {**CFG, "ampere_stufen": [6, 10, 13, 16], "ziel_stufen": [60, 80, 100]}
+
+
+class TestStaerkeUndZiel(unittest.TestCase):
+    def test_extra_choices_only_when_configured(self):
+        self.assertEqual([s["id"] for s in steuerung.sections({}, CFG)], ["laden:modus"])
+        ids = [s["id"] for s in steuerung.sections({}, STUFEN)]
+        self.assertEqual(ids, ["laden:modus", "laden:ampere", "laden:ziel"])
+
+    def test_current_and_target_follow_the_house(self):
+        st = {"knoepfe": {"aktiv": "jetzt", "a": 10, "bis_pct": 80}, "auto_soc": 55.4}
+        _, amp, ziel = steuerung.sections(st, STUFEN)
+        self.assertEqual(amp["selected"], "a10")
+        self.assertEqual(amp["options"][0], {"value": "a6", "label": "6 A", "sub": "≈ 4,1 kW"})
+        self.assertEqual(ziel["selected"], "p80")
+        self.assertEqual([o["label"] for o in ziel["options"]], ["60 %", "80 %", "Voll"])
+        self.assertIn("55 %", ziel["note"])
+        auto = steuerung.sections({"knoepfe": {"aktiv": "automatik"}, "auto_soc": 70}, STUFEN)
+        self.assertEqual((auto[1]["selected"], auto[2]["selected"]), (None, None))
+        self.assertEqual(auto[2]["options"][0]["sub"], "erreicht")
+        voll = steuerung.sections({"knoepfe": {"aktiv": "jetzt", "a": 16}, "auto_soc": 40}, STUFEN)
+        self.assertEqual(voll[2]["selected"], "p100")
+
+    def test_without_charge_level_the_target_is_in_kwh(self):
+        ziel = steuerung.sections({"knoepfe": {"aktiv": "automatik"}}, STUFEN)[2]
+        self.assertEqual([o["value"] for o in ziel["options"]], ["k10", "k20", "k30", "k40", "voll"])
+        self.assertIn("unbekannt", ziel["note"])
+
+    def test_a_tap_keeps_the_other_value(self):
+        sent = []
+
+        def post(url, is_post, body=None):
+            sent.append((url, body))
+            return 200, {"ok": True, "text": "ok"}
+
+        st = {"knoepfe": {"aktiv": "jetzt", "a": 10, "bis_pct": 80}, "auto_soc": 50}
+        get = lambda url, is_post: (200, st)  # noqa: E731
+        steuerung.choose(STUFEN, "a6", post, item="laden:ampere", get=get)
+        steuerung.choose(STUFEN, "p60", post, item="laden:ziel", get=get)
+        steuerung.choose(STUFEN, "p100", post, item="laden:ziel", get=get)
+        steuerung.choose(STUFEN, "jetzt", post, get=get)
+        self.assertEqual(
+            [b for _, b in sent],
+            [{"a": 6, "bis_pct": 80}, {"a": 10, "bis_pct": 60}, {"a": 10, "bis_pct": 100}, {"a": 10, "bis_pct": 80}],
+        )
+        self.assertTrue(all(u == "http://h/j" for u, _ in sent))
+        nosoc = lambda url, is_post: (200, {"knoepfe": {"aktiv": "automatik"}})  # noqa: E731
+        steuerung.choose(STUFEN, "k20", post, item="laden:ziel", get=nosoc)
+        self.assertEqual(sent[-1][1], {"bis_kwh": 20})
+        n = len(sent)
+        for item, v in (("laden:ampere", "a7"), ("laden:ampere", "x"), ("laden:ziel", "p55"), ("laden:ziel", "k20")):
+            self.assertEqual(steuerung.choose(STUFEN, v, post, item=item, get=get)[0], 400)
+        self.assertEqual(len(sent), n)
 
 
 class TestKabelAusSteuerung(unittest.TestCase):
