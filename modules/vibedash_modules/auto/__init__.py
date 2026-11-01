@@ -22,8 +22,9 @@ Config (local/modules/auto.json, template modules/templates/auto.json):
   risiko       optional {datei, bis_kwh?} – how cautious the house's charge plan is (risiko.py): the choice is
                stored in this file (the house's planner reads it); without it there is no choice. Holds until
                midnight, with bis_kwh until the car has charged that much (the house's planner ends it)
-  steuerung    optional {status_url, jetzt_url, automatik_url, ampere_stufen?, ziel_stufen?, ziel_kwh_stufen?, phasen?} – the house's own charge control (steuerung.py):
-               a choice „Automatik / Jetzt voll laden“ that forwards the tap; the house switches by its own rules
+  steuerung    optional {status_url, jetzt_url, automatik_url, ampere_stufen?, ziel_stufen?, ziel_kwh_stufen?,
+               phasen?} – the house's own charge control (steuerung.py): a choice „Automatik / Jetzt voll laden“
+               (plus Stärke/Ziel) that forwards the tap; the house switches by its own rules
   zeitstrahl   optional path of the house's weather cases for the charge timeline (zeitstrahl.py; shown only)
   waechter     optional {evcc_url, passwort_env?, ladepunkt?, plan_url, guete_url, zustand?} – the product's charge
                guard (waechter.py): switches the wallbox through evcc by the charge plan, locked until it has
@@ -240,7 +241,9 @@ class Module:
             choice = risiko.section(risiko.current(self.path(rf), self.tz, now), plan, bis_kwh)
             secs = out.get("sections") or []
             # at the top, right after „Laden: Automatik / Jetzt voll laden“ (controls first, information after)
-            i = next((k for k, s in enumerate(secs) if s.get("id") not in steuerung.ITEMS + (waechter.ITEM,)), len(secs))
+            i = next(
+                (k for k, s in enumerate(secs) if s.get("id") not in steuerung.ITEMS + (waechter.ITEM,)), len(secs)
+            )
             out["sections"] = secs[:i] + [choice] + secs[i:]
         return out
 

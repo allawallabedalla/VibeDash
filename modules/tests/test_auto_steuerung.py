@@ -55,7 +55,9 @@ class TestSteuerung(unittest.TestCase):
         def refused(url, is_post):
             raise urllib.error.HTTPError(url, 429, "x", {}, io.BytesIO(json.dumps({"fehler": "gerade erst"}).encode()))
 
-        self.assertEqual(steuerung.choose(CFG, "jetzt", refused, get=refused), (502, {"ok": False, "text": "gerade erst"}))
+        self.assertEqual(
+            steuerung.choose(CFG, "jetzt", refused, get=refused), (502, {"ok": False, "text": "gerade erst"})
+        )
 
         def down(url, is_post):
             raise urllib.error.URLError("refused")
@@ -105,8 +107,10 @@ class TestStaerkeUndZiel(unittest.TestCase):
         steuerung.choose(STUFEN, "p60", post, item="laden:ziel", get=get)
         steuerung.choose(STUFEN, "p100", post, item="laden:ziel", get=get)
         steuerung.choose(STUFEN, "jetzt", post, get=get)
-        self.assertEqual([b for _, b in sent], [{"a": 6, "bis_pct": 80}, {"a": 10, "bis_pct": 60},
-                                                {"a": 10, "bis_pct": 100}, {"a": 10, "bis_pct": 80}])
+        self.assertEqual(
+            [b for _, b in sent],
+            [{"a": 6, "bis_pct": 80}, {"a": 10, "bis_pct": 60}, {"a": 10, "bis_pct": 100}, {"a": 10, "bis_pct": 80}],
+        )
         self.assertTrue(all(u == "http://h/j" for u, _ in sent))
         nosoc = lambda url, is_post: (200, {"knoepfe": {"aktiv": "automatik"}})  # noqa: E731
         steuerung.choose(STUFEN, "k20", post, item="laden:ziel", get=nosoc)

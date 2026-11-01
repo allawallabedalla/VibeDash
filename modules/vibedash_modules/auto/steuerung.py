@@ -126,23 +126,38 @@ def sections(st: dict | None, cfg: dict | None = None) -> list[dict]:
     akt, phasen = _aktiv(st), (cfg or {}).get("phasen", 3)
     amps = _stufen(cfg, "ampere_stufen", 6, 32)
     if amps:
-        out.append({
-            "type": "choice", "title": "Stärke", "id": AMP_ITEM, "slot": "top",
-            "selected": f"a{akt['a']}" if akt.get("a") in amps else None,
-            "options": [{"value": f"a{a}", "label": f"{a} A", "sub": f"≈ {_de(a * 230 * phasen / 1000)} kW"} for a in amps],
-            "note": "Tippen lädt sofort mit dieser Stärke (auch Netzstrom).",
-            "info": {"what": f"Ladestrom je Phase ({phasen} Phasen, 230 V). Weniger Strom = weniger Netzbezug, dauert "
-                     "länger. Während der Ladung stellt die Steuerung kurz Stopp → neue Stärke → Start.",
-                     "source": "Ladesteuerung des Hauses (Wächter); VibeDash gibt nur den Wunsch weiter."},
-        })
+        out.append(
+            {
+                "type": "choice",
+                "title": "Stärke",
+                "id": AMP_ITEM,
+                "slot": "top",
+                "selected": f"a{akt['a']}" if akt.get("a") in amps else None,
+                "options": [
+                    {"value": f"a{a}", "label": f"{a} A", "sub": f"≈ {_de(a * 230 * phasen / 1000)} kW"} for a in amps
+                ],
+                "note": "Tippen lädt sofort mit dieser Stärke (auch Netzstrom).",
+                "info": {
+                    "what": f"Ladestrom je Phase ({phasen} Phasen, 230 V). Weniger Strom = weniger Netzbezug, dauert "
+                    "länger. Während der Ladung stellt die Steuerung kurz Stopp → neue Stärke → Start.",
+                    "source": "Ladesteuerung des Hauses (Wächter); VibeDash gibt nur den Wunsch weiter.",
+                },
+            }
+        )
     ziele = _stufen(cfg, "ziel_stufen", 20, 100)
     if ziele:
         soc = _soc(st)
         if soc is not None:
             p_akt = akt.get("bis_pct") or (100 if akt else None)
             sel = f"p{p_akt}" if p_akt in ziele else None
-            opts = [{"value": f"p{p}", "label": "Voll" if p == 100 else f"{p} %",
-                     "sub": "erreicht" if p <= soc else ("bis voll" if p == 100 else "")} for p in ziele]
+            opts = [
+                {
+                    "value": f"p{p}",
+                    "label": "Voll" if p == 100 else f"{p} %",
+                    "sub": "erreicht" if p <= soc else ("bis voll" if p == 100 else ""),
+                }
+                for p in ziele
+            ]
             note = f"Auto jetzt ≈ {soc:.0f} % (letzte Meldung des Autos + seither Geladenes)."
         else:
             kwhs = _stufen(cfg, "ziel_kwh_stufen", 1, 100)[:4] or list(ZIEL_KWH)
@@ -150,15 +165,23 @@ def sections(st: dict | None, cfg: dict | None = None) -> list[dict]:
             opts = [{"value": f"k{k}", "label": f"+{k} kWh", "sub": ""} for k in kwhs]
             opts.append({"value": "voll", "label": "Voll", "sub": "bis voll"})
             note = "Ladestand des Autos gerade unbekannt – Ziel in kWh ab jetzt."
-        out.append({
-            "type": "choice", "title": "Ziel", "id": ZIEL_ITEM, "slot": "top",
-            "selected": sel,
-            "options": opts, "note": note,
-            "info": {"what": "Bis wohin „Jetzt laden“ lädt. Prozent gehen über die letzte Meldung des Autos und den "
-                     "gemessenen Ladewirkungsgrad; das Ziel kann um einige Prozent danebenliegen (Meldung bis 48 h alt, "
-                     "Wirkungsgrad schwankt). Voll = bis das Auto nichts mehr nimmt.",
-                     "source": "Ladesteuerung des Hauses (Wächter); VibeDash gibt nur den Wunsch weiter."},
-        })
+        out.append(
+            {
+                "type": "choice",
+                "title": "Ziel",
+                "id": ZIEL_ITEM,
+                "slot": "top",
+                "selected": sel,
+                "options": opts,
+                "note": note,
+                "info": {
+                    "what": "Bis wohin „Jetzt laden“ lädt. Prozent gehen über die letzte Meldung des Autos und den "
+                    "gemessenen Ladewirkungsgrad; das Ziel kann um einige Prozent danebenliegen (Meldung bis 48 h alt, "
+                    "Wirkungsgrad schwankt). Voll = bis das Auto nichts mehr nimmt.",
+                    "source": "Ladesteuerung des Hauses (Wächter); VibeDash gibt nur den Wunsch weiter.",
+                },
+            }
+        )
     return out
 
 
@@ -190,11 +213,19 @@ def choose(cfg: dict, value: str, post=_req, item: str = ITEM, get=_req) -> tupl
         return 400, {"ok": False, "text": "unbekannte Wahl"}
     st = status(cfg, get) if item != ITEM or value == "jetzt" else None
     body = _wunsch(item, value, st) if (item != ITEM or value == "jetzt") else {}
-    if body is not None and item in (AMP_ITEM, ZIEL_ITEM) and value not in {
-            o["value"] for s in sections(st, cfg) if s["id"] == item for o in s["options"]}:
+    if (
+        body is not None
+        and item in (AMP_ITEM, ZIEL_ITEM)
+        and value not in {o["value"] for s in sections(st, cfg) if s["id"] == item for o in s["options"]}
+    ):
         body = None
-    url = (cfg.get("automatik_url") if item == ITEM and value == "automatik"
-           else cfg.get("jetzt_url") if body is not None else None)
+    url = (
+        cfg.get("automatik_url")
+        if item == ITEM and value == "automatik"
+        else cfg.get("jetzt_url")
+        if body is not None
+        else None
+    )
     if not url:
         return 400, {"ok": False, "text": "unbekannte Wahl"}
     try:
