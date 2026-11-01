@@ -120,6 +120,35 @@ class TestStaerkeUndZiel(unittest.TestCase):
             self.assertEqual(steuerung.choose(STUFEN, v, post, item=item, get=get)[0], 400)
         self.assertEqual(len(sent), n)
 
+    def test_laden_names_the_chosen_target_and_current(self):
+        st = {"knoepfe": {"aktiv": "jetzt", "a": 16, "bis_pct": 60, "bis_kwh": 27.76}, "text": "lädt", "auto_soc": 33}
+        laden = steuerung.sections(st, {**STUFEN, "ampere": 13})[0]
+        self.assertEqual(
+            laden["options"][1],
+            {"value": "jetzt", "label": "Jetzt laden", "sub": "sofort 16 A, auch Netzstrom, bis 60 %"},
+        )
+        self.assertIn("„Jetzt laden“ endet bei 60 %", laden["note"])
+        kwh = steuerung.section({"knoepfe": {"aktiv": "jetzt", "a": 10, "bis_kwh": 20}})
+        self.assertEqual(kwh["options"][1]["sub"], "sofort 10 A, auch Netzstrom, bis 20 kWh")
+        voll = steuerung.section({"knoepfe": {"aktiv": "jetzt", "a": 16, "bis_pct": 100, "bis_kwh": 30}})
+        self.assertEqual(voll["options"][1]["label"], "Jetzt voll laden")
+        self.assertIn("wenn das Auto voll ist", voll["note"])
+
+    def test_a_current_tap_keeps_a_kwh_target(self):
+        sent = []
+
+        def post(url, is_post, body=None):
+            sent.append(body)
+            return 200, {"ok": True, "text": "ok"}
+
+        st = {"knoepfe": {"aktiv": "jetzt", "a": 16, "bis_kwh": 20}, "fortschritt": {"kwh": 7.36}}
+        get = lambda url, is_post: (200, st)  # noqa: E731
+        steuerung.choose(STUFEN, "a10", post, item="laden:ampere", get=get)
+        steuerung.choose(STUFEN, "k30", post, item="laden:ziel", get=get)
+        st["fortschritt"]["kwh"] = 19.8
+        steuerung.choose(STUFEN, "a6", post, item="laden:ampere", get=get)
+        self.assertEqual(sent, [{"a": 10, "bis_kwh": 12.6}, {"a": 16, "bis_kwh": 30}, {"a": 6, "bis_kwh": 1.0}])
+
 
 class TestKabelAusSteuerung(unittest.TestCase):
     def test_module_hands_the_house_state_to_the_cable_tile_and_asks_once(self):

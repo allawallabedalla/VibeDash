@@ -67,17 +67,32 @@ def _amps(cfg: dict | None) -> str:
     return f" {a:g} A" if ok else ""
 
 
+def _bis(akt: dict) -> str:
+    """The running "Jetzt laden"'s end in words: "60 %", "28 kWh" or "" (= full)."""
+    p, k = akt.get("bis_pct"), akt.get("bis_kwh")
+    if isinstance(p, int):
+        return f"{p} %" if p < 100 else ""
+    return f"{k:.0f} kWh" if isinstance(k, (int, float)) and not isinstance(k, bool) and k > 0 else ""
+
+
 def section(st: dict | None, cfg: dict | None = None) -> dict:
     amps = _amps(cfg)
+    akt = _aktiv(st)
+    if akt.get("a"):  # the running charge's own current wins over the config's default
+        amps = f" {akt['a']} A"
+    bis = _bis(akt)  # Nutzer 01.11.2026: „bis voll“ neben gewählten 60 % war widersprüchlich
     mode = ((st or {}).get("knoepfe") or {}).get("aktiv")
     selected = mode if mode in {v for v, _, _ in OPTIONS} else None
     opts = []
     for v, label, sub in OPTIONS:
         sub = sub.format(a=amps)
+        if v == "jetzt" and bis:
+            label, sub = "Jetzt laden", sub.replace("bis voll", f"bis {bis}")
         if v == "automatik" and (st or {}).get("plan_kurz"):
             sub = f"Plan: {st['plan_kurz']}"[:80]
         opts.append({"value": v, "label": label, "sub": sub})
     lage = (st or {}).get("text")
+    ende = f"endet bei {bis}" if bis else "endet von selbst, wenn das Auto voll ist"
     return {
         "type": "choice",
         "title": "Laden",
@@ -86,7 +101,7 @@ def section(st: dict | None, cfg: dict | None = None) -> dict:
         "options": opts,
         "slot": "top",
         "note": (f"Jetzt: {lage}. " if lage else "Steuerung nicht erreichbar. ")
-        + "„Jetzt voll laden“ endet von selbst, wenn das Auto voll ist oder abgesteckt wird.",
+        + f"„{opts[-1]['label']}“ {ende} oder wenn abgesteckt wird.",
         "info": {
             "what": "Automatik lädt nur nach Plan ohne Netzstrom fürs Auto. „Jetzt voll laden“ lädt sofort"
             + (f" mit{amps}" if amps else "")
@@ -193,12 +208,17 @@ def _wunsch(item: str, value: str, st: dict | None) -> dict | None:
         body["a"] = akt["a"]
     if akt.get("bis_pct"):
         body["bis_pct"] = akt["bis_pct"]
+    elif akt.get("bis_kwh"):  # kWh target: the house counts it from the tap on -> pass what is still missing
+        f = (st or {}).get("fortschritt") or {}
+        done = f.get("kwh") if isinstance(f.get("kwh"), (int, float)) else 0
+        body["bis_kwh"] = round(min(100.0, max(1.0, float(akt["bis_kwh"]) - done)), 1)
     if item == ITEM:
         return body if value == "jetzt" else None
     if item == AMP_ITEM and value[:1] == "a" and value[1:].isdigit():
         return {**body, "a": int(value[1:])}
     if item == ZIEL_ITEM:
         body.pop("bis_pct", None)
+        body.pop("bis_kwh", None)
         if value == "voll":
             return body
         if value[:1] == "p" and value[1:].isdigit():
