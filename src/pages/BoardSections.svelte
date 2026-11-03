@@ -379,12 +379,32 @@
       {:else if s.type === 'text'}
         <p class="text">{s.text}</p>
       {/if}
+      {#if s.link}
+        <a class="link" href={s.link.url} target="_blank" rel="noopener noreferrer"
+          >{s.link.label}</a
+        >
+      {/if}
     </Card>
   {/if}
   <div class="row-gap"></div>
 {/each}
 
 <style>
+  .link {
+    display: inline-flex;
+    align-self: flex-start;
+    width: fit-content;
+    align-items: center;
+    min-height: 44px;
+    margin-top: 12px;
+    padding: 0 18px;
+    border-radius: 22px;
+    background: var(--surface-2);
+    box-shadow: inset 0 0 0 1px var(--line);
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 600;
+  }
   .span {
     display: flex;
     margin: 4px 0 10px;

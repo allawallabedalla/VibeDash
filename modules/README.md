@@ -15,6 +15,7 @@ install). Only the VibeDash server talks to it; the browser never does.
 | `knxlog`      | KNX-Log     | The last 24 hours on the bus: telegrams (values decoded), devices with their last sign of life, light, presence, doors, defects, traffic per 15 min. Only reads.                                                                                                                                                                                            |
 | `ml`          | Modelle     | Accuracy per model (share of correct days, n, history; "open" without enough judged days) and learning state – the house program's model results, on the accuracy block. Only reads.                                                                                                                                                                        |
 | `korrelation` | Korrelation | The weekly correlation atlas: robust pairs, what is worth a look, new / gone since last week, ranking without technically coupled pairs. Only reads.                                                                                                                                                                                                        |
+| `druck`       | 3D-Druck    | The 3D printer (Prusa with PrusaLink): state, progress, time left, nozzle and bed, the file, temperatures (6 h/24 h/7 days), print time per day, the last jobs, links to the house's own printer tools (e.g. a pen plotter). Asks the printer once a minute and keeps a history. Only reads – nothing on the printer is switched.                           |
 
 ## Switch a module on
 
@@ -157,6 +158,21 @@ and `tests/test_gebaeude.py`. A part that is not `ok` shows as "collecting" or i
 
 The analyses themselves (model runs, weekly correlation) run in the house for now; the product's own forecasts
 show their accuracy on the Vorhersagen page (`forecast/`).
+
+## Module `druck` – config keys
+
+| Key         | Meaning                                                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `prusalink` | `{url, benutzer, passwort}` (Digest login of PrusaLink, user usually `maker`) or `{url, api_key}` – keep the file mode 600           |
+| `verlauf`   | history file (one JSON line per reading, relative to the modules folder or absolute), default `druck_verlauf.jsonl`                  |
+| `tage`      | days kept in the history, default 30                                                                                                 |
+| `links`     | optional `[{label, url, text?}]` – a section with a button per link (http/https only), e.g. a pen plotter that uses the same printer |
+| `zeitzone`  | default `Europe/Berlin`                                                                                                              |
+| `texte`     | optional wording overrides (keys in `druck/board.py`, `TEXT`)                                                                        |
+
+The module asks `GET /api/v1/status` once a minute (and `GET /api/v1/job` once per job for the file name) and keeps a line while
+the printer works or heats, else every 10 minutes and on every change. The board asks again when the last reading is older than
+20 s. Mapping: `{ "id": "druck", "title": "3D-Druck", "icon": "printer", "module": "druck" }`.
 
 ## Tests
 

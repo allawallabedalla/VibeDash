@@ -47,7 +47,8 @@
  *   { "type": "chargetimeline", "title": "…", "days": [ { "label": "Heute", "startStep": 35, "startKwh": 4.8,
  *     "pv": [[96 kW values] × cases], "load": [[96] × cases] } ], "battery": { "kwh", "reserveKwh", "eta", "kw" },
  *     "carNeedKwh": 30, "powers": [4.3, 7.1, 11.4] } – 15-minute steps from 0:00, at most 2 days and 40 cases.
- * Every section may carry "note" (one line under it) and "info" ({ what, source } behind ⓘ), and
+ * Every section may carry "note" (one line under it), "info" ({ what, source } behind ⓘ), "link"
+ * ({ label, url } – a button that opens the house's own tool in a new window; http(s) only), and
  * "slot": "top" | "plan" – where a page that embeds the board (the charging page, mapping
  * boards[].onPage) puts it: above its own content, after its plan; without slot at the end.
  */
@@ -84,6 +85,7 @@ interface Base {
   title: string;
   note?: string;
   info?: BoardInfo;
+  link?: { label: string; url: string };
   slot?: 'top' | 'plan';
 }
 export interface SeriesLine {
@@ -318,6 +320,14 @@ const info = (v: unknown): BoardInfo | undefined =>
     ? { what: text(v.what, 600), source: text(v.source, 600) }
     : undefined;
 
+/** A link to open ({ label, url }), only http(s) addresses; else null. */
+function link(v: unknown): { label: string; url: string } | null {
+  if (!isObj(v)) return null;
+  const url = text(v.url, 300);
+  const label = text(v.label, 30);
+  return label && /^https?:\/\/\S+$/.test(url) ? { label, url } : null;
+}
+
 /** Check and trim a service's answer; null when it is not a board at all. */
 export function sanitizeBoard(raw: unknown): Board | null {
   if (!isObj(raw) || !Array.isArray(raw.sections)) return null;
@@ -328,6 +338,7 @@ export function sanitizeBoard(raw: unknown): Board | null {
       title: text(s.title, 80),
       ...(opt(s.note, 400) ? { note: opt(s.note, 400) } : {}),
       ...(info(s.info) ? { info: info(s.info) } : {}),
+      ...(link(s.link) ? { link: link(s.link)! } : {}),
       ...(s.slot === 'top' || s.slot === 'plan' ? { slot: s.slot as 'top' | 'plan' } : {}),
     };
     switch (s.type) {
