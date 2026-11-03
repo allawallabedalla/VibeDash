@@ -1,0 +1,14 @@
+{
+  "$comment": "Module druck – copy to local/modules/druck.json (mode 600: it holds the printer's password). PrusaLink address and login as on the printer's display (Settings → Network → PrusaLink). Only reads.",
+  "prusalink": { "url": "http://192.0.2.10", "benutzer": "maker", "passwort": "" },
+  "verlauf": "druck_verlauf.jsonl",
+  "tage": 30,
+  "links": [
+    {
+      "label": "Stiftplotter",
+      "url": "http://192.0.2.20:8771/",
+      "text": "Zeichnet mit einem Stift statt Filament – über denselben Drucker."
+    }
+  ],
+  "zeitzone": "Europe/Berlin"
+}

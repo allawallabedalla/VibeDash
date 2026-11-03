@@ -2,6 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { sanitizeBoard, sanitizeCalcResult } from '../../src/model/board';
 
 describe('board from a house service: checked and trimmed', () => {
+  it('keeps a section link only for http(s) addresses', () => {
+    const lk = (link: unknown) =>
+      sanitizeBoard({ sections: [{ type: 'text', title: 'T', text: 'x', link }] })!.sections[0]!
+        .link;
+    expect(lk({ label: 'Öffnen', url: 'http://host:8771/' })).toEqual({
+      label: 'Öffnen',
+      url: 'http://host:8771/',
+    });
+    expect(lk({ label: 'x', url: 'javascript:alert(1)' })).toBeUndefined();
+    expect(lk({ label: '', url: 'https://a.b/' })).toBeUndefined();
+    expect(lk('http://a.b/')).toBeUndefined();
+  });
+
   it('rejects what is not a board', () => {
     expect(sanitizeBoard(null)).toBeNull();
     expect(sanitizeBoard({ sections: 'x' })).toBeNull();
