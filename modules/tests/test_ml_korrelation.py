@@ -110,6 +110,9 @@ class TestKorrelation(unittest.TestCase):
                     _pair("s2", "s1", 0.97, "technisch gekoppelt"),
                     _pair("s4", "s3", -0.7, "prüfen"),
                     _pair("s11", "s12", 0.5, "erwartet"),
+                    _pair("s13", "s14", 0.9, "erwartet"),
+                    _pair("s15", "s16", -0.6, "prüfen"),
+                    {**_pair("s5", "s6", 0.8, "erwartet"), "gruppe": "erklaert"},
                 ],
             },
             "namen": {"s3": "Temperatur Bad", "s4": "Feuchte Bad"},
@@ -127,7 +130,8 @@ class TestKorrelation(unittest.TestCase):
                 "Zusammenhänge diese Woche",
                 "Was steckt dahinter",
                 "Unklar",
-                "Erklärt",
+                "Sensor auffällig",
+                "Selbstverständlich",
                 "Neu diese Woche",
                 "Weggefallen",
                 "Alle nach Art",
@@ -136,7 +140,7 @@ class TestKorrelation(unittest.TestCase):
         tiles = {t["label"]: t for t in s["Zusammenhänge diese Woche"]["tiles"]}
         self.assertEqual((tiles["Gefunden"]["unit"], tiles["Gefunden"]["sub"]), ("Paare", "von 1.234 geprüften"))
         self.assertEqual(
-            (tiles["Unklar"]["value"], tiles["Neu"]["value"], tiles["Entfallen"]["value"]), ("1", "2", "1")
+            (tiles["Unklar"]["value"], tiles["Neu"]["value"], tiles["Sensor auffällig"]["value"]), ("1", "0", "1")
         )
         self.assertEqual((tiles["Stand"]["value"], tiles["Stand"]["sub"]), ("19.10.", "Lauf 05:20 Uhr"))
         # unclear · explained · sun/time · technical (both technical pairs at the end)
@@ -151,14 +155,15 @@ class TestKorrelation(unittest.TestCase):
                 "info": "Kein naheliegender Grund bekannt – ein Blick lohnt.",
             },
         )
-        self.assertEqual(s["Erklärt"]["items"][0]["text"], "S5 und s6 steigen gemeinsam")
-        self.assertEqual(s["Erklärt"]["items"][0]["info"], "Heizung wärmt den Raum.")
+        # the obvious ones are one line; a strong obvious pair that is gone points to a sensor (s5/s6 only moved
+        # from hours to days, s11/s12 was weak)
+        self.assertTrue(s["Selbstverständlich"]["text"].startswith("1 Paare mit naheliegendem Grund"))
+        self.assertEqual([i["text"] for i in s["Sensor auffällig"]["items"]], ["S13 und s14 steigen gemeinsam"])
+        self.assertIn("0,90", s["Sensor auffällig"]["items"][0]["info"])
         self.assertNotIn('"look"', json.dumps(b))
-        # news without technical pairs, unclear first; the group is named in the line
-        new = s["Neu diese Woche"]["items"]
-        self.assertEqual([i["text"] for i in new], ["S5 und s6 steigen gemeinsam", "S7 und s8 steigen gemeinsam"])
-        self.assertTrue(new[1]["meta"].startswith("Sonne/Zeit · "))
-        self.assertEqual(s["Weggefallen"]["items"][0]["text"], "S11 und s12 steigen gemeinsam")
+        # news are only unclear pairs
+        self.assertEqual(s["Neu diese Woche"]["items"], [])
+        self.assertEqual([i["text"] for i in s["Weggefallen"]["items"]], ["S15 sinkt, wenn s16 steigt"])
         rows = s["Alle nach Art"]["rows"]
         # the kind as a muted line under the pair; one column per figure, named in the heading, n with its unit
         self.assertEqual([r["note"] for r in rows], ["unklar", "erklärt", "Sonne/Zeit"])

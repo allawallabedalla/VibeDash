@@ -43,7 +43,11 @@ TEXT = {
     "unclear_what": "Gleichlauf ohne naheliegenden Grund. Gleichlauf ist keine Ursache – nur ein Hinweis, wo man "
     "hinschauen kann. Stärke von −1 bis 1; „ohne Tagesgang“: was bleibt, wenn man den üblichen Tagesverlauf "
     "(bei Tageswerten: die Saison) abzieht.",
-    "known_what": "Die stärksten Paare mit naheliegender Erklärung. ⓘ je Zeile: warum.",
+    "known_text": "{n} Paare mit naheliegendem Grund (Taster schaltet Licht, zwei Fühler messen dasselbe, Sonne "
+    "bringt Solarstrom) – sie stimmen. Einzeln stehen sie unten in „Alle nach Art“.",
+    "sensor_what": "Ein selbstverständliches Paar (Stärke ≥ 0,7 letzte Woche) ist diese Woche nicht mehr da. Oft ist "
+    "ein Fühler ausgefallen oder eine Busmeldung kommt nicht mehr – manchmal wurde nur weniger geschaltet.",
+    "sensor_info": "Letzte Woche Stärke {r}, jetzt nicht mehr gefunden. Fühler oder Busmeldung prüfen.",
     "rank_note": "Stärke von −1 bis 1; ohne Tagesgang: bei Tageswerten ohne Saison; Daten: Stunden bzw. Tage mit "
     "Werten; graue Zeile: Art. Ohne Technik; unklar zuerst.",
     "rank_what": "Ohne Messtechnik (dasselbe Gerät, derselbe Wert zweimal) und ohne Paare, bei denen ein Wert aus "
@@ -145,14 +149,19 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
                 out.append(p)
         return out
 
-    # compare with last week (only once last week comes from an earlier run); technical pairs are not news
+    # compare with last week (only once last week comes from an earlier run). News are only unclear pairs: a new
+    # "the button switches the light" says nothing. An obvious pair that was strong and is gone points to a sensor.
     cmp = None
     if v and v.get("statistik") and [s["zeitraum"] for s in v["statistik"]] != [s["zeitraum"] for s in e["statistik"]]:
         old = {_key(p): p for p in v.get("paare") or [] if not p.get("abgeleitet")}
         new = {_key(p): p for p in pairs}
+        now_ab = {k[1:] for k in new}
         cmp = {
-            "neu": [new[k] for k in new if k not in old and group(new[k]) != "technik"],
-            "weg": [old[k] for k in old if k not in new and group(old[k]) != "technik"],
+            "neu": [new[k] for k in new if k not in old and group(new[k]) == "unklar"],
+            "weg": [old[k] for k in old if k not in new and group(old[k]) == "unklar"],
+            "sensor": [
+                old[k] for k in old if k[1:] not in now_ab and group(old[k]) == "erklaert" and strength(old[k]) >= 0.7
+            ],
         }
     by = {g: sorted((p for p in pairs if group(p) == g), key=lambda p: -strength(p)) for g in GROUPS}
     unclear = by["unklar"]
@@ -179,14 +188,15 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
             "value": str(len(cmp["neu"])) if cmp else "–",
             **({"unit": "Paare"} if cmp else {}),
             "icon": "eye",
-            "sub": "seit Vorwoche (ohne Technik)" if cmp else "Vergleich ab nächster Woche",
+            "sub": "unklar, seit Vorwoche" if cmp else "Vergleich ab nächster Woche",
         },
         {
-            "label": "Entfallen",
-            "value": str(len(cmp["weg"])) if cmp else "–",
+            "label": "Sensor auffällig",
+            "value": str(len(distinct(cmp["sensor"]))) if cmp else "–",
             **({"unit": "Paare"} if cmp else {}),
-            "icon": "undo",
-            "sub": "seit Vorwoche (ohne Technik)" if cmp else "Vergleich ab nächster Woche",
+            "icon": "eye",
+            "sub": "Erwartetes fehlt" if cmp else "Vergleich ab nächster Woche",
+            "info": {"what": t["sensor_what"], "source": t["source"]},
         },
         {
             "label": "Messreihen",
@@ -225,24 +235,32 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
             "info": {"what": t["unclear_what"], "source": t["source"]},
         }
     )
-    if by["erklaert"]:
+    if cmp:
+        sensor = distinct(sorted(cmp["sensor"], key=lambda p: -strength(p)))
         sections.append(
             {
                 "type": "list",
-                "title": "Erklärt",
-                "items": [item(p) for p in distinct(by["erklaert"])[:10]],
-                "note": f"Die stärksten von {len(by['erklaert'])}.",
-                "info": {"what": t["known_what"], "source": t["source"]},
+                "title": "Sensor auffällig",
+                "items": [
+                    {"text": pair(p), "meta": rtext(p), "info": t["sensor_info"].format(r=de(strength(p)))}
+                    for p in sensor[:15]
+                ],
+                "note": f"{len(sensor)} erwartete Paare fehlen." if sensor else "Keins – alle erwarteten Paare da.",
+                "info": {"what": t["sensor_what"], "source": t["source"]},
             }
         )
+    # the obvious ones (the button switches the light) are no finding: one line, single pairs in the table
+    if by["erklaert"]:
+        n = len(distinct(by["erklaert"]))
+        sections.append({"type": "text", "title": "Selbstverständlich", "text": t["known_text"].format(n=n)})
     if cmp:
         for title, items in (("Neu diese Woche", cmp["neu"]), ("Weggefallen", cmp["weg"])):
             sections.append(
                 {
                     "type": "list",
                     "title": title,
-                    "items": [item(p, True) for p in distinct(ordered(items))[:15]],
-                    "note": f"{len(items)} Paare (ohne Technik)" if items else "Keine Änderung.",
+                    "items": [item(p) for p in distinct(ordered(items))[:15]],
+                    "note": f"{len(distinct(items))} unklare Paare" if items else "Keine Änderung.",
                 }
             )
     rank = ordered(p for p in pairs if group(p) != "technik")[:150]
