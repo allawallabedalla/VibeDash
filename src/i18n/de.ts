@@ -41,6 +41,8 @@ export const de = {
   'tile.autarky': 'Eigenstrom',
 
   'sub.now': 'jetzt',
+  'sub.loadToday': 'heute {today} kWh',
+  'sub.loadDays': 'heute {today} · gestern {yesterday} kWh',
   'sub.full': 'voll',
   'sub.comfort': 'angenehm {low}–{high}',
   'sub.range': '{low}–{high} · n = {n}',
@@ -614,6 +616,7 @@ export const de = {
   'sub.span': '{low}–{high} · 8 von 10 Fällen',
   'info.yield.house': 'Prognose des Hauses selbst (eigene Tagesprognose), Spanne 10–90 %.',
   'sub.yieldExpected': 'Prognose {value} kWh',
+  'sub.yieldExpectedYesterday': 'Prognose {value} · gestern {yesterday} kWh',
   'sub.houseForecast': 'Prognose des Hauses',
   'info.gapNote': '{from}–{to} ohne Meldung – die Lücke bleibt sichtbar.',
   'info.outlier': 'Um {time} kam ein auffälliger Einzelwert. War der Sensor kurz gestört?',

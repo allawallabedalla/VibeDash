@@ -19,7 +19,8 @@ describe('yield today: the meter first, the forecast below', () => {
     const tile = yieldTodayTile(data);
     expect(tile.approx).toBe(false);
     expect(tile.value).toBe(String(Math.round(daily(data, 'pv_energy').at(-1)!.value)));
-    expect(tile.sub).toMatch(/^sub\.yieldExpected:\d+$/);
+    // yesterday's yield next to the forecast
+    expect(tile.sub).toMatch(/^sub\.yieldExpectedYesterday:\d+$/);
   });
 
   it('falls back to the forecast while the meter has nothing for today', () => {

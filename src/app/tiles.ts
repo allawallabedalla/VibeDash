@@ -169,6 +169,16 @@ export function consumptionNowW(data: DemoData): number {
 }
 
 export function loadTile(data: DemoData): TileProps {
+  // the day so far and yesterday from the meter balance, small under the value now
+  const [today] = perDay(data, 'load_energy', weekDays(data, 1));
+  const [yesterday] = perDay(data, 'load_energy', weekDays(data, 1, -1));
+  const kwh = (v: number) => num(v, v < 100 ? 1 : 0);
+  const sub =
+    today == null
+      ? t('sub.now')
+      : yesterday == null
+        ? t('sub.loadToday', { today: kwh(today) })
+        : t('sub.loadDays', { today: kwh(today), yesterday: kwh(yesterday) });
   return staleOr(data, 'load_power', {
     label: t('tile.home'),
     icon: 'home',
@@ -176,7 +186,7 @@ export function loadTile(data: DemoData): TileProps {
     zoom: zoomKw('load_power', t('tile.home'), 'var(--home)'),
     value: num(consumptionNowW(data) / 1000, 1),
     unit: 'kW',
-    sub: t('sub.now'),
+    sub,
     graphic: {
       kind: 'spark',
       values: last24h(data, 'load_power').map(kw),
@@ -432,6 +442,7 @@ export function yieldTodayTile(data: DemoData): TileProps {
   // today's meter value is the headline; the forecast moves to the line below
   const last = daily(data, 'pv_energy').at(-1);
   const soFar = last?.day === localDateKey(data.now, data.timeZone) ? last.value : undefined;
+  const [yesterday] = perDay(data, 'pv_energy', weekDays(data, 1, -1));
   const base: TileProps = {
     label: t('tile.yield'),
     icon: 'forecast',
@@ -452,7 +463,9 @@ export function yieldTodayTile(data: DemoData): TileProps {
     unit: 'kWh',
     sub:
       soFar !== undefined
-        ? t('sub.yieldExpected', { value: num(fc.value) })
+        ? yesterday == null
+          ? t('sub.yieldExpected', { value: num(fc.value) })
+          : t('sub.yieldExpectedYesterday', { value: num(fc.value), yesterday: num(yesterday) })
         : own
           ? fc.high > fc.low
             ? t('sub.span', { low: num(fc.low), high: num(fc.high) })

@@ -43,6 +43,8 @@ export const en: Record<MessageKey, string> = {
   'tile.autarky': 'Self-supply',
 
   'sub.now': 'now',
+  'sub.loadToday': 'today {today} kWh',
+  'sub.loadDays': 'today {today} · yesterday {yesterday} kWh',
   'sub.full': 'full',
   'sub.comfort': 'comfort {low}–{high}',
   'sub.range': '{low}–{high} · n = {n}',
@@ -605,6 +607,7 @@ export const en: Record<MessageKey, string> = {
   'sub.span': '{low}–{high} · 8 in 10 cases',
   'info.yield.house': 'The house’s own daily forecast, span 10–90 %.',
   'sub.yieldExpected': 'forecast {value} kWh',
+  'sub.yieldExpectedYesterday': 'forecast {value} · yesterday {yesterday} kWh',
   'sub.houseForecast': 'the house’s forecast',
   'info.gapNote': 'Silent {from}–{to} – the gap stays visible.',
   'info.outlier': 'At {time} a single odd value came in. Was the sensor briefly disturbed?',
