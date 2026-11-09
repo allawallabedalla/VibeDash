@@ -62,7 +62,7 @@ def current(path: str, tz, now: float) -> dict | None:
 
 
 def store(path: str, cfg: dict, value: str, tz, now: float) -> dict:
-    """"aus": skip the next morning; "normal": no pause."""
+    """ "aus": skip the next morning; "normal": no pause."""
     d = datetime.fromtimestamp(now, tz)
     data: dict = {"gesetzt": d.isoformat(timespec="minutes")}
     if value == "aus":
