@@ -1,0 +1,7 @@
+{
+  "$comment": "Module updates – copy to local/modules/updates.json. \"stand\" is written by the house (format in vibedash_modules/updates/__init__.py); a tap on „Jetzt“ writes \"wunsch\", which a fixed service of the house picks up and installs the updates. VibeDash installs nothing itself.",
+  "stand": "updates_stand.json",
+  "wunsch": "update_wunsch.json",
+  "warten_min": 30,
+  "zeitzone": "Europe/Berlin"
+}
