@@ -6,6 +6,9 @@ Weather per day, either
   open-meteo  fetched here from Open-Meteo for the location in the config (past days + 4 days ahead), kept
               for an hour.
 Tips from a history file [{"date", "tip"}] that a tip writer keeps (optional).
+Garden soil sensors (optional): the live values straight from the LoRa base station (werte.json: {"geraete": [{name,
+alter_s, bodenfeuchte, lufttemp, luftfeuchte, batterie_v, ausfall, …}]}) and their course from InfluxDB 1.x
+(measurement default bodenklima, tag geraet, fields bodenfeuchte, lufttemp, …; written by the house's collector).
 """
 
 from __future__ import annotations
@@ -52,6 +55,35 @@ def influx_days(cfg: dict, tz, fetch=fetch_json) -> dict:
     except Exception:  # noqa: BLE001
         return {"gemessen": {}, "prognose": {}}
     return out
+
+
+def base_devices(url: str, fetch=fetch_json) -> dict | None:
+    """-> {name: device} from the base station, None when it does not answer (shown as "Basis offline")."""
+    try:
+        res = fetch(url, 5)
+        return {str(g.get("name")): g for g in (res or {}).get("geraete") or [] if isinstance(g, dict)}
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def influx_soil(cfg: dict, measurement: str, device: str, fetch=fetch_json) -> dict:
+    """-> {"x": [ms], "bodenfeuchte": [...], "lufttemp": [...]} hourly means of the last 7 days ({} on errors)."""
+    url = (cfg.get("url") or "http://127.0.0.1:8086").rstrip("/")
+    q = (
+        f"SELECT mean(bodenfeuchte) AS bodenfeuchte, mean(lufttemp) AS lufttemp FROM "
+        f"{_ident(measurement or 'bodenklima')} WHERE \"geraet\" = '{str(device).replace(chr(39), '')}' "
+        "AND time > now() - 7d GROUP BY time(1h) fill(none)"
+    )
+    try:
+        res = fetch(f"{url}/query?" + urllib.parse.urlencode({"db": cfg.get("db") or "", "q": q, "epoch": "ms"}), 15)
+        ser = ((res or {}).get("results") or [{}])[0].get("series") or []
+        if not ser:
+            return {}
+        cols = ser[0].get("columns") or []
+        rows = [dict(zip(cols, v, strict=False)) for v in ser[0].get("values") or []]
+    except Exception:  # noqa: BLE001
+        return {}
+    return {"x": [int(r["time"]) for r in rows], **{f: [r.get(f) for r in rows] for f in ("bodenfeuchte", "lufttemp")}}
 
 
 _CACHE: dict = {}  # key -> (time, days); module objects are made per request, so the cache lives here

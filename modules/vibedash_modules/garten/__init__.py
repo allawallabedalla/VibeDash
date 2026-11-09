@@ -6,6 +6,9 @@ Config (local/modules/garten.json, template modules/templates/garten.json):
               influx.db is set, else open-meteo
   influx      {url, db, measurement?} – daily weather (measurement default wetter_tag, see source.py)
   standort    {lat, lon} – location for open-meteo
+  bereiche    optional garden areas with a soil sensor: [{"name": "Obstwiese", "geraet": "beet", "basis":
+              "http://…/werte.json"}] – live values from the base station, course from influx.url/db, measurement
+              sensor_measurement (default bodenklima)
   tipps       optional path of the tip history [{"date", "tip"}] (relative to the modules folder or absolute)
   zeitzone    default "Europe/Berlin"
   texte       optional wording overrides (keys of board.TEXT)
@@ -54,7 +57,24 @@ class Module:
                 tips = board.recent_tips(source.load_json(self.path(p)), today)
             except (OSError, ValueError):
                 tips = []
-        return board.build(days, tips, today, int(now * 1000), self.t)
+        areas, bases = [], {}
+        for a in self.cfg.get("bereiche") or []:
+            if not (isinstance(a, dict) and a.get("name") and a.get("geraet") and a.get("basis")):
+                continue
+            if a["basis"] not in bases:
+                bases[a["basis"]] = source.base_devices(a["basis"], self.fetch)
+            devs = bases[a["basis"]]
+            areas.append(
+                {
+                    "name": str(a["name"]),
+                    "online": devs is not None,
+                    "live": (devs or {}).get(str(a["geraet"])),
+                    "course": source.influx_soil(
+                        self.cfg.get("influx") or {}, self.cfg.get("sensor_measurement"), a["geraet"], self.fetch
+                    ),
+                }
+            )
+        return board.build(days, tips, today, int(now * 1000), self.t, areas)
 
 
 def _num(x) -> bool:
