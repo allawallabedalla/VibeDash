@@ -79,8 +79,12 @@ class TestGarten(unittest.TestCase):
                     {
                         "series": [
                             {
-                                "columns": ["time", "bodenfeuchte", "lufttemp"],
-                                "values": [[x[0], 40.0, 8.0], [x[1], 41.0, None], [x[2], 42.0, 9.5]],
+                                "columns": ["time", "bodenfeuchte", "lufttemp", "luftfeuchte", "batterie_v"],
+                                "values": [
+                                    [x[0], 40.0, 8.0, 90.0, 3.1],
+                                    [x[1], 41.0, None, 91.0, None],
+                                    [x[2], 42.0, 9.5, 92.0, None],
+                                ],
                             }
                         ]
                     }
@@ -201,6 +205,12 @@ class TestGartenSensor(TestGarten):
         self.assertEqual((tiles["Funk"]["value"], tiles["Funk"]["sub"]), ("vor 5 min", "letztes Paket"))
         self.assertNotIn("state", tiles["Funk"])
         self.assertEqual(s["Bodenfeuchte 7 Tage"]["lines"][0]["values"], [40.0, 41.0, 42.0])
+        # a tap on the tile shows its course; too few values (battery) give no curve
+        self.assertEqual(tiles["Boden"]["spark"], [40.0, 41.0, 42.0])
+        self.assertEqual(tiles["Feuchte"]["spark"], [90.0, 91.0, 92.0])
+        self.assertEqual(tiles["Boden"]["sparkTo"] - tiles["Boden"]["sparkFrom"], 2 * 3_600_000)
+        self.assertNotIn("spark", tiles["Batterie"])
+        self.assertNotIn("spark", tiles["Funk"])
         self.assertEqual(s["Lufttemperatur 7 Tage"]["unit"], "°C")
         # the sensor block comes right after the weather
         titles = list(s)

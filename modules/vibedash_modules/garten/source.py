@@ -66,11 +66,15 @@ def base_devices(url: str, fetch=fetch_json) -> dict | None:
         return None
 
 
+COURSE = ("bodenfeuchte", "lufttemp", "luftfeuchte", "batterie_v")
+
+
 def influx_soil(cfg: dict, measurement: str, device: str, fetch=fetch_json) -> dict:
-    """-> {"x": [ms], "bodenfeuchte": [...], "lufttemp": [...]} hourly means of the last 7 days ({} on errors)."""
+    """-> {"x": [ms], field: [...]} for the fields in COURSE, hourly means of the last 7 days ({} on errors)."""
     url = (cfg.get("url") or "http://127.0.0.1:8086").rstrip("/")
     q = (
-        f"SELECT mean(bodenfeuchte) AS bodenfeuchte, mean(lufttemp) AS lufttemp FROM "
+        "SELECT mean(bodenfeuchte) AS bodenfeuchte, mean(lufttemp) AS lufttemp, mean(luftfeuchte) AS luftfeuchte, "
+        f"mean(batterie_v) AS batterie_v FROM "
         f"{_ident(measurement or 'bodenklima')} WHERE \"geraet\" = '{str(device).replace(chr(39), '')}' "
         "AND time > now() - 7d GROUP BY time(1h) fill(none)"
     )
@@ -83,7 +87,7 @@ def influx_soil(cfg: dict, measurement: str, device: str, fetch=fetch_json) -> d
         rows = [dict(zip(cols, v, strict=False)) for v in ser[0].get("values") or []]
     except Exception:  # noqa: BLE001
         return {}
-    return {"x": [int(r["time"]) for r in rows], **{f: [r.get(f) for r in rows] for f in ("bodenfeuchte", "lufttemp")}}
+    return {"x": [int(r["time"]) for r in rows], **{f: [r.get(f) for r in rows] for f in COURSE}}
 
 
 _CACHE: dict = {}  # key -> (time, days); module objects are made per request, so the cache lives here
