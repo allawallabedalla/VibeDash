@@ -200,6 +200,122 @@ class TestKorrelation(unittest.TestCase):
             self.assertEqual(b["sections"][0]["title"], "Noch kein Ergebnis")
 
 
+def _week():
+    k = TestKorrelation()
+    k.setUp()
+    return k.data
+
+
+class TestPair(unittest.TestCase):
+    """Compare two values: the picker on the board and the answer from the house as sections."""
+
+    signale = [
+        {"id": "s1", "name": "Strom", "bereich": "Energie", "ebenen": "hd"},
+        {"id": "s2", "name": "Sonne", "bereich": "Wetter", "ebenen": "h"},
+        {"id": "s3", "name": "Raum", "bereich": "Klima", "ebenen": "hd"},
+    ]
+    res = {
+        "ok": True,
+        "ebene": "h",
+        "name_a": "Sonne",
+        "name_b": "Strom",
+        "einheit_a": "W/m²",
+        "einheit_b": "W",
+        "n": 600,
+        "neff": 80.4,
+        "r": 0.9,
+        "r_lo": 0.85,
+        "r_hi": 0.94,
+        "p": 1e-9,
+        "rs": 0.88,
+        "rb": 0.8,
+        "rb_lo": 0.7,
+        "rb_hi": 0.86,
+        "haelften": [0.88, 0.93],
+        "versatz_h": -1,
+        "r_versatz": 0.82,
+        "min_ueberlappung": 336,
+        "warum": "Mehr Sonne, mehr Solarstrom.",
+        "verlauf": {"x": [1, 2, 3], "a": [0.1, None, -0.2], "b": [0.3, 0.1, -0.4]},
+        "stufen": [{"von": 0, "bis": 40, "b": 78.2, "n": 400}, {"von": 41, "bis": 500, "b": 3000.4, "n": 200}],
+    }
+
+    def module(self, fetch):
+        return Korr(URL, lambda p: p, fetch, lambda: NOW)
+
+    def test_picker_on_board(self):
+        data = {**_week(), "signale": self.signale}
+        b = self.module(lambda u, t=60: data).board()
+        ps = [s for s in b["sections"] if s["type"] == "pair"]
+        self.assertEqual(len(ps), 1)
+        p = ps[0]
+        self.assertEqual([o["value"] for o in p["options"]], ["s1", "s2", "s3"])
+        self.assertEqual(p["options"][1], {"value": "s2", "label": "Sonne", "group": "Wetter", "levels": ["h"]})
+        self.assertNotEqual(p["a"], p["b"])
+        self.assertIn(p["level"], ("h", "d"))
+        # no list from the house: no picker, the rest as before
+        b = self.module(lambda u, t=60: _week()).board()
+        self.assertFalse([s for s in b["sections"] if s["type"] == "pair"])
+
+    def test_calc(self):
+        asked = []
+
+        def fetch(u, t=60):
+            asked.append(u)
+            return self.res
+
+        st, body = self.module(fetch).calc({"pair": {"a": "wetter.x/ä b", "b": "s1", "level": "h"}})
+        self.assertEqual(st, 200)
+        self.assertEqual(asked, ["http://haus.invalid/x/paar?a=wetter.x%2F%C3%A4+b&b=s1&ebene=h"])
+        kinds = [s["type"] for s in body["sections"]]
+        self.assertEqual(kinds, ["tiles", "text", "bars", "series"])
+        tiles = {x["label"]: x for x in body["sections"][0]["tiles"]}
+        self.assertEqual(tiles["Stärke"]["value"], "0,90")
+        self.assertEqual(tiles["Stärke"]["sub"], "95 %: 0,85 bis 0,94")
+        self.assertEqual(tiles["Stabil"]["value"], "ja")
+        self.assertNotIn("Versatz", tiles)  # one hour later is not clearly stronger
+        text = body["sections"][1]["text"]
+        self.assertIn("Starker Gleichlauf", text)
+        self.assertIn("kaum Zufall", text)
+        self.assertIn("keine Ursache", text)
+        bars = body["sections"][2]
+        self.assertEqual(bars["labels"], ["0,00–40,0", "41,0–500"])
+        self.assertEqual(bars["values"], [78, 3000])
+
+    def test_calc_refuses_and_explains(self):
+        m = self.module(lambda u, t=60: {"ok": False, "grund": "zu_selten", "namen": ["Raum"]})
+        for bad in (
+            {},
+            {"pair": {"a": "s1", "b": 2, "level": "h"}},
+            {"pair": {"a": "s1", "b": "s2", "level": "x"}},
+            {"pair": {"a": "s1\n", "b": "s2", "level": "h"}},
+        ):
+            self.assertEqual(m.calc(bad)[0], 400)
+        st, body = m.calc({"pair": {"a": "s1", "b": "s3", "level": "d"}})
+        self.assertEqual(st, 200)
+        self.assertEqual(body["sections"][0]["type"], "text")
+        self.assertIn("Raum ändert sich zu selten", body["sections"][0]["text"])
+        st, body = self.module(_broken).calc({"pair": {"a": "s1", "b": "s3", "level": "d"}})
+        self.assertEqual(st, 200)
+        self.assertIn("gescheitert", body["sections"][0]["text"])
+
+    def test_weak_and_lag(self):
+        from vibedash_modules.korrelation import pair
+
+        weak = {**self.res, "r": -0.12, "p": 0.3, "rb": -0.05, "haelften": [-0.18, 0.03], "n": 100}
+        secs = pair.sections(weak, {"source": "Atlas"})
+        text = secs[1]["text"]
+        self.assertIn("Schwacher Gleichlauf", text)
+        self.assertIn("sinkt meist Strom", text)
+        self.assertIn("Zufall sein", text)
+        self.assertIn("unsicher", text)  # fewer than two weeks together
+        self.assertNotIn("Mehr Sonne", text)  # no reason for a weak pair
+        lag = {**self.res, "versatz_h": 2, "r_versatz": 0.9, "rb": 0.6}
+        tiles = {x["label"]: x for x in pair.sections(lag, {"source": "Atlas"})[0]["tiles"]}
+        self.assertEqual(tiles["Versatz"]["value"], "2")
+        self.assertIn("Sonne folgt Strom", tiles["Versatz"]["sub"])
+
+
 class TestTemplates(unittest.TestCase):
     def test_load(self):
         base = tempfile.mkdtemp(prefix="vd-ml-")

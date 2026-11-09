@@ -167,7 +167,7 @@
     sections.forEach((s, i) => {
       if (!inSlot(s)) return;
       // calculators reach the page only where the server has a way for their value
-      if (s.type === 'calc') {
+      if (s.type === 'calc' || s.type === 'pair') {
         out.push({ s, calc: i });
         const r = results.get(i);
         if (r) for (const x of r.sections) out.push({ s: x });
@@ -216,6 +216,19 @@
           calc={s}
           timeZone={house.timeZone}
           hideLabel={s.label === s.title}
+          onresult={(r) => (r ? results.set(calc!, r) : results.delete(calc!))}
+        />
+      {/await}
+    </Card>
+  {:else if s.type === 'pair'}
+    <Card title={s.title} icon="target" color="var(--home)" note={s.note} info={s.info}>
+      <!-- loaded only where a board has a pair picker (first-page budget) -->
+      {#await import('../components/BoardPair.svelte')}
+        <p class="muted-note" role="status">{t('state.loading')}</p>
+      {:then { default: BoardPair }}
+        <BoardPair
+          board={id}
+          pair={s}
           onresult={(r) => (r ? results.set(calc!, r) : results.delete(calc!))}
         />
       {/await}

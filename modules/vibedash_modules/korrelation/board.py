@@ -50,6 +50,11 @@ TEXT = {
     "sensor_info": "Letzte Woche Stärke {r}, jetzt nicht mehr gefunden. Fühler oder Busmeldung prüfen.",
     "rank_note": "Stärke von −1 bis 1; ohne Tagesgang: bei Tageswerten ohne Saison; Daten: Stunden bzw. Tage mit "
     "Werten; graue Zeile: Art. Ohne Technik; unklar zuerst.",
+    "pair_title": "Zwei Messwerte vergleichen",
+    "pair_button": "Vergleichen",
+    "pair_note": "Zwei beliebige Messwerte wählen – das Haus rechnet die Korrelation.",
+    "pair_what": "Wie stark zwei Messwerte gemeinsam steigen oder fallen (−1 bis 1), gerechnet auf denselben Daten "
+    "und mit denselben Regeln wie der Wochenlauf. Gleichlauf ist keine Ursache.",
     "rank_what": "Ohne Messtechnik (dasselbe Gerät, derselbe Wert zweimal) und ohne Paare, bei denen ein Wert aus "
     "dem anderen gerechnet ist (z. B. WP-Strom aus der Außentemperatur). Stärkste 150.",
 }
@@ -87,6 +92,46 @@ def _plural(name: str) -> bool:
 
 def _cap(s: str) -> str:
     return s[:1].upper() + s[1:]
+
+
+LEVELS = (("h", "Stunden"), ("d", "Tage"))
+
+
+def pair_section(data: dict, pairs: list, t: dict) -> dict | None:
+    """The picker "two values": every value of the house's grids, grouped by area; preselected the strongest
+    unclear pair of the week (else the strongest one)."""
+    sig = [s for s in data.get("signale") or [] if isinstance(s, dict) and isinstance(s.get("id"), str)]
+    if len(sig) < 2:
+        return None
+    ids = {s["id"] for s in sig}
+    first = next(
+        (
+            p
+            for p in sorted(pairs, key=lambda p: (group(p) != "unklar", -strength(p)))
+            if p["a"] in ids and p["b"] in ids
+        ),
+        None,
+    )
+    return {
+        "type": "pair",
+        "title": t["pair_title"],
+        "options": [
+            {
+                "value": s["id"],
+                "label": clean(s.get("name") or s["id"], 80),
+                **({"group": clean(s["bereich"], 40)} if s.get("bereich") else {}),
+                **({"levels": [c for c in s["ebenen"] if c in "hd"]} if s.get("ebenen") else {}),
+            }
+            for s in sig
+        ],
+        "levels": [{"value": v, "label": lb} for v, lb in LEVELS],
+        "a": first["a"] if first else sig[0]["id"],
+        "b": first["b"] if first else sig[1]["id"],
+        "level": "d" if first and first["ebene"] == "Tage" else "h",
+        "button": t["pair_button"],
+        "note": t["pair_note"],
+        "info": {"what": t["pair_what"], "source": t["source"]},
+    }
 
 
 def build(data: dict, now_ms: int, t: dict, tz) -> dict:
@@ -213,6 +258,9 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
         },
     ]
     sections = [{"type": "tiles", "title": "Zusammenhänge diese Woche", "tiles": tiles}]
+    ps = pair_section(data, pairs, t)
+    if ps:
+        sections.append(ps)
     sections.append(
         {
             "type": "bars",

@@ -100,8 +100,8 @@ export interface ApiDeps {
     b: BoardMapping,
     a: BoardActionRequest,
   ) => Promise<{ status: number; body: unknown }>;
-  /** Calculator value (slider) sent to the board's house service, which only calculates. */
-  boardCalc?: (b: BoardMapping, value: number) => Promise<{ status: number; body: unknown }>;
+  /** Calculator value (slider) or a pair of values sent to the board's house service, which only calculates. */
+  boardCalc?: (b: BoardMapping, input: CalcInput) => Promise<{ status: number; body: unknown }>;
   /** The local feedback backlog (server/feedback.ts). */
   feedback?: FeedbackStore;
   /** Setup assistant (server/setup.ts): only with the starter pack (EVCC + SETUP_CODE). */
@@ -392,6 +392,23 @@ async function handleBoardAction(id: string, deps: ApiDeps, req: RequestInfo): P
   }
 }
 
+/** What a calculator sends: a slider value, or two values to compare (section "pair"). */
+export type CalcInput = { value: number } | { pair: { a: string; b: string; level: string } };
+// eslint-disable-next-line no-control-regex
+const PAIR_VALUE = /^[^\u0000-\u001f\u007f]{1,200}$/;
+function calcInput(body: Record<string, unknown> | null): CalcInput | null {
+  const value = body?.value;
+  if (typeof value === 'number')
+    return Number.isFinite(value) && Math.abs(value) <= 1_000_000 ? { value } : null;
+  const p = body?.pair as Record<string, unknown> | undefined;
+  if (!p || typeof p !== 'object') return null;
+  const { a, b, level } = p;
+  if (typeof a !== 'string' || typeof b !== 'string' || typeof level !== 'string') return null;
+  if (!PAIR_VALUE.test(a) || !PAIR_VALUE.test(b) || a === b || !/^[a-z0-9_-]{1,16}$/.test(level))
+    return null;
+  return { pair: { a, b, level } };
+}
+
 /** A calculation can take a while: at most 6 a minute, one at a time. */
 const calcs: number[] = [];
 let calcBusy = false;
@@ -401,17 +418,15 @@ async function handleBoardCalc(id: string, deps: ApiDeps, req: RequestInfo): Pro
   if (!b || !(b.calcUrl || b.module) || !deps.boardCalc) return json(404, { error: 'no_calc' });
   const refused = writeGuard(req, 200);
   if (refused) return refused;
-  const body = parseBody(req);
-  const value = body?.value;
-  if (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) > 1_000_000)
-    return json(400, { error: 'bad_value' });
+  const input = calcInput(parseBody(req));
+  if (!input) return json(400, { error: 'bad_value' });
   const now = deps.now();
   while (calcs.length && now - calcs[0]! > 60_000) calcs.shift();
   if (calcBusy || calcs.length >= 6) return json(429, { error: 'too_many' });
   calcs.push(now);
   calcBusy = true;
   try {
-    const r = await deps.boardCalc(b, value);
+    const r = await deps.boardCalc(b, input);
     const sections = r.status >= 200 && r.status < 300 ? sanitizeCalcResult(r.body) : null;
     if (!sections) return json(502, { error: 'upstream' });
     return json(200, { sections });

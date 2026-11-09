@@ -482,3 +482,71 @@ describe('charge timeline sections', () => {
     expect(tl({ days: [{ label: 'x', pv: [row(-1), row()], load: [row(), row()] }] })).toEqual([]);
   });
 });
+
+describe('pair sections (compare two values)', () => {
+  const pair = (extra: Record<string, unknown>) =>
+    sanitizeBoard({
+      sections: [
+        {
+          type: 'pair',
+          title: 'Zwei Werte',
+          options: [
+            { value: 'pv.ac_w', label: 'Solar', group: 'Energie', levels: ['h', 'd', 'x'] },
+            { value: 'raum.ist/Büro', label: 'Büro', levels: ['h'] },
+            { value: 'raum.ist/Büro', label: 'doppelt' },
+            { value: 'a\nb', label: 'Steuerzeichen' },
+            { value: '', label: 'leer' },
+            { value: 'x'.repeat(201), label: 'zu lang' },
+          ],
+          levels: [
+            { value: 'h', label: 'Stunden' },
+            { value: 'd', label: 'Tage' },
+            { value: 'Bad Level', label: 'x' },
+          ],
+          a: 'pv.ac_w',
+          b: 'unbekannt',
+          level: 'd',
+          button: 'Vergleichen',
+          ...extra,
+        },
+      ],
+    })!.sections;
+
+  it('keeps sane options, levels and the preselection', () => {
+    const [s] = pair({});
+    expect(s).toMatchObject({
+      type: 'pair',
+      a: 'pv.ac_w',
+      b: null,
+      level: 'd',
+      button: 'Vergleichen',
+      levels: [
+        { value: 'h', label: 'Stunden' },
+        { value: 'd', label: 'Tage' },
+      ],
+      options: [
+        { value: 'pv.ac_w', label: 'Solar', group: 'Energie', levels: ['h', 'd'] },
+        { value: 'raum.ist/Büro', label: 'Büro', levels: ['h'] },
+      ],
+    });
+  });
+
+  it('drops a picker without two options or levels, and never inside a calculation answer', () => {
+    expect(pair({ options: [{ value: 'a', label: 'A' }] })).toEqual([]);
+    expect(pair({ levels: [] })).toEqual([]);
+    expect(pair({ level: 'zz' })[0]).toMatchObject({ level: 'h' });
+    expect(
+      sanitizeCalcResult({
+        sections: [
+          {
+            type: 'pair',
+            title: 'x',
+            options: [{ value: 'a' }, { value: 'b' }],
+            levels: [{ value: 'h' }],
+          },
+          { type: 'text', title: 'T', text: 'ok' },
+        ],
+      })!.map((x) => x.type),
+    ).toEqual(['text']);
+  });
+});
