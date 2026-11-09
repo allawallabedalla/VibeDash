@@ -16,6 +16,7 @@ install). Only the VibeDash server talks to it; the browser never does.
 | `ml`          | Modelle     | Accuracy per model (share of correct days, n, history; "open" without enough judged days) and learning state – the house program's model results, on the accuracy block. Only reads.                                                                                                                                                                        |
 | `korrelation` | Korrelation | The weekly correlation atlas: robust pairs, what is worth a look, new / gone since last week, ranking without technically coupled pairs. Only reads.                                                                                                                                                                                                        |
 | `druck`       | 3D-Druck    | The 3D printer (Prusa with PrusaLink): state, progress, time left, nozzle and bed, the file, temperatures (6 h/24 h/7 days), print time per day, the last jobs, links to the house's own printer tools (e.g. a pen plotter). Asks the printer once a minute and keeps a history. Only reads – nothing on the printer is switched.                           |
+| `updates`     | Updates     | Software updates of the house computer: open packages (security first), restart due, last run; a choice „Jetzt“ stores a wish that a fixed service of the house picks up and installs them. VibeDash installs nothing itself.                                                                                                                               |
 
 ## Switch a module on
 
@@ -177,3 +178,17 @@ the printer works or heats, else every 10 minutes and on every change. The board
 ## Tests
 
 `python3 -m unittest discover -s tests -t .` (synthetic house only), lint with `ruff` (CI).
+
+## Module `updates` – config keys
+
+| Key          | Meaning                                                                                                     |
+| ------------ | ----------------------------------------------------------------------------------------------------------- |
+| `stand`      | status file the house writes: open packages, restart, last run (format at the top of `updates/__init__.py`) |
+| `wunsch`     | wish file this module writes on „Jetzt“ (`{wunsch: "installieren", gesetzt}`), default `update_wunsch.json` |
+| `warten_min` | a wish the house has not picked up after this many minutes counts as lost, default 30                       |
+| `zeitzone`   | default `Europe/Berlin`                                                                                     |
+| `texte`      | optional wording overrides (keys in `updates/__init__.py`, `TEXT`)                                          |
+
+The house runs the install outside VibeDash, e.g. a system path unit on the wish file that starts a fixed,
+root-owned script (`apt-get upgrade` without removing anything), then rewrites the status file. The wish holds no
+package names or commands, so the dashboard cannot ask for anything but "install the open updates now".
