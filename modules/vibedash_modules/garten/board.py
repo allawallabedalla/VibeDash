@@ -107,6 +107,15 @@ def area_sections(a: dict, t: dict) -> list:
         out = [{"type": "text", "title": name, "text": t["no_device"]}]
     else:
         src = {"source": t["area_source"]}
+        c = a.get("course") or {}
+
+        def spark(key):
+            # the course behind a tap on the tile (enlarged with a time axis)
+            vals = c.get(key) or []
+            if sum(v is not None for v in vals) < 2:
+                return {}
+            return {"spark": vals, "sparkFrom": c["x"][0], "sparkTo": c["x"][-1]}
+
         soil, temp, hum, bat = g.get("bodenfeuchte"), g.get("lufttemp"), g.get("luftfeuchte"), g.get("batterie_v")
         age = g.get("alter_s")
         late = bool(g.get("ausfall")) or (isinstance(age, (int, float)) and age > QUIET_S)
@@ -121,6 +130,7 @@ def area_sections(a: dict, t: dict) -> list:
                 "sub": t["soil_sub"] if soil is not None else t["soil_none"],
                 "icon": "droplet",
                 "color": "climate",
+                **spark("bodenfeuchte"),
             },
             {
                 "label": t["air"],
@@ -128,6 +138,7 @@ def area_sections(a: dict, t: dict) -> list:
                 "sub": t["air_sub"],
                 "icon": "thermometer",
                 "color": "climate",
+                **spark("lufttemp"),
             },
             {
                 "label": t["air_hum"],
@@ -136,6 +147,7 @@ def area_sections(a: dict, t: dict) -> list:
                 "sub": t["hum_sub"],
                 "icon": "droplet",
                 "color": "climate",
+                **spark("luftfeuchte"),
             },
             {
                 "label": t["battery"],
@@ -145,6 +157,7 @@ def area_sections(a: dict, t: dict) -> list:
                 **({"state": bat_state} if bat_state else {}),
                 "icon": "battery",
                 "color": "climate",
+                **spark("batterie_v"),
             },
             {
                 "label": t["packet"],
