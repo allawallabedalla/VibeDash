@@ -87,7 +87,7 @@ if (deps.mapping?.boards?.length) {
     const board = sanitizeBoard(await r.json());
     // a calculator only where its value has somewhere to go (module or calcUrl)
     if (board && !calcTarget(b, modules))
-      board.sections = board.sections.filter((s) => s.type !== 'calc');
+      board.sections = board.sections.filter((s) => s.type !== 'calc' && s.type !== 'pair');
     return board;
   };
   log(
@@ -108,12 +108,12 @@ if (deps.mapping?.boards?.length) {
   }
   // calculators (slider + button): the value goes to the module or house service, which only calculates
   if (deps.mapping.boards.some((b) => b.calcUrl || b.module)) {
-    deps.boardCalc = async (b, value) => {
+    deps.boardCalc = async (b, input) => {
       const c = calcTarget(b, modules)!;
       const r = await fetch(c.url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...c.headers },
-        body: JSON.stringify({ board: b.id, value }),
+        body: JSON.stringify({ board: b.id, ...input }),
         signal: AbortSignal.timeout(CALC_TIMEOUT_MS),
       });
       return { status: r.status, body: await r.json().catch(() => null) };

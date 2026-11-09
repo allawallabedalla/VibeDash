@@ -43,6 +43,11 @@
  *   A tap sends POST /api/board/<id>/action { item: id, action: "choose", value }; the service
  *   stores the choice and shows it on the next load. A setting for the house's own logic (e.g. how
  *   cautious a charge plan is) – never a direct switch.
+ * "pair" (only if the board takes calculations): pick two of many values and compare them –
+ *   { "type": "pair", "title": "…", "options": [ { "value": "<id>", "label": "…", "group": "…", "levels": ["h", "d"] } ],
+ *     "levels": [ { "value": "h", "label": "Stunden" }, … ], "a": "<id>", "b": "<id>", "level": "h", "button": "…" }
+ *   (2–800 options, value up to 200 printable characters, 1–3 levels). The button sends POST /api/board/<id>/calc
+ *   { pair: { a, b, level } }; the answer is ordinary sections, as for "calc". Only a calculation.
  * "chargetimeline": charge windows to try on the house's weather cases (shown only, switches nothing) –
  *   { "type": "chargetimeline", "title": "…", "days": [ { "label": "Heute", "startStep": 35, "startKwh": 4.8,
  *     "pv": [[96 kW values] × cases], "load": [[96] × cases] } ], "battery": { "kwh", "reserveKwh", "eta", "kw" },
@@ -158,6 +163,7 @@ export type BoardSection =
   | (Base & { type: 'text'; text: string })
   | (Base & BoardCalc)
   | (Base & BoardChoice)
+  | (Base & BoardPair)
   | (Base & BoardChargeTimeline)
   | (Base & BoardPlan);
 
@@ -176,6 +182,17 @@ export interface BoardChoice {
   /** disabled: shown but not selectable (e.g. the automatic while it is still locked) */
   options: { value: string; label: string; sub?: string; disabled?: boolean }[];
   selected: string | null;
+}
+
+export interface BoardPair {
+  type: 'pair';
+  /** grouped in the picker by "group"; "levels": the resolutions this value exists in (empty = all) */
+  options: { value: string; label: string; group?: string; levels?: string[] }[];
+  levels: { value: string; label: string }[];
+  a: string | null;
+  b: string | null;
+  level: string;
+  button: string;
 }
 
 export interface BoardCalc {
@@ -528,6 +545,11 @@ export function sanitizeBoard(raw: unknown): Board | null {
         if (c) sections.push({ ...base, ...c });
         break;
       }
+      case 'pair': {
+        const c = sanitizePair(s);
+        if (c) sections.push({ ...base, ...c });
+        break;
+      }
       default:
         break;
     }
@@ -641,6 +663,52 @@ function sanitizeChoice(s: O): BoardChoice | null {
   };
 }
 
+/** A value of a pair picker: printable, no control characters (it goes back to the house as data only). */
+// eslint-disable-next-line no-control-regex
+const PAIR_VALUE = /^[^\u0000-\u001f\u007f]{1,200}$/;
+const LEVEL = /^[a-z0-9_-]{1,16}$/;
+/** Check a pair picker (2–800 options, unique values, 1–3 levels); null otherwise. */
+function sanitizePair(s: O): BoardPair | null {
+  if (!Array.isArray(s.options) || !Array.isArray(s.levels)) return null;
+  const levels: BoardPair['levels'] = [];
+  for (const l of s.levels.slice(0, 3)) {
+    if (!isObj(l) || typeof l.value !== 'string' || !LEVEL.test(l.value)) continue;
+    if (levels.some((y) => y.value === l.value)) continue;
+    levels.push({ value: l.value, label: text(l.label, 20) || l.value });
+  }
+  if (!levels.length) return null;
+  const known = new Set(levels.map((l) => l.value));
+  const seen = new Set<string>();
+  const options: BoardPair['options'] = [];
+  for (const o of s.options.slice(0, 800)) {
+    if (!isObj(o) || typeof o.value !== 'string' || !PAIR_VALUE.test(o.value) || seen.has(o.value))
+      continue;
+    seen.add(o.value);
+    const group = opt(o.group, 40);
+    const lv = Array.isArray(o.levels)
+      ? o.levels.filter((x): x is string => typeof x === 'string' && known.has(x))
+      : [];
+    options.push({
+      value: o.value,
+      label: text(o.label, 80) || o.value.slice(0, 80),
+      ...(group ? { group } : {}),
+      ...(lv.length ? { levels: lv } : {}),
+    });
+  }
+  if (options.length < 2) return null;
+  const pickOpt = (v: unknown) => (typeof v === 'string' && seen.has(v) ? v : null);
+  const level = typeof s.level === 'string' && known.has(s.level) ? s.level : levels[0]!.value;
+  return {
+    type: 'pair',
+    options,
+    levels,
+    a: pickOpt(s.a),
+    b: pickOpt(s.b),
+    level,
+    button: text(s.button, 20) || 'OK',
+  };
+}
+
 /** A calculator's answer: ordinary sections, at most 8, no calculator inside. */
 export function sanitizeCalcResult(raw: unknown): BoardSection[] | null {
   const b = sanitizeBoard(raw);
@@ -651,6 +719,7 @@ export function sanitizeCalcResult(raw: unknown): BoardSection[] | null {
             x.type !== 'calc' &&
             x.type !== 'plan' &&
             x.type !== 'choice' &&
+            x.type !== 'pair' &&
             x.type !== 'chargetimeline',
         )
         .slice(0, 8)

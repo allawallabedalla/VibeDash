@@ -563,11 +563,11 @@ describe('clicks on board items and the feedback backlog', () => {
       ],
     });
     if (!r0.ok) throw new Error(r0.errors.join());
-    const sent: number[] = [];
+    const sent: unknown[] = [];
     const d = deps({
       mapping: r0.mapping,
-      boardCalc: async (_b, value) => {
-        sent.push(value);
+      boardCalc: async (_b, input) => {
+        sent.push(input);
         return {
           status: 200,
           body: {
@@ -581,16 +581,31 @@ describe('clicks on board items and the feedback backlog', () => {
     });
     const r = await write('/api/board/car/calc', d, { value: 990 });
     expect(r.status).toBe(200);
-    expect(sent).toEqual([990]);
+    expect(sent).toEqual([{ value: 990 }]);
     expect((r.body as { sections: { type: string }[] }).sections.map((x) => x.type)).toEqual([
       'text',
     ]);
     expect((await write('/api/board/car/calc', d, { value: '990' })).status).toBe(400);
+    // two values to compare (section "pair"): passed on as they are, nonsense refused
+    const pair = { a: 'raum.ist/Büro', b: 'wetter temp', level: 'h' };
+    expect((await write('/api/board/car/calc', d, { pair })).status).toBe(200);
+    expect(sent.at(-1)).toEqual({ pair });
+    for (const bad of [
+      { ...pair, b: pair.a },
+      { ...pair, a: '' },
+      { ...pair, a: 'x\ny' },
+      { ...pair, a: 'x'.repeat(201) },
+      { ...pair, level: 'Stunden!' },
+      { a: 1, b: 'x', level: 'h' },
+    ])
+      expect((await write('/api/board/car/calc', d, { pair: bad })).status).toBe(400);
+    sent.length = 0;
+    await write('/api/board/car/calc', d, { value: 990 });
     expect(
       (await write('/api/board/car/calc', d, { value: 1 }, 'http://evil.example')).status,
     ).toBe(403);
     expect((await write('/api/board/care/calc', d, { value: 1 })).status).toBe(404);
-    expect(sent).toEqual([990]);
+    expect(sent).toEqual([{ value: 990 }]);
     const h = (await get('/api/health', d)).body as { boards: { calc?: boolean }[] };
     expect(h.boards[0]!.calc).toBe(true);
     expect(
