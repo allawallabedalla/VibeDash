@@ -40,6 +40,8 @@ TEXT = {
     "now_sub": "{n} Pakete",
     "now_none": "nichts offen",
     "security": "Sicherheit",
+    "security_tile": "Wichtig",
+    "security_sub": "Sicherheitslücken",
     "other": "Sonstige",
     "restart": "Neustart",
     "restart_yes": "nötig",
@@ -174,11 +176,11 @@ class Module:
         end = _ts(run.get("ende"))
         tiles = [
             {
-                "label": t["security"],
+                "label": t["security_tile"],
                 "value": str(len(sec)),
                 "unit": t["packages"],
+                "sub": t["security_sub"],
                 "state": "look" if sec else "ok",
-                "icon": "okCircle" if not sec else "lookCircle",
             },
             {"label": t["other"], "value": str(n - len(sec)), "unit": t["packages"], "state": "ok"},
             {
@@ -210,7 +212,6 @@ class Module:
                 "text": str(p["name"])[:80],
                 "meta": f"{p.get('von') or '?'} → {p.get('nach') or '?'}"
                 + (f" · {t['security']}" if p.get("sicherheit") else ""),
-                **({"state": "look"} if p.get("sicherheit") else {}),
             }
             for p in sorted(pkgs, key=lambda p: (not p.get("sicherheit"), str(p["name"])))
         ][:60]
