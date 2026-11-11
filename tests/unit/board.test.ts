@@ -587,7 +587,7 @@ describe('area picker sections (zones)', () => {
   it('keeps floor, areas with sorted corners, blocked parts and modes', () => {
     const s = zones({
       zones: [
-        { id: 'tisch', name: 'Tisch', rect: [3, 4, 1, 2], own: true },
+        { id: 'tisch', name: 'Tisch', rect: [3, 4, 1, 2], own: true, mode: 'saugen' },
         { id: 'tisch', name: 'doppelt', rect: [1, 1, 2, 2] },
         { id: 'Bad Id', name: 'x', rect: [1, 1, 2, 2] },
         { id: 'flach', name: 'x', rect: [1, 1, 1, 2] },
@@ -601,7 +601,7 @@ describe('area picker sections (zones)', () => {
     expect(s).toMatchObject({
       type: 'zones',
       id: 'zone:v50',
-      zones: [{ id: 'tisch', name: 'Tisch', rect: [1, 2, 3, 4], own: true }],
+      zones: [{ id: 'tisch', name: 'Tisch', rect: [1, 2, 3, 4], own: true, mode: 'saugen' }],
       blocked: [[6, 5, 10, 8]],
       modes: [{ value: 'saugen', label: 'Saugen' }],
     });

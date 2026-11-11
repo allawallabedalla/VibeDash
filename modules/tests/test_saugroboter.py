@@ -270,6 +270,20 @@ class TestBereiche(unittest.TestCase):
         self.assertEqual(self.add(remove="ecke")[0], 200)
         self.assertEqual(next(s for s in self.secs() if s["type"] == "zones")["zones"][1:], [])
 
+    def test_edit_keeps_id(self):
+        self.add(name="Ecke", rect=[1, 1, 2, 2])
+        st, body = self.add(name="Große Ecke", rect=[1, 1, 3, 3], mode="wischen", replace="ecke")
+        self.assertEqual(st, 200, body)
+        self.assertIn("geändert", body["text"])
+        zs = next(s for s in self.secs() if s["type"] == "zones")["zones"]
+        self.assertEqual(
+            zs[1], {"id": "ecke", "name": "Große Ecke", "rect": [1, 1, 3, 3], "own": True, "mode": "wischen"}
+        )
+        c = {s["title"]: s for s in self.secs() if s["type"] == "choice"}
+        self.assertEqual(c["Bereiche V50"]["options"][0]["value"], "b-ecke")
+        self.assertEqual(self.add(name="x", rect=[1, 1, 2, 2], replace="tisch")[0], 404)
+        self.assertEqual(self.add(name="x", rect=[5.9, 1, 7, 4.9], replace="ecke")[0], 400)  # same checks as new
+
     def test_no_plan_no_drawing(self):
         del self.cfg["grundriss"]
         self.assertFalse([s for s in self.secs() if s["type"] == "zones"])

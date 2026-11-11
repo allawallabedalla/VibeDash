@@ -255,7 +255,13 @@ def zone_sections(cfg: dict, path) -> list:
             and _rect(z.get("rechteck_m"))
             and not str(zid).startswith("b-")
         ] + [
-            {"id": b["id"], "name": b["name"][:24], "rect": _rect(b["rechteck_m"]), "own": True}
+            {
+                "id": b["id"],
+                "name": b["name"][:24],
+                "rect": _rect(b["rechteck_m"]),
+                "own": True,
+                "mode": b.get("modus") if b.get("modus") in MODE_SUB else "saugen",
+            }
             for b in own
             if b["geraet"] == robot
         ]
@@ -280,7 +286,8 @@ def zone_sections(cfg: dict, path) -> list:
 
 
 def zone(cfg: dict, path, item: str, z, now_ms: int) -> tuple[int, dict]:
-    """{name, rect, mode} adds an area, {remove: id} deletes one of the drawn areas."""
+    """{name, rect, mode} adds an area, {…, replace: id} changes one of the drawn areas (same id, so its button
+    stays), {remove: id} deletes one."""
     m = ZONE_ITEM.match(str(item or ""))
     karten = cfg.get("karten") or {}
     robot = next((r for r in karten if m and _key(r) == m.group(1)), None)
@@ -316,6 +323,13 @@ def zone(cfg: dict, path, item: str, z, now_ms: int) -> tuple[int, dict]:
     if any(_hits(grown, s) for s in (_rect(x) for x in k.get("sperr_m") or []) if s):
         return 400, {"ok": False, "text": "Bereich berührt eine gesperrte Fläche"}
     mode = z.get("mode") if z.get("mode") in MODE_SUB else "saugen"
+    if "replace" in z:
+        i = next((i for i, b in enumerate(alle) if b.get("geraet") == robot and b.get("id") == z["replace"]), None)
+        if i is None:
+            return 404, {"ok": False, "text": "Bereich nicht gefunden"}
+        alle[i] = {**alle[i], "name": name, "rechteck_m": [round(v, 2) for v in r], "modus": mode, "geaendert": now_ms}
+        _write(p, {**data, "bereiche": alle})
+        return 200, {"ok": True, "text": f"Bereich „{name}“ geändert"}
     if sum(1 for b in alle if b.get("geraet") == robot) >= MAX_OWN:
         return 400, {"ok": False, "text": f"höchstens {MAX_OWN} Bereiche je Roboter"}
     base = _slug(name)

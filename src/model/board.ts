@@ -50,10 +50,10 @@
  *   { pair: { a, b, level } }; the answer is ordinary sections, as for "calc". Only a calculation.
  * "zones" (only if the board takes actions): draw a rectangle on one floor of the plan and name it –
  *   { "type": "zones", "title": "…", "id": "zone:<key>", "floor": { id, name, box, walls, rooms } (as in "plan"),
- *     "zones": [ { "id": "a", "name": "…", "rect": [x0, y0, x1, y1], "own": true } ],
+ *     "zones": [ { "id": "a", "name": "…", "rect": [x0, y0, x1, y1], "own": true, "mode": "a" } ],
  *     "blocked": [[x0, y0, x1, y1]], "modes": [ { "value": "a", "label": "…" } ] }
  *   (at most 40 zones, 10 blocked parts, 1–4 modes). Saving sends POST /api/board/<id>/action { item: id,
- *   action: "zone", zone: { name, rect, mode } }; "own" zones can be removed ({ zone: { remove: id } }).
+ *   action: "zone", zone: { name, rect, mode } }; "own" zones can be changed ({ zone: { …, replace: id } }) or removed ({ zone: { remove: id } }).
  *   Blocked parts are shown hatched and cannot be drawn on. Only stores the area for the house.
  * "chargetimeline": charge windows to try on the house's weather cases (shown only, switches nothing) –
  *   { "type": "chargetimeline", "title": "…", "days": [ { "label": "Heute", "startStep": 35, "startKwh": 4.8,
@@ -198,7 +198,7 @@ export interface BoardZones {
   type: 'zones';
   id: string;
   floor: PlanFloor;
-  zones: { id: string; name: string; rect: ZoneRect; own?: boolean }[];
+  zones: { id: string; name: string; rect: ZoneRect; own?: boolean; mode?: string }[];
   blocked: ZoneRect[];
   modes: { value: string; label: string }[];
 }
@@ -836,6 +836,9 @@ function sanitizeZones(s: O): BoardZones | null {
       name: text(z.name, 24) || zid,
       rect,
       ...(z.own === true ? { own: true } : {}),
+      ...(typeof z.mode === 'string' && modes.some((m) => m.value === z.mode)
+        ? { mode: z.mode }
+        : {}),
     });
   }
   const blocked = list(s.blocked, 10)
