@@ -344,7 +344,8 @@ export interface BoardActionRequest {
   zone?: BoardZoneInput;
 }
 export type BoardZoneInput =
-  { name: string; rect: [number, number, number, number]; mode?: string } | { remove: string };
+  | { name: string; rect: [number, number, number, number]; mode?: string; replace?: string }
+  | { remove: string };
 
 const ZONE_LIMIT = 10_000;
 /** What a "zones" section may send: a name, four plain numbers and a mode word – or an id to remove. */
@@ -363,6 +364,9 @@ function zoneInput(v: unknown): BoardZoneInput | null {
   )
     return null;
   const mode = typeof v.mode === 'string' && /^[a-z0-9_-]{1,32}$/.test(v.mode) ? v.mode : undefined;
+  if ('replace' in v && !(typeof v.replace === 'string' && /^[a-z0-9_-]{1,32}$/.test(v.replace)))
+    return null;
+  const replace = typeof v.replace === 'string' ? v.replace : undefined;
   return {
     name,
     rect: rect.map((x) => Math.round((x as number) * 100) / 100) as [
@@ -372,6 +376,7 @@ function zoneInput(v: unknown): BoardZoneInput | null {
       number,
     ],
     ...(mode ? { mode } : {}),
+    ...(replace ? { replace } : {}),
   };
 }
 

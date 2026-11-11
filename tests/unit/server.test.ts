@@ -718,6 +718,13 @@ describe('clicks on board items and the feedback backlog', () => {
       },
       { board: 'saug', item: 'zone:v50', action: 'zone', zone: { remove: 'sofa' } },
     ]);
+    const edit = await write('/api/board/saug/action', d, {
+      item: 'zone:v50',
+      action: 'zone',
+      zone: { name: 'a', rect: [1, 2, 3, 4], replace: 'sofa' },
+    });
+    expect(edit.status).toBe(200);
+    expect(sent.pop()).toMatchObject({ zone: { name: 'a', replace: 'sofa' } });
     for (const zone of [
       undefined,
       { name: '', rect: [1, 2, 3, 4] },
@@ -725,6 +732,7 @@ describe('clicks on board items and the feedback backlog', () => {
       { name: 'a', rect: [1, 2, 3, '4'] },
       { name: 'a', rect: [1, 2, 3, 1e9] },
       { remove: 'A B' },
+      { name: 'a', rect: [1, 2, 3, 4], replace: 'A B' },
     ])
       expect(
         (await write('/api/board/saug/action', d, { item: 'zone:v50', action: 'zone', zone }))

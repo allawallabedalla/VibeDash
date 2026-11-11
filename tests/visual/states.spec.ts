@@ -637,14 +637,16 @@ test('robot areas: draw a rectangle on the plan, name it, save', async ({ page }
   await page.getByRole('button', { name: 'Neuer Bereich' }).click();
   const svg = page.getByRole('img', { name: 'EG' });
   await svg.scrollIntoViewIfNeeded();
-  const box = (await svg.boundingBox())!;
   // plan is 10 × 8 m: from (6, 1) to (9, 3) m … the house's own fixed area sits there, drawing over it is fine
-  const at = (x: number, y: number) =>
-    [box.x + (x / 10) * box.width, box.y + (y / 8) * box.height] as const;
-  await page.mouse.move(...at(4, 1));
+  // measured anew each time: the page moves when the form opens or a message shows
+  const at = async (x: number, y: number) => {
+    const b = (await svg.boundingBox())!;
+    return [b.x + (x / 10) * b.width, b.y + (y / 8) * b.height] as const;
+  };
+  await page.mouse.move(...(await at(4, 1)));
   await page.mouse.down();
-  await page.mouse.move(...at(5, 2), { steps: 4 });
-  await page.mouse.move(...at(6, 3.5), { steps: 4 });
+  await page.mouse.move(...(await at(5, 2)), { steps: 4 });
+  await page.mouse.move(...(await at(6, 3.5)), { steps: 4 });
   await page.mouse.up();
   await expect(page.getByText('2,0 × 2,5 m')).toBeVisible();
   const save = page.getByRole('button', { name: 'Speichern' });
@@ -665,9 +667,34 @@ test('robot areas: draw a rectangle on the plan, name it, save', async ({ page }
   ]);
   // a drawn area touching the blocked part (y ≥ 5) cannot be saved
   await page.getByRole('button', { name: 'Neuer Bereich' }).click();
-  await page.mouse.move(...at(2, 4));
+  await page.mouse.move(...(await at(2, 4)));
   await page.mouse.down();
-  await page.mouse.move(...at(3, 6), { steps: 4 });
+  await page.mouse.move(...(await at(3, 6)), { steps: 4 });
   await page.mouse.up();
   await expect(page.getByText('Berührt eine gesperrte Fläche.')).toBeVisible();
+  await page.getByRole('button', { name: 'Abbrechen' }).first().click();
+
+  // edit an own area: tap it, "Bearbeiten", drag a corner, move it, save under the same id
+  await page.mouse.click(...(await at(2.25, 1.75)));
+  await page.getByRole('button', { name: 'Bearbeiten' }).click();
+  await expect(page.getByLabel('Name')).toHaveValue('Vor dem Sofa');
+  await page.mouse.move(...(await at(3.5, 2.5)));
+  await page.mouse.down();
+  await page.mouse.move(...(await at(4, 3)), { steps: 4 });
+  await page.mouse.up();
+  await page.mouse.move(...(await at(2, 2)));
+  await page.mouse.down();
+  await page.mouse.move(...(await at(2.5, 2.5)), { steps: 4 });
+  await page.mouse.up();
+  await expect(page.getByText('3,0 × 2,0 m')).toBeVisible();
+  await page.screenshot({
+    path: `screenshots/saugroboter-bereich-bearbeiten-${info.project.name}.png`,
+    fullPage: true,
+  });
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  expect(sent.at(-1)).toEqual({
+    item: 'zone:robo',
+    action: 'zone',
+    zone: { name: 'Vor dem Sofa', rect: [1.5, 1.5, 4.5, 3.5], mode: 'saugen', replace: 'sofa' },
+  });
 });

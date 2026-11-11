@@ -18,7 +18,8 @@
   const TEXT = {
     de: {
       add: 'Neuer Bereich',
-      hint: 'Ein Rechteck auf den Plan ziehen.',
+      hint: 'Rechteck ziehen. Ecken ändern die Größe, innen ziehen verschiebt.',
+      edit: 'Bearbeiten',
       name: 'Name',
       placeholder: 'z. B. Unter dem Esstisch',
       mode: 'Wie putzen',
@@ -36,7 +37,8 @@
     },
     en: {
       add: 'New area',
-      hint: 'Drag a rectangle on the plan.',
+      hint: 'Drag a rectangle. Corners resize, drag inside to move.',
+      edit: 'Edit',
       name: 'Name',
       placeholder: 'e.g. under the table',
       mode: 'How to clean',
@@ -61,7 +63,12 @@
 
   let drawing = $state(false);
   let rect = $state<ZoneRect | null>(null);
-  let start = $state<[number, number] | null>(null);
+  /** the drag in progress: a new rectangle or a corner (from the fixed opposite corner), or moving it */
+  type Drag =
+    | { kind: 'span'; fixed: [number, number] }
+    | { kind: 'move'; from: [number, number]; orig: ZoneRect };
+  let start = $state<Drag | null>(null);
+  let editing = $state<string | null>(null);
   let name = $state('');
   let mode = $state('');
   $effect.pre(() => {
@@ -81,26 +88,58 @@
     const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
     return [snap(clamp(p.x, bx0, bx1)), snap(clamp(p.y, by0, by1))];
   }
+  /** a finger is about 24 px: the grab distance for a corner, in plan units */
+  function grab(): number {
+    const px = svg?.getBoundingClientRect().width ?? 0;
+    return px > 0 ? (24 * (bx1 - bx0)) / px : 0.4;
+  }
+  const corners = (r: ZoneRect): [number, number][] => [
+    [r[0], r[1]],
+    [r[2], r[1]],
+    [r[0], r[3]],
+    [r[2], r[3]],
+  ];
   function down(e: PointerEvent) {
     if (!drawing) return;
     const p = toPlan(e);
     if (!p) return;
     e.preventDefault();
     (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
-    start = p;
-    rect = [p[0], p[1], p[0], p[1]];
     message = null;
+    if (rect) {
+      const g = grab();
+      const cs = corners(rect);
+      const i = cs.findIndex((c) => Math.abs(c[0] - p[0]) <= g && Math.abs(c[1] - p[1]) <= g);
+      if (i >= 0) {
+        start = { kind: 'span', fixed: cs[3 - i]! };
+        return;
+      }
+      if (p[0] > rect[0] && p[0] < rect[2] && p[1] > rect[1] && p[1] < rect[3]) {
+        start = { kind: 'move', from: p, orig: rect };
+        return;
+      }
+    }
+    start = { kind: 'span', fixed: p };
+    rect = [p[0], p[1], p[0], p[1]];
   }
   function move(e: PointerEvent) {
     if (!drawing || !start) return;
     const p = toPlan(e);
     if (!p) return;
-    rect = [
-      Math.min(start[0], p[0]),
-      Math.min(start[1], p[1]),
-      Math.max(start[0], p[0]),
-      Math.max(start[1], p[1]),
-    ];
+    if (start.kind === 'span') {
+      const f = start.fixed;
+      rect = [
+        Math.min(f[0], p[0]),
+        Math.min(f[1], p[1]),
+        Math.max(f[0], p[0]),
+        Math.max(f[1], p[1]),
+      ];
+      return;
+    }
+    const o = start.orig;
+    const dx = clamp(p[0] - start.from[0], bx0 - o[0], bx1 - o[2]);
+    const dy = clamp(p[1] - start.from[1], by0 - o[1], by1 - o[3]);
+    rect = [snap(o[0] + dx), snap(o[1] + dy), snap(o[2] + dx), snap(o[3] + dy)];
   }
   function up() {
     start = null;
@@ -121,13 +160,27 @@
 
   function begin() {
     drawing = true;
+    editing = null;
     rect = null;
     name = '';
     picked = null;
     message = null;
   }
+  function edit(z: BoardZones['zones'][number]) {
+    drawing = true;
+    editing = z.id;
+    rect = [...z.rect];
+    name = z.name;
+    mode =
+      z.mode && zones.modes.some((m) => m.value === z.mode)
+        ? z.mode
+        : (zones.modes[0]?.value ?? '');
+    picked = null;
+    message = null;
+  }
   function cancel() {
     drawing = false;
+    editing = null;
     rect = null;
     start = null;
   }
@@ -146,7 +199,12 @@
     if (!canSave || !rect) return;
     busy = true;
     try {
-      const r = await send({ name: name.trim(), rect, mode });
+      const r = await send({
+        name: name.trim(),
+        rect: rect.map((v) => Math.round(v * 100) / 100),
+        mode,
+        ...(editing ? { replace: editing } : {}),
+      });
       message = { text: r.text || (r.ok ? '' : tx.failed), bad: !r.ok };
       if (r.ok) {
         cancel();
@@ -241,7 +299,7 @@
           fill="url(#{hatch})"
         />
       {/each}
-      {#each zones.zones as z (z.id)}
+      {#each zones.zones.filter((z) => z.id !== editing) as z (z.id)}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <rect
           class="zone"
@@ -272,6 +330,11 @@
           height={h}
           rx="0.15"
         />
+        {#if !start}
+          {#each corners(rect) as c, i (i)}
+            <circle class="handle" cx={c[0]} cy={c[1]} r={grab() * 0.45} />
+          {/each}
+        {/if}
       {/if}
     </svg>
     {#each zones.floor.rooms.filter((r) => r.kind === 'room') as r (r.id)}
@@ -281,7 +344,7 @@
         style:top="{pct(r.label[1], by0, by1)}%">{r.name}</span
       >
     {/each}
-    {#each zones.zones as z (z.id)}
+    {#each zones.zones.filter((z) => z.id !== editing) as z (z.id)}
       <span
         class="zone-name"
         style:left="{pct((z.rect[0] + z.rect[2]) / 2, bx0, bx1)}%"
@@ -334,6 +397,9 @@
         )}</span
       >
       {#if pickedZone.own}
+        <button type="button" class="ghost" disabled={busy} onclick={() => edit(pickedZone)}
+          >{tx.edit}</button
+        >
         <button
           type="button"
           class="ghost danger"
@@ -457,6 +523,12 @@
     fill: color-mix(in srgb, var(--battery) 30%, transparent);
     stroke: var(--battery);
     stroke-width: 0.1;
+    pointer-events: none;
+  }
+  .handle {
+    fill: var(--surface);
+    stroke: var(--battery);
+    stroke-width: 0.08;
     pointer-events: none;
   }
   .draft.bad {
