@@ -651,6 +651,12 @@ test('robot areas: draw a rectangle on the plan, name it, save', async ({ page }
   await expect(page.getByText('2,0 × 2,5 m')).toBeVisible();
   const save = page.getByRole('button', { name: 'Speichern' });
   await expect(save).toBeDisabled();
+  // a second, separate part of the same area
+  await page.mouse.move(...(await at(1, 3.5)));
+  await page.mouse.down();
+  await page.mouse.move(...(await at(2.5, 4.5)), { steps: 4 });
+  await page.mouse.up();
+  await expect(page.getByText('2 Rechtecke · 6,5 m²')).toBeVisible();
   await page.getByLabel('Name').fill('Ecke');
   await page.screenshot({
     path: `screenshots/saugroboter-bereich-${info.project.name}.png`,
@@ -662,7 +668,14 @@ test('robot areas: draw a rectangle on the plan, name it, save', async ({ page }
     {
       item: 'zone:robo',
       action: 'zone',
-      zone: { name: 'Ecke', rect: [4, 1, 6, 3.5], mode: 'saugen' },
+      zone: {
+        name: 'Ecke',
+        rects: [
+          [4, 1, 6, 3.5],
+          [1, 3.5, 2.5, 4.5],
+        ],
+        mode: 'saugen',
+      },
     },
   ]);
   // a drawn area touching the blocked part (y ≥ 5) cannot be saved
@@ -695,6 +708,6 @@ test('robot areas: draw a rectangle on the plan, name it, save', async ({ page }
   expect(sent.at(-1)).toEqual({
     item: 'zone:robo',
     action: 'zone',
-    zone: { name: 'Vor dem Sofa', rect: [1.5, 1.5, 4.5, 3.5], mode: 'saugen', replace: 'sofa' },
+    zone: { name: 'Vor dem Sofa', rects: [[1.5, 1.5, 4.5, 3.5]], mode: 'saugen', replace: 'sofa' },
   });
 });

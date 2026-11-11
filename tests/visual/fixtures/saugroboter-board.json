@@ -120,12 +120,12 @@
         {
           "id": "tisch",
           "name": "Esstisch",
-          "rect": [7.0, 1.0, 9.0, 3.0]
+          "rects": [[7.0, 1.0, 9.0, 3.0]]
         },
         {
           "id": "sofa",
           "name": "Vor dem Sofa",
-          "rect": [1.0, 1.0, 3.5, 2.5],
+          "rects": [[1.0, 1.0, 3.5, 2.5]],
           "own": true,
           "mode": "saugen"
         }
@@ -145,7 +145,7 @@
           "label": "Wischen"
         }
       ],
-      "note": "Rechteck aufziehen, Namen geben, speichern – der Bereich steht dann als Knopf oben.",
+      "note": "Ein oder mehrere Rechtecke aufziehen, Namen geben, speichern – der Bereich steht dann als Knopf oben und putzt alle seine Rechtecke.",
       "info": {
         "what": "Bereiche sind Rechtecke auf dem Grundriss. Der Roboter putzt sie einmal, auf dem Roboter wird nichts gespeichert. Gesperrte Flächen (schraffiert) lassen sich nicht wählen.",
         "source": "Die Umrechnung auf die Roboterkarte macht der Haus-Dienst, auf etwa ±0,3 m genau."

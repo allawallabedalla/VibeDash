@@ -12,8 +12,9 @@ Config:
             "grundriss" the board offers drawing new areas on that floor (section "zones"); never across sperr_m
   grundriss {haus, waende?} – floor-plan files as in the module "raeume"
   bereiche  file with the areas drawn in VibeDash, default "saugroboter_bereiche.json":
-            {"bereiche": [{id, name, geraet, geschoss, rechteck_m, modus}]} – each one is a zone plus an action
-            ("b-<id>") for the house
+            {"bereiche": [{id, name, geraet, geschoss, rechtecke_m: [[x0, y0, x1, y1], …] (1–5), modus}]} – each
+            one is an action "b-<id>" for the house that cleans all its rectangles (zones "b-<id>", "b-<id>#2" …);
+            older entries with a single "rechteck_m" still count
   wunsch    wish file (relative to the modules folder or absolute), default "saugroboter_wunsch.json":
             {"nr", "id", "geraet", "zeit" (ms)}
   stand     file the house writes after sending, default "saugroboter_stand.json":
@@ -38,6 +39,7 @@ PER_ROW = 5  # a choice shows at most 5 options
 MODES = (("saugen", "Saugen"), ("saugen_wischen", "Saugen + Wischen"), ("wischen", "Wischen"))
 MODE_SUB = {"saugen": "saugen", "saugen_wischen": "saugen und wischen", "wischen": "wischen"}
 MAX_OWN = 20  # drawn areas per robot
+MAX_RECTS = 5  # rectangles in one area (one zone-cleaning command)
 MIN_SIDE_M, MAX_AREA_M2, RAND_M = 0.3, 60.0, 0.2
 NAME_OK = re.compile(r"^[^\x00-\x1f\x7f]{1,24}$")
 
@@ -75,8 +77,14 @@ def own_areas(cfg: dict, path) -> list:
     return [
         b
         for b in raw or []
-        if isinstance(b, dict) and b.get("id") and b.get("name") and b.get("geraet") and _rect(b.get("rechteck_m"))
+        if isinstance(b, dict) and b.get("id") and b.get("name") and b.get("geraet") and rects_of(b)
     ]
+
+
+def rects_of(b: dict) -> list:
+    """The rectangles of a drawn area (new: rechtecke_m, old: one rechteck_m)."""
+    raw = b.get("rechtecke_m") if isinstance(b.get("rechtecke_m"), list) else [b.get("rechteck_m")]
+    return [r for r in (_rect(x) for x in raw[:MAX_RECTS]) if r]
 
 
 def merged(cfg: dict, path) -> dict:
@@ -88,7 +96,9 @@ def merged(cfg: dict, path) -> dict:
     acts = list(cfg.get("aktionen") or [])
     for b in own:
         zid = f"b-{b['id']}"
-        zonen[zid] = {"name": b["name"], "geschoss": b.get("geschoss"), "rechteck_m": b["rechteck_m"]}
+        zids = [zid if i == 0 else f"{zid}#{i + 1}" for i in range(len(rects_of(b)))]
+        for z, r in zip(zids, rects_of(b), strict=True):
+            zonen[z] = {"name": b["name"], "geschoss": b.get("geschoss"), "rechteck_m": r}
         mode = b.get("modus") if b.get("modus") in MODE_SUB else "saugen"
         acts.append(
             {
@@ -96,7 +106,7 @@ def merged(cfg: dict, path) -> dict:
                 "name": b["name"],
                 "sub": f"Bereich {MODE_SUB[mode]}",
                 "geraet": b["geraet"],
-                "zonen": [zid],
+                "zonen": zids,
                 "modus": mode,
             }
         )
@@ -248,7 +258,7 @@ def zone_sections(cfg: dict, path) -> list:
         if not f:
             continue
         zones = [
-            {"id": zid, "name": str(z.get("name") or zid)[:24], "rect": _rect(z.get("rechteck_m"))}
+            {"id": zid, "name": str(z.get("name") or zid)[:24], "rects": [_rect(z.get("rechteck_m"))]}
             for zid, z in (cfg.get("zonen") or {}).items()
             if isinstance(z, dict)
             and z.get("geschoss") == k["geschoss"]
@@ -258,7 +268,7 @@ def zone_sections(cfg: dict, path) -> list:
             {
                 "id": b["id"],
                 "name": b["name"][:24],
-                "rect": _rect(b["rechteck_m"]),
+                "rects": rects_of(b),
                 "own": True,
                 "mode": b.get("modus") if b.get("modus") in MODE_SUB else "saugen",
             }
@@ -274,7 +284,8 @@ def zone_sections(cfg: dict, path) -> list:
                 "zones": zones,
                 "blocked": [r for r in (_rect(s) for s in k.get("sperr_m") or []) if r],
                 "modes": [{"value": v, "label": lb} for v, lb in MODES],
-                "note": "Rechteck aufziehen, Namen geben, speichern – der Bereich steht dann als Knopf oben.",
+                "note": "Ein oder mehrere Rechtecke aufziehen, Namen geben, speichern – der Bereich steht dann als "
+                "Knopf oben und putzt alle seine Rechtecke.",
                 "info": {
                     "what": "Bereiche sind Rechtecke auf dem Grundriss. Der Roboter putzt sie einmal, auf dem Roboter "
                     "wird nichts gespeichert. Gesperrte Flächen (schraffiert) lassen sich nicht wählen.",
@@ -286,8 +297,8 @@ def zone_sections(cfg: dict, path) -> list:
 
 
 def zone(cfg: dict, path, item: str, z, now_ms: int) -> tuple[int, dict]:
-    """{name, rect, mode} adds an area, {…, replace: id} changes one of the drawn areas (same id, so its button
-    stays), {remove: id} deletes one."""
+    """{name, rects: [[x0, y0, x1, y1], …] (or one rect), mode} adds an area, {…, replace: id} changes one of the
+    drawn areas (same id, so its button stays), {remove: id} deletes one."""
     m = ZONE_ITEM.match(str(item or ""))
     karten = cfg.get("karten") or {}
     robot = next((r for r in karten if m and _key(r) == m.group(1)), None)
@@ -305,29 +316,36 @@ def zone(cfg: dict, path, item: str, z, now_ms: int) -> tuple[int, dict]:
     k = karten[robot] if isinstance(karten[robot], dict) else {}
     floor = _floors(cfg, path).get(k.get("geschoss"))
     name = str(z.get("name") or "").strip()
-    r = _rect(z.get("rect"))
+    raw = z.get("rects") if isinstance(z.get("rects"), list) else [z.get("rect")]
+    rs = [_rect(x) for x in raw]
     if not floor:
         return 400, {"ok": False, "text": "kein Grundriss für diesen Roboter"}
     if not NAME_OK.match(name):
         return 400, {"ok": False, "text": "Name fehlt (höchstens 24 Zeichen)"}
-    if not r:
+    if not rs or not all(rs):
         return 400, {"ok": False, "text": "kein Rechteck"}
+    if len(rs) > MAX_RECTS:
+        return 400, {"ok": False, "text": f"höchstens {MAX_RECTS} Rechtecke je Bereich"}
     bx = floor["box"]
-    r = [max(r[0], bx[0]), max(r[1], bx[1]), min(r[2], bx[2]), min(r[3], bx[3])]
-    if r[2] - r[0] < MIN_SIDE_M or r[3] - r[1] < MIN_SIDE_M:
+    rs = [[max(r[0], bx[0]), max(r[1], bx[1]), min(r[2], bx[2]), min(r[3], bx[3])] for r in rs]
+    if any(r[2] - r[0] < MIN_SIDE_M or r[3] - r[1] < MIN_SIDE_M for r in rs):
         return 400, {"ok": False, "text": "Bereich zu klein"}
-    if (r[2] - r[0]) * (r[3] - r[1]) > MAX_AREA_M2:
+    if sum((r[2] - r[0]) * (r[3] - r[1]) for r in rs) > MAX_AREA_M2:
         return 400, {"ok": False, "text": "Bereich zu groß (höchstens 60 m²)"}
     rand = float(k.get("rand_m", RAND_M))
-    grown = [r[0] - rand, r[1] - rand, r[2] + rand, r[3] + rand]
-    if any(_hits(grown, s) for s in (_rect(x) for x in k.get("sperr_m") or []) if s):
-        return 400, {"ok": False, "text": "Bereich berührt eine gesperrte Fläche"}
+    blocked = [b for b in (_rect(x) for x in k.get("sperr_m") or []) if b]
+    for r in rs:
+        grown = [r[0] - rand, r[1] - rand, r[2] + rand, r[3] + rand]
+        if any(_hits(grown, b) for b in blocked):
+            return 400, {"ok": False, "text": "Bereich berührt eine gesperrte Fläche"}
+    rects = [[round(v, 2) for v in r] for r in rs]
     mode = z.get("mode") if z.get("mode") in MODE_SUB else "saugen"
     if "replace" in z:
         i = next((i for i, b in enumerate(alle) if b.get("geraet") == robot and b.get("id") == z["replace"]), None)
         if i is None:
             return 404, {"ok": False, "text": "Bereich nicht gefunden"}
-        alle[i] = {**alle[i], "name": name, "rechteck_m": [round(v, 2) for v in r], "modus": mode, "geaendert": now_ms}
+        old = {k: v for k, v in alle[i].items() if k != "rechteck_m"}
+        alle[i] = {**old, "name": name, "rechtecke_m": rects, "modus": mode, "geaendert": now_ms}
         _write(p, {**data, "bereiche": alle})
         return 200, {"ok": True, "text": f"Bereich „{name}“ geändert"}
     if sum(1 for b in alle if b.get("geraet") == robot) >= MAX_OWN:
@@ -343,7 +361,7 @@ def zone(cfg: dict, path, item: str, z, now_ms: int) -> tuple[int, dict]:
             "name": name,
             "geraet": robot,
             "geschoss": k.get("geschoss"),
-            "rechteck_m": [round(v, 2) for v in r],
+            "rechtecke_m": rects,
             "modus": mode,
             "angelegt": now_ms,
         }

@@ -343,12 +343,22 @@ export interface BoardActionRequest {
   /** "zone": a new area drawn in a "zones" section, or the id of one to remove */
   zone?: BoardZoneInput;
 }
+type Rect = [number, number, number, number];
 export type BoardZoneInput =
-  | { name: string; rect: [number, number, number, number]; mode?: string; replace?: string }
-  | { remove: string };
+  { name: string; rects: Rect[]; mode?: string; replace?: string } | { remove: string };
 
 const ZONE_LIMIT = 10_000;
-/** What a "zones" section may send: a name, four plain numbers and a mode word – or an id to remove. */
+const ZONE_RECTS = 5;
+const zoneRect = (r: unknown): Rect | null =>
+  Array.isArray(r) &&
+  r.length === 4 &&
+  r.every((x) => typeof x === 'number' && Number.isFinite(x) && Math.abs(x) < ZONE_LIMIT)
+    ? (r.map((x) => Math.round((x as number) * 100) / 100) as Rect)
+    : null;
+/**
+ * What a "zones" section may send: a name, 1–5 rectangles of four plain numbers ("rects", or one "rect")
+ * and a mode word – or an id to remove.
+ */
 function zoneInput(v: unknown): BoardZoneInput | null {
   if (!isObjRec(v)) return null;
   if ('remove' in v)
@@ -356,25 +366,16 @@ function zoneInput(v: unknown): BoardZoneInput | null {
       ? { remove: v.remove }
       : null;
   const name = cleanText(v.name, 24);
-  const rect = Array.isArray(v.rect) ? v.rect : [];
-  if (
-    !name ||
-    rect.length !== 4 ||
-    !rect.every((x) => typeof x === 'number' && Number.isFinite(x) && Math.abs(x) < ZONE_LIMIT)
-  )
-    return null;
+  const raw = Array.isArray(v.rects) ? v.rects : [v.rect];
+  const rects = raw.map(zoneRect);
+  if (!name || !rects.length || rects.length > ZONE_RECTS || rects.some((r) => !r)) return null;
   const mode = typeof v.mode === 'string' && /^[a-z0-9_-]{1,32}$/.test(v.mode) ? v.mode : undefined;
   if ('replace' in v && !(typeof v.replace === 'string' && /^[a-z0-9_-]{1,32}$/.test(v.replace)))
     return null;
   const replace = typeof v.replace === 'string' ? v.replace : undefined;
   return {
     name,
-    rect: rect.map((x) => Math.round((x as number) * 100) / 100) as [
-      number,
-      number,
-      number,
-      number,
-    ],
+    rects: rects as Rect[],
     ...(mode ? { mode } : {}),
     ...(replace ? { replace } : {}),
   };

@@ -714,7 +714,7 @@ describe('clicks on board items and the feedback backlog', () => {
         board: 'saug',
         item: 'zone:v50',
         action: 'zone',
-        zone: { name: 'Unter dem Sofa', rect: [1.23, 2, 3, 4.5], mode: 'wischen' },
+        zone: { name: 'Unter dem Sofa', rects: [[1.23, 2, 3, 4.5]], mode: 'wischen' },
       },
       { board: 'saug', item: 'zone:v50', action: 'zone', zone: { remove: 'sofa' } },
     ]);
@@ -725,6 +725,26 @@ describe('clicks on board items and the feedback backlog', () => {
     });
     expect(edit.status).toBe(200);
     expect(sent.pop()).toMatchObject({ zone: { name: 'a', replace: 'sofa' } });
+    const two = await write('/api/board/saug/action', d, {
+      item: 'zone:v50',
+      action: 'zone',
+      zone: {
+        name: 'b',
+        rects: [
+          [1, 2, 3, 4],
+          [5, 6, 7, 8],
+        ],
+      },
+    });
+    expect(two.status).toBe(200);
+    expect(sent.pop()).toMatchObject({
+      zone: {
+        rects: [
+          [1, 2, 3, 4],
+          [5, 6, 7, 8],
+        ],
+      },
+    });
     for (const zone of [
       undefined,
       { name: '', rect: [1, 2, 3, 4] },
@@ -733,6 +753,15 @@ describe('clicks on board items and the feedback backlog', () => {
       { name: 'a', rect: [1, 2, 3, 1e9] },
       { remove: 'A B' },
       { name: 'a', rect: [1, 2, 3, 4], replace: 'A B' },
+      { name: 'a', rects: [] },
+      { name: 'a', rects: Array(6).fill([1, 2, 3, 4]) },
+      {
+        name: 'a',
+        rects: [
+          [1, 2, 3, 4],
+          [1, 2],
+        ],
+      },
     ])
       expect(
         (await write('/api/board/saug/action', d, { item: 'zone:v50', action: 'zone', zone }))

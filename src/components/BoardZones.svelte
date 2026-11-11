@@ -2,9 +2,10 @@
   /**
    * Area picker on a board (section "zones"): one floor of the plan, the areas
    * the house already knows, blocked parts hatched. "Neuer Bereich" turns the
-   * plan into a drawing surface: drag a rectangle (finger or mouse), name it,
+   * plan into a drawing surface: drag one or more rectangles (finger or mouse; an
+   * area may be several separate parts, cleaned in one go), name it,
    * pick a mode, save – POST /api/board/<id>/action { item, action: "zone",
-   * zone: { name, rect, mode } }. Own areas can be removed. Geometry comes from
+   * zone: { name, rects, mode } }. Own areas can be removed. Geometry comes from
    * the house service; nothing of the house is in this code. Loaded only where a
    * board has such a section (first-page budget).
    */
@@ -18,7 +19,10 @@
   const TEXT = {
     de: {
       add: 'Neuer Bereich',
-      hint: 'Rechteck ziehen. Ecken ändern die Größe, innen ziehen verschiebt.',
+      hint: 'Rechteck ziehen, daneben ziehen für ein weiteres (bis 5). Ecken ändern die Größe, innen ziehen verschiebt.',
+      removeRect: 'Rechteck entfernen',
+      parts: (n: number, m2: string) => `${n} Rechtecke · ${m2} m²`,
+      many: 'Höchstens 5 Rechtecke.',
       edit: 'Bearbeiten',
       name: 'Name',
       placeholder: 'z. B. Unter dem Esstisch',
@@ -37,7 +41,10 @@
     },
     en: {
       add: 'New area',
-      hint: 'Drag a rectangle. Corners resize, drag inside to move.',
+      hint: 'Drag a rectangle, drag beside it for another (up to 5). Corners resize, drag inside to move.',
+      removeRect: 'Remove rectangle',
+      parts: (n: number, m2: string) => `${n} rectangles · ${m2} m²`,
+      many: 'At most 5 rectangles.',
       edit: 'Edit',
       name: 'Name',
       placeholder: 'e.g. under the table',
@@ -62,11 +69,14 @@
   const [bx0, by0, bx1, by1] = $derived(zones.floor.box);
 
   let drawing = $state(false);
-  let rect = $state<ZoneRect | null>(null);
-  /** the drag in progress: a new rectangle or a corner (from the fixed opposite corner), or moving it */
+  /** the rectangles of the area being drawn; the active one shows its corner handles */
+  let rects = $state<ZoneRect[]>([]);
+  let active = $state(0);
+  const MAX_RECTS = 5;
+  /** the drag in progress: a rectangle spanned from a fixed corner, or one being moved */
   type Drag =
-    | { kind: 'span'; fixed: [number, number] }
-    | { kind: 'move'; from: [number, number]; orig: ZoneRect };
+    | { kind: 'span'; i: number; fixed: [number, number] }
+    | { kind: 'move'; i: number; from: [number, number]; orig: ZoneRect };
   let start = $state<Drag | null>(null);
   let editing = $state<string | null>(null);
   let name = $state('');
@@ -99,6 +109,8 @@
     [r[0], r[3]],
     [r[2], r[3]],
   ];
+  const inside = (r: ZoneRect, p: [number, number]) =>
+    p[0] > r[0] && p[0] < r[2] && p[1] > r[1] && p[1] < r[3];
   function down(e: PointerEvent) {
     if (!drawing) return;
     const p = toPlan(e);
@@ -106,62 +118,94 @@
     e.preventDefault();
     (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
     message = null;
-    if (rect) {
-      const g = grab();
-      const cs = corners(rect);
-      const i = cs.findIndex((c) => Math.abs(c[0] - p[0]) <= g && Math.abs(c[1] - p[1]) <= g);
-      if (i >= 0) {
-        start = { kind: 'span', fixed: cs[3 - i]! };
-        return;
-      }
-      if (p[0] > rect[0] && p[0] < rect[2] && p[1] > rect[1] && p[1] < rect[3]) {
-        start = { kind: 'move', from: p, orig: rect };
+    const g = grab();
+    // the active rectangle first, then the others: a corner resizes, inside moves
+    const order = [active, ...rects.map((_, i) => i).filter((i) => i !== active)];
+    for (const i of order) {
+      const r = rects[i];
+      if (!r) continue;
+      const cs = corners(r);
+      const c = cs.findIndex((q) => Math.abs(q[0] - p[0]) <= g && Math.abs(q[1] - p[1]) <= g);
+      if (c >= 0) {
+        active = i;
+        start = { kind: 'span', i, fixed: cs[3 - c]! };
         return;
       }
     }
-    start = { kind: 'span', fixed: p };
-    rect = [p[0], p[1], p[0], p[1]];
+    for (const i of order) {
+      const r = rects[i];
+      if (r && inside(r, p)) {
+        active = i;
+        start = { kind: 'move', i, from: p, orig: r };
+        return;
+      }
+    }
+    if (rects.length >= MAX_RECTS) {
+      message = { text: tx.many, bad: true };
+      return;
+    }
+    rects = [...rects, [p[0], p[1], p[0], p[1]]];
+    active = rects.length - 1;
+    start = { kind: 'span', i: active, fixed: p };
   }
   function move(e: PointerEvent) {
     if (!drawing || !start) return;
     const p = toPlan(e);
     if (!p) return;
+    let r: ZoneRect;
     if (start.kind === 'span') {
       const f = start.fixed;
-      rect = [
-        Math.min(f[0], p[0]),
-        Math.min(f[1], p[1]),
-        Math.max(f[0], p[0]),
-        Math.max(f[1], p[1]),
-      ];
-      return;
+      r = [Math.min(f[0], p[0]), Math.min(f[1], p[1]), Math.max(f[0], p[0]), Math.max(f[1], p[1])];
+    } else {
+      const o = start.orig;
+      const dx = clamp(p[0] - start.from[0], bx0 - o[0], bx1 - o[2]);
+      const dy = clamp(p[1] - start.from[1], by0 - o[1], by1 - o[3]);
+      r = [snap(o[0] + dx), snap(o[1] + dy), snap(o[2] + dx), snap(o[3] + dy)];
     }
-    const o = start.orig;
-    const dx = clamp(p[0] - start.from[0], bx0 - o[0], bx1 - o[2]);
-    const dy = clamp(p[1] - start.from[1], by0 - o[1], by1 - o[3]);
-    rect = [snap(o[0] + dx), snap(o[1] + dy), snap(o[2] + dx), snap(o[3] + dy)];
+    rects = rects.map((x, i) => (i === start!.i ? r : x));
   }
   function up() {
+    // a mere tap leaves no rectangle behind
+    const before = rects.length;
+    rects = rects.filter((r) => r[2] - r[0] >= STEP && r[3] - r[1] >= STEP);
+    if (rects.length !== before) active = Math.max(0, rects.length - 1);
     start = null;
   }
+  function dropActive() {
+    rects = rects.filter((_, i) => i !== active);
+    active = Math.max(0, rects.length - 1);
+  }
 
-  const w = $derived(rect ? rect[2] - rect[0] : 0);
-  const h = $derived(rect ? rect[3] - rect[1] : 0);
-  const tooSmall = $derived(!!rect && (w < MIN || h < MIN));
+  const area = (r: ZoneRect) => (r[2] - r[0]) * (r[3] - r[1]);
+  const cur = $derived(rects[active] ?? null);
+  const w = $derived(cur ? cur[2] - cur[0] : 0);
+  const h = $derived(cur ? cur[3] - cur[1] : 0);
+  const tooSmall = $derived(rects.some((r) => r[2] - r[0] < MIN || r[3] - r[1] < MIN));
   const hitsBlocked = $derived(
-    !!rect &&
+    rects.some((r) =>
       zones.blocked.some(
         (b) =>
-          Math.min(rect![2], b[2]) > Math.max(rect![0], b[0]) &&
-          Math.min(rect![3], b[3]) > Math.max(rect![1], b[1]),
+          Math.min(r[2], b[2]) > Math.max(r[0], b[0]) &&
+          Math.min(r[3], b[3]) > Math.max(r[1], b[1]),
       ),
+    ),
   );
-  const canSave = $derived(!!rect && !tooSmall && !hitsBlocked && name.trim().length > 0 && !busy);
+  const badRect = (r: ZoneRect) =>
+    r[2] - r[0] < MIN ||
+    r[3] - r[1] < MIN ||
+    zones.blocked.some(
+      (b) =>
+        Math.min(r[2], b[2]) > Math.max(r[0], b[0]) && Math.min(r[3], b[3]) > Math.max(r[1], b[1]),
+    );
+  const canSave = $derived(
+    rects.length > 0 && !tooSmall && !hitsBlocked && name.trim().length > 0 && !busy,
+  );
 
   function begin() {
     drawing = true;
     editing = null;
-    rect = null;
+    rects = [];
+    active = 0;
     name = '';
     picked = null;
     message = null;
@@ -169,7 +213,8 @@
   function edit(z: BoardZones['zones'][number]) {
     drawing = true;
     editing = z.id;
-    rect = [...z.rect];
+    rects = z.rects.map((r) => [...r] as ZoneRect);
+    active = 0;
     name = z.name;
     mode =
       z.mode && zones.modes.some((m) => m.value === z.mode)
@@ -181,7 +226,7 @@
   function cancel() {
     drawing = false;
     editing = null;
-    rect = null;
+    rects = [];
     start = null;
   }
 
@@ -196,12 +241,12 @@
     return { ok: r.ok && b?.ok !== false, text: b?.text || '' };
   }
   async function save() {
-    if (!canSave || !rect) return;
+    if (!canSave) return;
     busy = true;
     try {
       const r = await send({
         name: name.trim(),
-        rect: rect.map((v) => Math.round(v * 100) / 100),
+        rects: rects.map((r) => r.map((v) => Math.round(v * 100) / 100)),
         mode,
         ...(editing ? { replace: editing } : {}),
       });
@@ -300,41 +345,44 @@
         />
       {/each}
       {#each zones.zones.filter((z) => z.id !== editing) as z (z.id)}
-        <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <rect
-          class="zone"
-          class:own={z.own}
-          class:sel={picked === z.id}
-          x={z.rect[0]}
-          y={z.rect[1]}
-          width={z.rect[2] - z.rect[0]}
-          height={z.rect[3] - z.rect[1]}
-          rx="0.15"
-          role="button"
-          tabindex="-1"
-          aria-label={z.name}
-          onclick={() => {
-            if (drawing) return;
-            picked = picked === z.id ? null : z.id;
-            confirm = false;
-          }}
-        />
+        {#each z.rects as r, i (i)}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <rect
+            class="zone"
+            class:own={z.own}
+            class:sel={picked === z.id}
+            x={r[0]}
+            y={r[1]}
+            width={r[2] - r[0]}
+            height={r[3] - r[1]}
+            rx="0.15"
+            role="button"
+            tabindex="-1"
+            aria-label={z.name}
+            onclick={() => {
+              if (drawing) return;
+              picked = picked === z.id ? null : z.id;
+              confirm = false;
+            }}
+          />
+        {/each}
       {/each}
-      {#if rect}
+      {#each rects as r, i (i)}
         <rect
           class="draft"
-          class:bad={tooSmall || hitsBlocked}
-          x={rect[0]}
-          y={rect[1]}
-          width={w}
-          height={h}
+          class:bad={badRect(r)}
+          class:active={i === active}
+          x={r[0]}
+          y={r[1]}
+          width={r[2] - r[0]}
+          height={r[3] - r[1]}
           rx="0.15"
         />
-        {#if !start}
-          {#each corners(rect) as c, i (i)}
-            <circle class="handle" cx={c[0]} cy={c[1]} r={grab() * 0.45} />
-          {/each}
-        {/if}
+      {/each}
+      {#if cur && !start}
+        {#each corners(cur) as c, i (i)}
+          <circle class="handle" cx={c[0]} cy={c[1]} r={grab() * 0.45} />
+        {/each}
       {/if}
     </svg>
     {#each zones.floor.rooms.filter((r) => r.kind === 'room') as r (r.id)}
@@ -347,8 +395,8 @@
     {#each zones.zones.filter((z) => z.id !== editing) as z (z.id)}
       <span
         class="zone-name"
-        style:left="{pct((z.rect[0] + z.rect[2]) / 2, bx0, bx1)}%"
-        style:top="{pct((z.rect[1] + z.rect[3]) / 2, by0, by1)}%">{z.name}</span
+        style:left="{pct((z.rects[0]![0] + z.rects[0]![2]) / 2, bx0, bx1)}%"
+        style:top="{pct((z.rects[0]![1] + z.rects[0]![3]) / 2, by0, by1)}%">{z.name}</span
       >
     {/each}
   </div>
@@ -356,7 +404,7 @@
     <p class="legend"><span class="swatch"></span>{tx.blockedLegend}</p>
   {/if}
 
-  {#if drawing && rect && !start}
+  {#if drawing && rects.length && !start}
     <form
       class="form"
       onsubmit={(e) => {
@@ -365,7 +413,19 @@
       }}
     >
       <p class="size" class:bad={tooSmall || hitsBlocked}>
-        {tooSmall ? tx.small : hitsBlocked ? tx.blocked : tx.size(num(w, 1), num(h, 1))}
+        {tooSmall
+          ? tx.small
+          : hitsBlocked
+            ? tx.blocked
+            : rects.length > 1
+              ? tx.parts(
+                  rects.length,
+                  num(
+                    rects.reduce((a, r) => a + area(r), 0),
+                    1,
+                  ),
+                )
+              : tx.size(num(w, 1), num(h, 1))}
       </p>
       <label>
         <span>{tx.name}</span>
@@ -382,6 +442,9 @@
         <button type="submit" class="primary" disabled={!canSave}
           >{busy ? tx.saving : tx.save}</button
         >
+        {#if rects.length > 1}
+          <button type="button" class="ghost" onclick={dropActive}>{tx.removeRect}</button>
+        {/if}
         <button type="button" class="ghost" onclick={cancel}>{tx.cancel}</button>
       </div>
     </form>
@@ -391,10 +454,18 @@
     <section class="detail" aria-live="polite">
       <b>{pickedZone.name}</b>
       <span class="muted"
-        >{tx.size(
-          num(pickedZone.rect[2] - pickedZone.rect[0], 1),
-          num(pickedZone.rect[3] - pickedZone.rect[1], 1),
-        )}</span
+        >{pickedZone.rects.length > 1
+          ? tx.parts(
+              pickedZone.rects.length,
+              num(
+                pickedZone.rects.reduce((a, r) => a + area(r), 0),
+                1,
+              ),
+            )
+          : tx.size(
+              num(pickedZone.rects[0]![2] - pickedZone.rects[0]![0], 1),
+              num(pickedZone.rects[0]![3] - pickedZone.rects[0]![1], 1),
+            )}</span
       >
       {#if pickedZone.own}
         <button type="button" class="ghost" disabled={busy} onclick={() => edit(pickedZone)}
@@ -530,6 +601,10 @@
     stroke: var(--battery);
     stroke-width: 0.08;
     pointer-events: none;
+  }
+  .draft:not(.active) {
+    stroke-width: 0.06;
+    stroke-dasharray: 0.2 0.12;
   }
   .draft.bad {
     fill: color-mix(in srgb, var(--act, #c0392b) 22%, transparent);
