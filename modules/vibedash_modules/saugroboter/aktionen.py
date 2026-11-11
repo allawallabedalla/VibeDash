@@ -97,7 +97,7 @@ def merged(cfg: dict, path) -> dict:
     for b in own:
         zid = f"b-{b['id']}"
         zids = [zid if i == 0 else f"{zid}#{i + 1}" for i in range(len(rects_of(b)))]
-        for z, r in zip(zids, rects_of(b)):
+        for z, r in zip(zids, rects_of(b), strict=True):
             zonen[z] = {"name": b["name"], "geschoss": b.get("geschoss"), "rechteck_m": r}
         mode = b.get("modus") if b.get("modus") in MODE_SUB else "saugen"
         acts.append(
@@ -297,8 +297,8 @@ def zone_sections(cfg: dict, path) -> list:
 
 
 def zone(cfg: dict, path, item: str, z, now_ms: int) -> tuple[int, dict]:
-    """{name, rects: [[x0, y0, x1, y1], …] (or one rect), mode} adds an area, {…, replace: id} changes one of the drawn areas (same id, so its button
-    stays), {remove: id} deletes one."""
+    """{name, rects: [[x0, y0, x1, y1], …] (or one rect), mode} adds an area, {…, replace: id} changes one of the
+    drawn areas (same id, so its button stays), {remove: id} deletes one."""
     m = ZONE_ITEM.match(str(item or ""))
     karten = cfg.get("karten") or {}
     robot = next((r for r in karten if m and _key(r) == m.group(1)), None)
