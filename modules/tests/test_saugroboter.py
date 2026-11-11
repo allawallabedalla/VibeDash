@@ -120,7 +120,9 @@ class TestAktionen(unittest.TestCase):
             "aktionen": [
                 {"id": "kochen", "name": "Nach dem Kochen", "sub": "Küche + Essen", "geraet": "V50", "raeume": [5, 8]},
                 {"id": "bad", "name": "Bad OG", "geraet": "E20", "raeume": [2]},
+                {"id": "kz", "name": "Nur Küche", "geraet": "V50", "zonen": ["kueche", "x"]},
             ],
+            "zonen": {"kueche": {"name": "Küche", "geschoss": "EG", "rechteck_m": [3, 5, 5, 9]}},
         }
 
     def tearDown(self):
@@ -135,9 +137,16 @@ class TestAktionen(unittest.TestCase):
     def test_one_choice_per_robot(self):
         c = self.choices()
         self.assertEqual(list(c), ["Aktionen V50", "Aktionen E20"])
-        self.assertEqual([o["value"] for o in c["Aktionen V50"]["options"]], ["kochen", "pause", "heim"])
+        self.assertEqual([o["value"] for o in c["Aktionen V50"]["options"]], ["kochen", "kz", "pause", "heim"])
         self.assertEqual(c["Aktionen V50"]["id"], "saug:v50")
         self.assertIsNone(c["Aktionen V50"]["selected"])
+
+    def test_zone_action_shows_area(self):
+        opts = {o["value"]: o for o in self.choices()["Aktionen V50"]["options"]}
+        self.assertEqual(opts["kz"]["sub"], "Bereich: Küche, x")
+        self.assertEqual(opts["kochen"]["sub"], "Küche + Essen")
+        status, _ = self.mod().action({"item": "saug:v50", "action": "choose", "value": "kz"})
+        self.assertEqual(status, 200)
 
     def test_wish_and_result(self):
         m = self.mod()

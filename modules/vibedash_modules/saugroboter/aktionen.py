@@ -3,8 +3,11 @@ mode). One choice per robot; a tap stores a wish for the HOUSE in a small file, 
 the robot and writes back what happened. Nothing is switched here.
 
 Config:
-  aktionen  [{id, name, sub?, geraet, raeume: [segment ids] | "alle", modus?, staerke?, durchgaenge?}] – the house
-            reads the same entries; per robot "pause" and "heim" are always offered
+  aktionen  [{id, name, sub?, geraet, raeume: [segment ids] | "alle" | zonen: [zone ids], modus?, staerke?,
+            durchgaenge?}] – the house reads the same entries; per robot "pause" and "heim" are always offered
+  zonen     {id: {name, geschoss, rechteck_m: [x0, y0, x1, y1]}} – areas in floor-plan metres for one-off zone
+            cleaning (e.g. only the kitchen of a combined room); the house converts them to the robot map
+            ("karten" in the same file). Without "sub" a zone action shows "Bereich: <zone names>".
   wunsch    wish file (relative to the modules folder or absolute), default "saugroboter_wunsch.json":
             {"nr", "id", "geraet", "zeit" (ms)}
   stand     file the house writes after sending, default "saugroboter_stand.json":
@@ -36,13 +39,22 @@ def _key(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", str(name).lower()).strip("-")[:32] or "x"
 
 
+def _zone_sub(cfg: dict, a: dict) -> str:
+    zs = a.get("zonen")
+    if not isinstance(zs, list) or not zs:
+        return ""
+    known = cfg.get("zonen") if isinstance(cfg.get("zonen"), dict) else {}
+    names = [str((known.get(z) or {}).get("name") or z) if isinstance(z, str) else "?" for z in zs]
+    return "Bereich: " + ", ".join(names)
+
+
 def actions(cfg: dict) -> dict:
     """-> {robot: [(value, label, sub)]} in the order of the config, pause/heim last."""
     out: dict = {}
     for a in cfg.get("aktionen") or []:
         if isinstance(a, dict) and a.get("id") and a.get("name") and a.get("geraet"):
             out.setdefault(str(a["geraet"]), []).append(
-                (str(a["id"]), str(a["name"])[:30], str(a.get("sub") or "")[:60])
+                (str(a["id"]), str(a["name"])[:30], str(a.get("sub") or _zone_sub(cfg, a))[:60])
             )
     return {g: v + list(BASIC) for g, v in out.items()}
 
