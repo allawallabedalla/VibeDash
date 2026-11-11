@@ -329,6 +329,7 @@ export const BOARD_ACTIONS = [
   'undo',
   'snooze',
   'choose',
+  'zone',
 ] as const;
 export type BoardAction = (typeof BOARD_ACTIONS)[number];
 export interface BoardActionRequest {
@@ -339,6 +340,39 @@ export interface BoardActionRequest {
   date?: string;
   /** "choose": the option picked in a choice section (a-z0-9_-) */
   value?: string;
+  /** "zone": a new area drawn in a "zones" section, or the id of one to remove */
+  zone?: BoardZoneInput;
+}
+export type BoardZoneInput =
+  { name: string; rect: [number, number, number, number]; mode?: string } | { remove: string };
+
+const ZONE_LIMIT = 10_000;
+/** What a "zones" section may send: a name, four plain numbers and a mode word – or an id to remove. */
+function zoneInput(v: unknown): BoardZoneInput | null {
+  if (!isObjRec(v)) return null;
+  if ('remove' in v)
+    return typeof v.remove === 'string' && /^[a-z0-9_-]{1,32}$/.test(v.remove)
+      ? { remove: v.remove }
+      : null;
+  const name = cleanText(v.name, 24);
+  const rect = Array.isArray(v.rect) ? v.rect : [];
+  if (
+    !name ||
+    rect.length !== 4 ||
+    !rect.every((x) => typeof x === 'number' && Number.isFinite(x) && Math.abs(x) < ZONE_LIMIT)
+  )
+    return null;
+  const mode = typeof v.mode === 'string' && /^[a-z0-9_-]{1,32}$/.test(v.mode) ? v.mode : undefined;
+  return {
+    name,
+    rect: rect.map((x) => Math.round((x as number) * 100) / 100) as [
+      number,
+      number,
+      number,
+      number,
+    ],
+    ...(mode ? { mode } : {}),
+  };
 }
 
 /** Simple brake against a stuck button or a loop: at most 30 writes a minute. */
@@ -372,6 +406,8 @@ async function handleBoardAction(id: string, deps: ApiDeps, req: RequestInfo): P
       ? body.value
       : undefined;
   if (action === 'choose' && !value) return json(400, { error: 'value_required' });
+  const zone = action === 'zone' ? zoneInput(body.zone) : null;
+  if (action === 'zone' && !zone) return json(400, { error: 'zone_required' });
   if (tooMany(deps.now())) return json(429, { error: 'too_many' });
   try {
     const r = await deps.boardAction(b, {
@@ -381,6 +417,7 @@ async function handleBoardAction(id: string, deps: ApiDeps, req: RequestInfo): P
       ...(text ? { text } : {}),
       ...(date ? { date } : {}),
       ...(value ? { value } : {}),
+      ...(zone ? { zone } : {}),
     });
     // the board shows the change on the next look
     deps.cache?.delete(`board|${b.id}`);

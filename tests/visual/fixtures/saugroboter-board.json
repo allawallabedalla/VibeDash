@@ -1,0 +1,154 @@
+{
+  "updated": 1794400000000,
+  "sections": [
+    {
+      "type": "choice",
+      "title": "Räume Robo",
+      "id": "saug:robo",
+      "selected": null,
+      "options": [
+        {
+          "value": "alles",
+          "label": "Alles saugen"
+        },
+        {
+          "value": "kueche",
+          "label": "Küche"
+        }
+      ],
+      "note": "Antippen startet die Aktion.",
+      "info": {
+        "what": "Vorgefertigte Putzaktionen wie Lichtszenen; Bereiche sind Rechtecke auf dem Grundriss. Pause und Nach Hause gibt es immer.",
+        "source": "Wunsch an den Haus-Dienst, der den Befehl über die Hersteller-Cloud schickt."
+      }
+    },
+    {
+      "type": "choice",
+      "title": "Bereiche Robo",
+      "id": "saug:robo.bereiche",
+      "selected": null,
+      "options": [
+        {
+          "value": "b-sofa",
+          "label": "Vor dem Sofa",
+          "sub": "Bereich saugen"
+        },
+        {
+          "value": "pause",
+          "label": "Pause",
+          "sub": "anhalten"
+        }
+      ],
+      "note": "Antippen startet die Aktion.",
+      "info": {
+        "what": "Vorgefertigte Putzaktionen wie Lichtszenen; Bereiche sind Rechtecke auf dem Grundriss. Pause und Nach Hause gibt es immer.",
+        "source": "Wunsch an den Haus-Dienst, der den Befehl über die Hersteller-Cloud schickt."
+      }
+    },
+    {
+      "type": "choice",
+      "title": "Steuern Robo",
+      "id": "saug:robo.steuern",
+      "selected": null,
+      "options": [
+        {
+          "value": "pause",
+          "label": "Pause",
+          "sub": "anhalten"
+        },
+        {
+          "value": "heim",
+          "label": "Nach Hause",
+          "sub": "zurück zur Station"
+        }
+      ],
+      "note": "Antippen hält an oder schickt heim.",
+      "info": {
+        "what": "Vorgefertigte Putzaktionen wie Lichtszenen; Bereiche sind Rechtecke auf dem Grundriss. Pause und Nach Hause gibt es immer.",
+        "source": "Wunsch an den Haus-Dienst, der den Befehl über die Hersteller-Cloud schickt."
+      }
+    },
+    {
+      "type": "zones",
+      "title": "Neuer Bereich Robo",
+      "id": "zone:robo",
+      "floor": {
+        "id": "EG",
+        "name": "EG",
+        "box": [0.0, 0.0, 10.0, 8.0],
+        "walls": [],
+        "rooms": [
+          {
+            "id": "wohnen",
+            "name": "Wohnen",
+            "kind": "room",
+            "polygon": [
+              [0, 0],
+              [6, 0],
+              [6, 5],
+              [0, 5]
+            ],
+            "label": [3, 2.5]
+          },
+          {
+            "id": "kueche",
+            "name": "Küche",
+            "kind": "room",
+            "polygon": [
+              [6, 0],
+              [10, 0],
+              [10, 5],
+              [6, 5]
+            ],
+            "label": [8, 2.5]
+          },
+          {
+            "id": "terrasse",
+            "name": "Terrasse",
+            "kind": "outside",
+            "polygon": [
+              [0, 5],
+              [10, 5],
+              [10, 8],
+              [0, 8]
+            ],
+            "label": [5, 6.5]
+          }
+        ]
+      },
+      "zones": [
+        {
+          "id": "tisch",
+          "name": "Esstisch",
+          "rect": [7.0, 1.0, 9.0, 3.0]
+        },
+        {
+          "id": "sofa",
+          "name": "Vor dem Sofa",
+          "rect": [1.0, 1.0, 3.5, 2.5],
+          "own": true
+        }
+      ],
+      "blocked": [[0.0, 5.0, 10.0, 8.0]],
+      "modes": [
+        {
+          "value": "saugen",
+          "label": "Saugen"
+        },
+        {
+          "value": "saugen_wischen",
+          "label": "Saugen + Wischen"
+        },
+        {
+          "value": "wischen",
+          "label": "Wischen"
+        }
+      ],
+      "note": "Rechteck aufziehen, Namen geben, speichern – der Bereich steht dann als Knopf oben.",
+      "info": {
+        "what": "Bereiche sind Rechtecke auf dem Grundriss. Der Roboter putzt sie einmal, auf dem Roboter wird nichts gespeichert. Gesperrte Flächen (schraffiert) lassen sich nicht wählen.",
+        "source": "Die Umrechnung auf die Roboterkarte macht der Haus-Dienst, auf etwa ±0,3 m genau."
+      }
+    }
+  ]
+}

@@ -550,3 +550,72 @@ describe('pair sections (compare two values)', () => {
     ).toEqual(['text']);
   });
 });
+
+describe('area picker sections (zones)', () => {
+  const floor = {
+    id: 'EG',
+    name: 'EG',
+    box: [0, 0, 10, 8],
+    walls: [],
+    rooms: [
+      {
+        id: 'a',
+        name: 'A',
+        polygon: [
+          [0, 0],
+          [5, 0],
+          [5, 5],
+        ],
+        label: [2, 2],
+      },
+    ],
+  };
+  const zones = (extra: Record<string, unknown>) =>
+    sanitizeBoard({
+      sections: [
+        {
+          type: 'zones',
+          title: 'Neuer Bereich',
+          id: 'zone:v50',
+          floor,
+          modes: [{ value: 'saugen', label: 'Saugen' }],
+          ...extra,
+        },
+      ],
+    })!.sections[0];
+
+  it('keeps floor, areas with sorted corners, blocked parts and modes', () => {
+    const s = zones({
+      zones: [
+        { id: 'tisch', name: 'Tisch', rect: [3, 4, 1, 2], own: true },
+        { id: 'tisch', name: 'doppelt', rect: [1, 1, 2, 2] },
+        { id: 'Bad Id', name: 'x', rect: [1, 1, 2, 2] },
+        { id: 'flach', name: 'x', rect: [1, 1, 1, 2] },
+        { id: 'zahl', name: 'x', rect: [1, 1, '2', 2] },
+      ],
+      blocked: [
+        [6, 5, 10, 8],
+        [1, 2],
+      ],
+    });
+    expect(s).toMatchObject({
+      type: 'zones',
+      id: 'zone:v50',
+      zones: [{ id: 'tisch', name: 'Tisch', rect: [1, 2, 3, 4], own: true }],
+      blocked: [[6, 5, 10, 8]],
+      modes: [{ value: 'saugen', label: 'Saugen' }],
+    });
+    expect((s as { floor: { rooms: unknown[] } }).floor.rooms).toHaveLength(1);
+  });
+
+  it('drops a picker without id, rooms or modes, and never passes one on in a calculation', () => {
+    expect(zones({ id: 'nope' })).toBeUndefined();
+    expect(zones({ modes: [] })).toBeUndefined();
+    expect(zones({ floor: { ...floor, rooms: [] } })).toBeUndefined();
+    expect(
+      sanitizeCalcResult({
+        sections: [{ type: 'zones', title: 'x', id: 'zone:a', floor, modes: [{ value: 'a' }] }],
+      }),
+    ).toEqual([]);
+  });
+});

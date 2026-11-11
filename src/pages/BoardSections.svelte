@@ -251,6 +251,15 @@
         <BoardChoice board={id} choice={s} onchanged={() => onchanged?.()} />
       {/await}
     </Card>
+  {:else if s.type === 'zones'}
+    <Card title={s.title} icon="home" color="var(--battery)" note={s.note} info={s.info}>
+      <!-- loaded only where a board has an area picker (first-page budget) -->
+      {#await import('../components/BoardZones.svelte')}
+        <p class="muted-note" role="status">{t('state.loading')}</p>
+      {:then { default: BoardZones }}
+        <BoardZones board={id} zones={s} onchanged={() => onchanged?.()} />
+      {/await}
+    </Card>
   {:else if s.type === 'plan'}
     <Card
       title={s.title || tab?.title || ''}

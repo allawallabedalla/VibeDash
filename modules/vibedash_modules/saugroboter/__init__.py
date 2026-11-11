@@ -5,7 +5,8 @@ switched here.
 Config (local/modules/saugroboter.json, template modules/templates/saugroboter.json):
   influx      {url, db, measurement?} – a collector writes one point per robot (measurement default saugroboter,
               tag geraet = name, fields batterie %, status = state code of the Dreame/MOVA cloud, online 0/1)
-  aktionen, wunsch, stand   optional cleaning actions, see aktionen.py
+  aktionen, zonen, karten, grundriss, bereiche, wunsch, stand   optional cleaning actions and areas, see
+              aktionen.py
   zeitzone    default "Europe/Berlin"
   texte       optional wording overrides (keys of board.TEXT)
 """
@@ -37,7 +38,11 @@ class Module:
         return out
 
     def action(self, d: dict):
-        """{item: "saug:<robot>", action: "choose", value: action id} -> wish for the house."""
+        """{item: "saug:<robot>[.<row>]", action: "choose", value: action id} -> wish for the house;
+        {item: "zone:<robot>", action: "zone", zone: {name, rect, mode} | {remove: id}} -> a drawn area."""
+        now_ms = int(self.clock() * 1000)
+        if d.get("action") == "zone":
+            return aktionen.zone(self.cfg, self.path, d.get("item"), d.get("zone"), now_ms)
         if d.get("action") != "choose":
             return 404, {"ok": False, "text": "keine Aktion"}
-        return aktionen.choose(self.cfg, self.path, d.get("item"), d.get("value"), int(self.clock() * 1000))
+        return aktionen.choose(self.cfg, self.path, d.get("item"), d.get("value"), now_ms)
