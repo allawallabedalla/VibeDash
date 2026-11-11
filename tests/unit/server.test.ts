@@ -680,6 +680,59 @@ describe('clicks on board items and the feedback backlog', () => {
     expect(sent.length).toBe(1);
   });
 
+  it('passes a drawn area on and refuses one that is not plain numbers', async () => {
+    const r = validateMapping({
+      ...example,
+      boards: [{ id: 'saug', title: 'Saug', icon: 'robot', module: 'saugroboter' }],
+    });
+    if (!r.ok) throw new Error(r.errors.join());
+    const sent: unknown[] = [];
+    const d = deps({
+      mapping: r.mapping,
+      boardAction: async (_b, a) => {
+        sent.push(a);
+        return { status: 200, body: { ok: true, text: 'gespeichert' } };
+      },
+    });
+    const ok = await write('/api/board/saug/action', d, {
+      item: 'zone:v50',
+      action: 'zone',
+      zone: { name: ' Unter\ndem Sofa ', rect: [1.234, 2, 3, 4.5], mode: 'wischen', extra: 1 },
+    });
+    expect(ok.status).toBe(200);
+    expect(
+      (
+        await write('/api/board/saug/action', d, {
+          item: 'zone:v50',
+          action: 'zone',
+          zone: { remove: 'sofa' },
+        })
+      ).status,
+    ).toBe(200);
+    expect(sent).toEqual([
+      {
+        board: 'saug',
+        item: 'zone:v50',
+        action: 'zone',
+        zone: { name: 'Unter dem Sofa', rect: [1.23, 2, 3, 4.5], mode: 'wischen' },
+      },
+      { board: 'saug', item: 'zone:v50', action: 'zone', zone: { remove: 'sofa' } },
+    ]);
+    for (const zone of [
+      undefined,
+      { name: '', rect: [1, 2, 3, 4] },
+      { name: 'a', rect: [1, 2, 3] },
+      { name: 'a', rect: [1, 2, 3, '4'] },
+      { name: 'a', rect: [1, 2, 3, 1e9] },
+      { remove: 'A B' },
+    ])
+      expect(
+        (await write('/api/board/saug/action', d, { item: 'zone:v50', action: 'zone', zone }))
+          .status,
+      ).toBe(400);
+    expect(sent.length).toBe(2);
+  });
+
   it('keeps feedback in a local file: add, list, mark done', async () => {
     const { fileStore } = await import('../../server/feedback');
     const dir = mkdtempSync(join(tmpdir(), 'vd-fb-'));

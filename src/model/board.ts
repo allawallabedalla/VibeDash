@@ -48,6 +48,13 @@
  *     "levels": [ { "value": "h", "label": "Stunden" }, … ], "a": "<id>", "b": "<id>", "level": "h", "button": "…" }
  *   (2–800 options, value up to 200 printable characters, 1–3 levels). The button sends POST /api/board/<id>/calc
  *   { pair: { a, b, level } }; the answer is ordinary sections, as for "calc". Only a calculation.
+ * "zones" (only if the board takes actions): draw a rectangle on one floor of the plan and name it –
+ *   { "type": "zones", "title": "…", "id": "zone:<key>", "floor": { id, name, box, walls, rooms } (as in "plan"),
+ *     "zones": [ { "id": "a", "name": "…", "rect": [x0, y0, x1, y1], "own": true } ],
+ *     "blocked": [[x0, y0, x1, y1]], "modes": [ { "value": "a", "label": "…" } ] }
+ *   (at most 40 zones, 10 blocked parts, 1–4 modes). Saving sends POST /api/board/<id>/action { item: id,
+ *   action: "zone", zone: { name, rect, mode } }; "own" zones can be removed ({ zone: { remove: id } }).
+ *   Blocked parts are shown hatched and cannot be drawn on. Only stores the area for the house.
  * "chargetimeline": charge windows to try on the house's weather cases (shown only, switches nothing) –
  *   { "type": "chargetimeline", "title": "…", "days": [ { "label": "Heute", "startStep": 35, "startKwh": 4.8,
  *     "pv": [[96 kW values] × cases], "load": [[96] × cases] } ], "battery": { "kwh", "reserveKwh", "eta", "kw" },
@@ -163,6 +170,7 @@ export type BoardSection =
   | (Base & { type: 'text'; text: string })
   | (Base & BoardCalc)
   | (Base & BoardChoice)
+  | (Base & BoardZones)
   | (Base & BoardPair)
   | (Base & BoardChargeTimeline)
   | (Base & BoardPlan);
@@ -182,6 +190,17 @@ export interface BoardChoice {
   /** disabled: shown but not selectable (e.g. the automatic while it is still locked) */
   options: { value: string; label: string; sub?: string; disabled?: boolean }[];
   selected: string | null;
+}
+
+export type PlanFloor = BoardPlan['floors'][number];
+export type ZoneRect = [number, number, number, number];
+export interface BoardZones {
+  type: 'zones';
+  id: string;
+  floor: PlanFloor;
+  zones: { id: string; name: string; rect: ZoneRect; own?: boolean }[];
+  blocked: ZoneRect[];
+  modes: { value: string; label: string }[];
 }
 
 export interface BoardPair {
@@ -545,6 +564,11 @@ export function sanitizeBoard(raw: unknown): Board | null {
         if (c) sections.push({ ...base, ...c });
         break;
       }
+      case 'zones': {
+        const c = sanitizeZones(s);
+        if (c) sections.push({ ...base, ...c });
+        break;
+      }
       case 'pair': {
         const c = sanitizePair(s);
         if (c) sections.push({ ...base, ...c });
@@ -719,6 +743,7 @@ export function sanitizeCalcResult(raw: unknown): BoardSection[] | null {
             x.type !== 'calc' &&
             x.type !== 'plan' &&
             x.type !== 'choice' &&
+            x.type !== 'zones' &&
             x.type !== 'pair' &&
             x.type !== 'chargetimeline',
         )
@@ -751,35 +776,78 @@ const roomMap = <T>(v: unknown, ids: Set<string>, f: (x: unknown) => T): Record<
 };
 
 /** Check a floor plan; null when it has no floor with rooms. */
+/** One floor of a plan: box, walls, rooms (rooms without a polygon are dropped). */
+function sanitizeFloor(f: O): PlanFloor {
+  const box = list(f.box, 4).map(coord);
+  return {
+    id: text(f.id, 30),
+    name: text(f.name, 40),
+    box: (box.length === 4 && box.every((b) => b !== null) && box[2]! > box[0]! && box[3]! > box[1]!
+      ? box
+      : [0, 0, 10, 10]) as [number, number, number, number],
+    walls: list(f.walls, 400)
+      .map((w) => points(w, 200))
+      .filter((w) => w.length >= 2),
+    rooms: list(f.rooms, 60)
+      .filter(isObj)
+      .map((r) => ({
+        id: text(r.id, 30),
+        name: text(r.name, 60),
+        kind: ROOM_KINDS.includes(r.kind as PlanRoomKind) ? (r.kind as PlanRoomKind) : 'room',
+        polygon: points(r.polygon, 200),
+        label: point(r.label) ?? [0, 0],
+      }))
+      .filter((r) => r.id && r.polygon.length >= 3),
+  };
+}
+
+/** A rectangle [x0, y0, x1, y1] in plan units, corners sorted; null if not four sane numbers. */
+const zoneRect = (v: unknown): ZoneRect | null => {
+  const r = list(v, 4).map(coord);
+  if (r.length !== 4 || r.some((x) => x === null)) return null;
+  const [a, b, c, d] = r as number[];
+  const x0 = Math.min(a!, c!);
+  const x1 = Math.max(a!, c!);
+  const y0 = Math.min(b!, d!);
+  const y1 = Math.max(b!, d!);
+  return x1 > x0 && y1 > y0 ? [x0, y0, x1, y1] : null;
+};
+
+/** Check an area picker; null without an item id, a floor with rooms or a mode. */
+function sanitizeZones(s: O): BoardZones | null {
+  const id = typeof s.id === 'string' && ITEM_ID.test(s.id) ? s.id : null;
+  if (!id || !isObj(s.floor)) return null;
+  const floor = sanitizeFloor(s.floor);
+  if (!floor.rooms.length) return null;
+  const modes: BoardZones['modes'] = [];
+  for (const m of list(s.modes, 4).filter(isObj)) {
+    const value = typeof m.value === 'string' && CHOICE_VALUE.test(m.value) ? m.value : null;
+    if (value && !modes.some((x) => x.value === value))
+      modes.push({ value, label: text(m.label, 24) || value });
+  }
+  if (!modes.length) return null;
+  const zones: BoardZones['zones'] = [];
+  for (const z of list(s.zones, 40).filter(isObj)) {
+    const zid = typeof z.id === 'string' && CHOICE_VALUE.test(z.id) ? z.id : null;
+    const rect = zoneRect(z.rect);
+    if (!zid || !rect || zones.some((x) => x.id === zid)) continue;
+    zones.push({
+      id: zid,
+      name: text(z.name, 24) || zid,
+      rect,
+      ...(z.own === true ? { own: true } : {}),
+    });
+  }
+  const blocked = list(s.blocked, 10)
+    .map(zoneRect)
+    .filter((r): r is ZoneRect => r !== null);
+  return { type: 'zones', id, floor, zones, blocked, modes };
+}
+
 function sanitizePlan(s: O): Omit<BoardPlan, never> | null {
   const floors = list(s.floors, 4)
     .filter(isObj)
-    .map((f) => {
-      const box = list(f.box, 4).map(coord);
-      return {
-        id: text(f.id, 30),
-        name: text(f.name, 40),
-        box: (box.length === 4 &&
-        box.every((b) => b !== null) &&
-        box[2]! > box[0]! &&
-        box[3]! > box[1]!
-          ? box
-          : [0, 0, 10, 10]) as [number, number, number, number],
-        walls: list(f.walls, 400)
-          .map((w) => points(w, 200))
-          .filter((w) => w.length >= 2),
-        rooms: list(f.rooms, 60)
-          .filter(isObj)
-          .map((r) => ({
-            id: text(r.id, 30),
-            name: text(r.name, 60),
-            kind: ROOM_KINDS.includes(r.kind as PlanRoomKind) ? (r.kind as PlanRoomKind) : 'room',
-            polygon: points(r.polygon, 200),
-            label: point(r.label) ?? [0, 0],
-          }))
-          .filter((r) => r.id && r.polygon.length >= 3),
-      };
-    })
+    .map(sanitizeFloor)
     .filter((f) => f.rooms.length);
   if (!floors.length) return null;
   const ids = new Set(floors.flatMap((f) => f.rooms.map((r) => r.id)));

@@ -134,18 +134,32 @@ class TestAktionen(unittest.TestCase):
     def choices(self, now=NOW):
         return {s["title"]: s for s in self.mod(now).board()["sections"] if s["type"] == "choice"}
 
-    def test_one_choice_per_robot(self):
+    def test_rows_per_robot(self):
         c = self.choices()
-        self.assertEqual(list(c), ["Aktionen V50", "Aktionen E20"])
-        self.assertEqual([o["value"] for o in c["Aktionen V50"]["options"]], ["kochen", "kz", "pause", "heim"])
-        self.assertEqual(c["Aktionen V50"]["id"], "saug:v50")
-        self.assertIsNone(c["Aktionen V50"]["selected"])
+        self.assertEqual(
+            list(c),
+            ["Räume V50", "Bereiche V50", "Steuern V50", "Räume E20", "Steuern E20"],
+        )
+        self.assertEqual([o["value"] for o in c["Räume V50"]["options"]], ["kochen", "pause"])
+        self.assertEqual([o["value"] for o in c["Steuern V50"]["options"]], ["pause", "heim"])
+        self.assertEqual(c["Räume V50"]["id"], "saug:v50")
+        self.assertEqual(c["Bereiche V50"]["id"], "saug:v50.bereiche")
+        self.assertIsNone(c["Räume V50"]["selected"])
+
+    def test_more_than_five_split(self):
+        self.cfg["aktionen"] += [
+            {"id": f"r{i}", "name": f"Raum {i}", "geraet": "V50", "raeume": [i]} for i in range(1, 7)
+        ]
+        c = self.choices()
+        self.assertEqual(len(c["Räume V50"]["options"]), 5)
+        self.assertEqual([o["value"] for o in c["Räume V50 (2)"]["options"]], ["r5", "r6"])
+        self.assertEqual(c["Räume V50 (2)"]["id"], "saug:v50.raeume2")
+        self.assertEqual(self.mod().action({"item": "saug:v50.raeume2", "action": "choose", "value": "r6"})[0], 200)
 
     def test_zone_action_shows_area(self):
-        opts = {o["value"]: o for o in self.choices()["Aktionen V50"]["options"]}
+        opts = {o["value"]: o for o in self.choices()["Bereiche V50"]["options"]}
         self.assertEqual(opts["kz"]["sub"], "Bereich: Küche, x")
-        self.assertEqual(opts["kochen"]["sub"], "Küche + Essen")
-        status, _ = self.mod().action({"item": "saug:v50", "action": "choose", "value": "kz"})
+        status, _ = self.mod().action({"item": "saug:v50.bereiche", "action": "choose", "value": "kz"})
         self.assertEqual(status, 200)
 
     def test_wish_and_result(self):
@@ -156,19 +170,106 @@ class TestAktionen(unittest.TestCase):
             wish = json.load(f)
         self.assertEqual((wish["nr"], wish["id"], wish["geraet"]), (1, "kochen", "V50"))
         c = self.choices()
-        self.assertEqual((c["Aktionen V50"]["selected"], c["Aktionen V50"]["note"]), ("kochen", "Wird gesendet …"))
+        self.assertEqual((c["Räume V50"]["selected"], c["Räume V50"]["note"]), ("kochen", "Wird gesendet …"))
+        self.assertEqual(c["Bereiche V50"]["note"], "Antippen startet die Aktion.")
         with open(os.path.join(self.base, "saugroboter_stand.json"), "w", encoding="utf-8") as f:
             json.dump({"nr": 1, "id": "kochen", "ok": True, "text": "gestartet", "zeit": MS}, f)
         c = self.choices()
-        self.assertEqual((c["Aktionen V50"]["selected"], c["Aktionen V50"]["note"]), (None, "14:00: gestartet"))
+        self.assertEqual((c["Räume V50"]["selected"], c["Räume V50"]["note"]), (None, "14:00: gestartet"))
         # a wish the house never took over is named after 5 min
-        m.action({"item": "saug:e20", "action": "choose", "value": "heim"})
-        late = self.choices(NOW + 600)["Aktionen E20"]
+        m.action({"item": "saug:e20.steuern", "action": "choose", "value": "heim"})
+        late = self.choices(NOW + 600)["Steuern E20"]
         self.assertTrue(late["note"].startswith("Nicht gesendet"))
 
     def test_rejects_unknown(self):
         m = self.mod()
         self.assertEqual(m.action({"item": "saug:v50", "action": "choose", "value": "bad"})[0], 400)
+        self.assertEqual(m.action({"item": "saug:v50", "action": "choose", "value": "heim"})[0], 400)
         self.assertEqual(m.action({"item": "saug:xyz", "action": "choose", "value": "pause"})[0], 404)
+        self.assertEqual(m.action({"item": "saug:v50.foo", "action": "choose", "value": "pause"})[0], 404)
         self.assertEqual(m.action({"item": "saug:v50", "action": "done", "value": "pause"})[0], 404)
         self.assertFalse(os.path.exists(os.path.join(self.base, "saugroboter_wunsch.json")))
+
+
+class TestBereiche(unittest.TestCase):
+    """Areas drawn on the (made-up) template floor plan."""
+
+    def setUp(self):
+        self.base = os.path.join(os.path.dirname(__file__), "_saug_ber")
+        os.makedirs(self.base, exist_ok=True)
+        self.cfg = {
+            "influx": {"db": "haus"},
+            "grundriss": {"haus": os.path.join(TEMPLATES, "raeume_haus.json")},
+            "karten": {"V50": {"geschoss": "EG", "sperr_m": [[6, 5, 10, 8]], "rand_m": 0.2}},
+            "zonen": {"tisch": {"name": "Tisch", "geschoss": "EG", "rechteck_m": [1, 1, 2, 2]}},
+            "aktionen": [{"id": "alles", "name": "Alles", "geraet": "V50", "raeume": "alle"}],
+        }
+
+    def tearDown(self):
+        shutil.rmtree(self.base, ignore_errors=True)
+
+    def mod(self):
+        return Module(self.cfg, lambda p: os.path.join(self.base, p), lambda u, t=20: {"results": [{}]}, lambda: NOW)
+
+    def secs(self):
+        return self.mod().board()["sections"]
+
+    def add(self, **z):
+        return self.mod().action({"item": "zone:v50", "action": "zone", "zone": z})
+
+    def test_draw_section(self):
+        z = [s for s in self.secs() if s["type"] == "zones"]
+        self.assertEqual(len(z), 1)
+        z = z[0]
+        self.assertEqual((z["id"], z["floor"]["id"]), ("zone:v50", "EG"))
+        self.assertEqual(z["blocked"], [[6.0, 5.0, 10.0, 8.0]])
+        self.assertEqual([x["id"] for x in z["zones"]], ["tisch"])
+        self.assertFalse(z["zones"][0].get("own"))
+        self.assertTrue(z["floor"]["rooms"])
+
+    def test_add_becomes_button_and_wish(self):
+        st, body = self.add(name="Unter dem Sofa", rect=[3.5, 3.0, 1.0, 1.5], mode="wischen")
+        self.assertEqual(st, 200, body)
+        with open(os.path.join(self.base, "saugroboter_bereiche.json"), encoding="utf-8") as f:
+            b = json.load(f)["bereiche"][0]
+        self.assertEqual(
+            (b["id"], b["rechteck_m"], b["modus"], b["geschoss"]), ("unter-dem-sofa", [1, 1.5, 3.5, 3], "wischen", "EG")
+        )
+        c = {s["title"]: s for s in self.secs() if s["type"] == "choice"}
+        opt = c["Bereiche V50"]["options"]
+        self.assertEqual(
+            [(o["value"], o["sub"]) for o in opt], [("b-unter-dem-sofa", "Bereich wischen"), ("pause", "anhalten")]
+        )
+        zs = next(s for s in self.secs() if s["type"] == "zones")["zones"]
+        self.assertEqual([(x["id"], x.get("own")) for x in zs], [("tisch", None), ("unter-dem-sofa", True)])
+        st, _ = self.mod().action({"item": "saug:v50.bereiche", "action": "choose", "value": "b-unter-dem-sofa"})
+        self.assertEqual(st, 200)
+        # same name again gets its own id
+        self.assertEqual(self.add(name="Unter dem Sofa", rect=[1, 1, 2, 2])[0], 200)
+        with open(os.path.join(self.base, "saugroboter_bereiche.json"), encoding="utf-8") as f:
+            self.assertEqual([x["id"] for x in json.load(f)["bereiche"]], ["unter-dem-sofa", "unter-dem-sofa-2"])
+
+    def test_rejects(self):
+        for z, text in (
+            ({"name": "", "rect": [1, 1, 2, 2]}, "Name"),
+            ({"name": "x" * 25, "rect": [1, 1, 2, 2]}, "Name"),
+            ({"name": "a", "rect": [1, 1, 1.1, 2]}, "zu klein"),
+            ({"name": "a", "rect": [1, 1, "2", 2]}, "kein Rechteck"),
+            ({"name": "a", "rect": [5.9, 1, 7, 4.9]}, "gesperrte"),  # within the margin of the blocked part
+            ({"name": "a", "rect": [-50, -50, 50, 50]}, "zu groß"),  # clipped to the plan (10 × 8 m = 80 m²)
+        ):
+            st, body = self.add(**z)
+            self.assertEqual(st, 400, z)
+            self.assertIn(text, body["text"], z)
+        self.assertEqual(self.mod().action({"item": "zone:e20", "action": "zone", "zone": {"name": "a"}})[0], 404)
+        self.assertFalse(os.path.exists(os.path.join(self.base, "saugroboter_bereiche.json")))
+
+    def test_remove_only_own(self):
+        self.add(name="Ecke", rect=[1, 1, 2, 2])
+        self.assertEqual(self.add(remove="tisch")[0], 404)
+        self.assertEqual(self.add(remove="ecke")[0], 200)
+        self.assertEqual(next(s for s in self.secs() if s["type"] == "zones")["zones"][1:], [])
+
+    def test_no_plan_no_drawing(self):
+        del self.cfg["grundriss"]
+        self.assertFalse([s for s in self.secs() if s["type"] == "zones"])

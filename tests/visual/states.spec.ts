@@ -607,3 +607,67 @@ test('setup: first visitor takes over, grid check asks for the direction', async
   await page.getByRole('button', { name: 'Ich speise ein' }).click();
   await expect(page.getByText(/Richtung passt nicht/)).toBeVisible();
 });
+
+test('robot areas: draw a rectangle on the plan, name it, save', async ({ page }, info) => {
+  await influxMode(page, synthetic);
+  await page.route('**/api/health', (r) =>
+    r.fulfill(
+      json({
+        ok: true,
+        source: 'live',
+        backends: ['influx'],
+        timeZone: 'Europe/Berlin',
+        boards: [{ id: 'saug', title: 'Saugroboter', icon: 'robot', actions: true }],
+      }),
+    ),
+  );
+  // made with the module itself (vibedash_modules/saugroboter) on the made-up template floor plan
+  await page.route('**/api/board/saug', (r) =>
+    r.fulfill(
+      json(JSON.parse(readFileSync('tests/visual/fixtures/saugroboter-board.json', 'utf8'))),
+    ),
+  );
+  const sent: unknown[] = [];
+  await page.route('**/api/board/saug/action', (r) => {
+    sent.push(r.request().postDataJSON());
+    return r.fulfill(json({ ok: true, text: 'Bereich „Ecke“ gespeichert' }));
+  });
+  await page.goto('/?lang=de#/b/saug');
+  await expect(page.getByRole('radio', { name: /Vor dem Sofa/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Neuer Bereich' }).click();
+  const svg = page.getByRole('img', { name: 'EG' });
+  await svg.scrollIntoViewIfNeeded();
+  const box = (await svg.boundingBox())!;
+  // plan is 10 × 8 m: from (6, 1) to (9, 3) m … the house's own fixed area sits there, drawing over it is fine
+  const at = (x: number, y: number) =>
+    [box.x + (x / 10) * box.width, box.y + (y / 8) * box.height] as const;
+  await page.mouse.move(...at(4, 1));
+  await page.mouse.down();
+  await page.mouse.move(...at(5, 2), { steps: 4 });
+  await page.mouse.move(...at(6, 3.5), { steps: 4 });
+  await page.mouse.up();
+  await expect(page.getByText('2,0 × 2,5 m')).toBeVisible();
+  const save = page.getByRole('button', { name: 'Speichern' });
+  await expect(save).toBeDisabled();
+  await page.getByLabel('Name').fill('Ecke');
+  await page.screenshot({
+    path: `screenshots/saugroboter-bereich-${info.project.name}.png`,
+    fullPage: true,
+  });
+  await save.click();
+  await expect(page.getByText('Bereich „Ecke“ gespeichert')).toBeVisible();
+  expect(sent).toEqual([
+    {
+      item: 'zone:robo',
+      action: 'zone',
+      zone: { name: 'Ecke', rect: [4, 1, 6, 3.5], mode: 'saugen' },
+    },
+  ]);
+  // a drawn area touching the blocked part (y ≥ 5) cannot be saved
+  await page.getByRole('button', { name: 'Neuer Bereich' }).click();
+  await page.mouse.move(...at(2, 4));
+  await page.mouse.down();
+  await page.mouse.move(...at(3, 6), { steps: 4 });
+  await page.mouse.up();
+  await expect(page.getByText('Berührt eine gesperrte Fläche.')).toBeVisible();
+});
