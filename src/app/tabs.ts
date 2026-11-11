@@ -56,5 +56,6 @@ export const MODULES: Record<string, { de: string; en: string; icon: string }> =
   ml: { de: 'Modelle', en: 'Models', icon: 'target' },
   korrelation: { de: 'Korrelation', en: 'Correlation', icon: 'overview' },
   druck: { de: '3D-Druck', en: '3D printing', icon: 'printer' },
+  saugroboter: { de: 'Saugroboter', en: 'Robot vacuums', icon: 'robot' },
   updates: { de: 'Updates', en: 'Updates', icon: 'refresh' },
 };
