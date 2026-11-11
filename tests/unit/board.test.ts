@@ -592,6 +592,22 @@ describe('area picker sections (zones)', () => {
         { id: 'Bad Id', name: 'x', rect: [1, 1, 2, 2] },
         { id: 'flach', name: 'x', rect: [1, 1, 1, 2] },
         { id: 'zahl', name: 'x', rect: [1, 1, '2', 2] },
+        {
+          id: 'zwei',
+          name: 'Zwei',
+          rects: [
+            [1, 1, 2, 2],
+            [4, 4, 3, 3],
+          ],
+        },
+        {
+          id: 'halb',
+          name: 'x',
+          rects: [
+            [1, 1, 2, 2],
+            [1, 1, 1, 2],
+          ],
+        },
       ],
       blocked: [
         [6, 5, 10, 8],
@@ -601,7 +617,17 @@ describe('area picker sections (zones)', () => {
     expect(s).toMatchObject({
       type: 'zones',
       id: 'zone:v50',
-      zones: [{ id: 'tisch', name: 'Tisch', rect: [1, 2, 3, 4], own: true, mode: 'saugen' }],
+      zones: [
+        { id: 'tisch', name: 'Tisch', rects: [[1, 2, 3, 4]], own: true, mode: 'saugen' },
+        {
+          id: 'zwei',
+          name: 'Zwei',
+          rects: [
+            [1, 1, 2, 2],
+            [3, 3, 4, 4],
+          ],
+        },
+      ],
       blocked: [[6, 5, 10, 8]],
       modes: [{ value: 'saugen', label: 'Saugen' }],
     });

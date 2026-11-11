@@ -50,10 +50,10 @@
  *   { pair: { a, b, level } }; the answer is ordinary sections, as for "calc". Only a calculation.
  * "zones" (only if the board takes actions): draw a rectangle on one floor of the plan and name it –
  *   { "type": "zones", "title": "…", "id": "zone:<key>", "floor": { id, name, box, walls, rooms } (as in "plan"),
- *     "zones": [ { "id": "a", "name": "…", "rect": [x0, y0, x1, y1], "own": true, "mode": "a" } ],
+ *     "zones": [ { "id": "a", "name": "…", "rects": [[x0, y0, x1, y1], …], "own": true, "mode": "a" } ],
  *     "blocked": [[x0, y0, x1, y1]], "modes": [ { "value": "a", "label": "…" } ] }
  *   (at most 40 zones, 10 blocked parts, 1–4 modes). Saving sends POST /api/board/<id>/action { item: id,
- *   action: "zone", zone: { name, rect, mode } }; "own" zones can be changed ({ zone: { …, replace: id } }) or removed ({ zone: { remove: id } }).
+ *   action: "zone", zone: { name, rects (1–5), mode } }; "own" zones can be changed ({ zone: { …, replace: id } }) or removed ({ zone: { remove: id } }).
  *   Blocked parts are shown hatched and cannot be drawn on. Only stores the area for the house.
  * "chargetimeline": charge windows to try on the house's weather cases (shown only, switches nothing) –
  *   { "type": "chargetimeline", "title": "…", "days": [ { "label": "Heute", "startStep": 35, "startKwh": 4.8,
@@ -198,7 +198,8 @@ export interface BoardZones {
   type: 'zones';
   id: string;
   floor: PlanFloor;
-  zones: { id: string; name: string; rect: ZoneRect; own?: boolean; mode?: string }[];
+  /** 1–5 rectangles per area (an older single "rect" counts as one) */
+  zones: { id: string; name: string; rects: ZoneRect[]; own?: boolean; mode?: string }[];
   blocked: ZoneRect[];
   modes: { value: string; label: string }[];
 }
@@ -829,12 +830,12 @@ function sanitizeZones(s: O): BoardZones | null {
   const zones: BoardZones['zones'] = [];
   for (const z of list(s.zones, 40).filter(isObj)) {
     const zid = typeof z.id === 'string' && CHOICE_VALUE.test(z.id) ? z.id : null;
-    const rect = zoneRect(z.rect);
-    if (!zid || !rect || zones.some((x) => x.id === zid)) continue;
+    const rects = (Array.isArray(z.rects) ? list(z.rects, 5) : [z.rect]).map(zoneRect);
+    if (!zid || !rects.length || rects.some((r) => !r) || zones.some((x) => x.id === zid)) continue;
     zones.push({
       id: zid,
       name: text(z.name, 24) || zid,
-      rect,
+      rects: rects as ZoneRect[],
       ...(z.own === true ? { own: true } : {}),
       ...(typeof z.mode === 'string' && modes.some((m) => m.value === z.mode)
         ? { mode: z.mode }

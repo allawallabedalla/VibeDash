@@ -233,7 +233,8 @@ class TestBereiche(unittest.TestCase):
         with open(os.path.join(self.base, "saugroboter_bereiche.json"), encoding="utf-8") as f:
             b = json.load(f)["bereiche"][0]
         self.assertEqual(
-            (b["id"], b["rechteck_m"], b["modus"], b["geschoss"]), ("unter-dem-sofa", [1, 1.5, 3.5, 3], "wischen", "EG")
+            (b["id"], b["rechtecke_m"], b["modus"], b["geschoss"]),
+            ("unter-dem-sofa", [[1, 1.5, 3.5, 3]], "wischen", "EG"),
         )
         c = {s["title"]: s for s in self.secs() if s["type"] == "choice"}
         opt = c["Bereiche V50"]["options"]
@@ -257,6 +258,10 @@ class TestBereiche(unittest.TestCase):
             ({"name": "a", "rect": [1, 1, "2", 2]}, "kein Rechteck"),
             ({"name": "a", "rect": [5.9, 1, 7, 4.9]}, "gesperrte"),  # within the margin of the blocked part
             ({"name": "a", "rect": [-50, -50, 50, 50]}, "zu groß"),  # clipped to the plan (10 × 8 m = 80 m²)
+            ({"name": "a", "rects": [[0, 0, 6, 5], [0, 0, 8, 5]]}, "zu groß"),  # 30 + 40 m²
+            ({"name": "a", "rects": [[1, 1, 2, 2]] * 6}, "höchstens 5"),
+            ({"name": "a", "rects": [[1, 1, 2, 2], [5.9, 1, 7, 4.9]]}, "gesperrte"),
+            ({"name": "a", "rects": []}, "kein Rechteck"),
         ):
             st, body = self.add(**z)
             self.assertEqual(st, 400, z)
@@ -277,12 +282,43 @@ class TestBereiche(unittest.TestCase):
         self.assertIn("geändert", body["text"])
         zs = next(s for s in self.secs() if s["type"] == "zones")["zones"]
         self.assertEqual(
-            zs[1], {"id": "ecke", "name": "Große Ecke", "rect": [1, 1, 3, 3], "own": True, "mode": "wischen"}
+            zs[1], {"id": "ecke", "name": "Große Ecke", "rects": [[1, 1, 3, 3]], "own": True, "mode": "wischen"}
         )
         c = {s["title"]: s for s in self.secs() if s["type"] == "choice"}
         self.assertEqual(c["Bereiche V50"]["options"][0]["value"], "b-ecke")
         self.assertEqual(self.add(name="x", rect=[1, 1, 2, 2], replace="tisch")[0], 404)
         self.assertEqual(self.add(name="x", rect=[5.9, 1, 7, 4.9], replace="ecke")[0], 400)  # same checks as new
+
+    def test_several_rectangles_one_button(self):
+        st, body = self.add(name="Zwei Ecken", rects=[[1, 1, 2, 2], [3, 3, 4, 4.5]], mode="saugen")
+        self.assertEqual(st, 200, body)
+        zs = next(s for s in self.secs() if s["type"] == "zones")["zones"]
+        self.assertEqual(zs[1]["rects"], [[1, 1, 2, 2], [3, 3, 4, 4.5]])
+        opts = next(s for s in self.secs() if s["title"] == "Bereiche V50")["options"]
+        self.assertEqual(opts[0]["value"], "b-zwei-ecken")
+        cfg = __import__("vibedash_modules.saugroboter.aktionen", fromlist=["merged"]).merged(
+            self.cfg, lambda p: os.path.join(self.base, p)
+        )
+        act = next(a for a in cfg["aktionen"] if a["id"] == "b-zwei-ecken")
+        self.assertEqual(act["zonen"], ["b-zwei-ecken", "b-zwei-ecken#2"])
+        self.assertEqual(cfg["zonen"]["b-zwei-ecken#2"]["rechteck_m"], [3, 3, 4, 4.5])
+
+    def test_old_single_rectangle_still_read(self):
+        with open(os.path.join(self.base, "saugroboter_bereiche.json"), "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "bereiche": [
+                        {"id": "alt", "name": "Alt", "geraet": "V50", "geschoss": "EG", "rechteck_m": [1, 1, 2, 2]}
+                    ]
+                },
+                f,
+            )
+        zs = next(s for s in self.secs() if s["type"] == "zones")["zones"]
+        self.assertEqual(zs[1]["rects"], [[1, 1, 2, 2]])
+        self.assertEqual(self.add(name="Alt neu", rects=[[1, 1, 3, 3]], replace="alt")[0], 200)
+        with open(os.path.join(self.base, "saugroboter_bereiche.json"), encoding="utf-8") as f:
+            b = json.load(f)["bereiche"][0]
+        self.assertEqual((b.get("rechteck_m"), b["rechtecke_m"]), (None, [[1, 1, 3, 3]]))
 
     def test_no_plan_no_drawing(self):
         del self.cfg["grundriss"]
