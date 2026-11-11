@@ -1,0 +1,5 @@
+{
+  "$comment": "Module saugroboter – copy to local/modules/saugroboter.json. Reads robot vacuums from InfluxDB; a collector of the house writes them (measurement saugroboter, tag geraet, fields batterie, status, online). Only reads.",
+  "influx": { "url": "http://127.0.0.1:8086", "db": "", "measurement": "saugroboter" },
+  "zeitzone": "Europe/Berlin"
+}
