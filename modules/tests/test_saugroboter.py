@@ -109,3 +109,57 @@ class TestSaugroboter(unittest.TestCase):
     def test_needs_db(self):
         with self.assertRaises(ValueError):
             Module({"influx": {}}, lambda p: p, self.fetch, lambda: NOW)
+
+
+class TestAktionen(unittest.TestCase):
+    def setUp(self):
+        self.base = os.path.join(os.path.dirname(__file__), "_saug_akt")
+        os.makedirs(self.base, exist_ok=True)
+        self.cfg = {
+            "influx": {"db": "haus"},
+            "aktionen": [
+                {"id": "kochen", "name": "Nach dem Kochen", "sub": "Küche + Essen", "geraet": "V50", "raeume": [5, 8]},
+                {"id": "bad", "name": "Bad OG", "geraet": "E20", "raeume": [2]},
+            ],
+        }
+
+    def tearDown(self):
+        shutil.rmtree(self.base, ignore_errors=True)
+
+    def mod(self, now=NOW):
+        return Module(self.cfg, lambda p: os.path.join(self.base, p), lambda u, t=20: {"results": [{}]}, lambda: now)
+
+    def choices(self, now=NOW):
+        return {s["title"]: s for s in self.mod(now).board()["sections"] if s["type"] == "choice"}
+
+    def test_one_choice_per_robot(self):
+        c = self.choices()
+        self.assertEqual(list(c), ["Aktionen V50", "Aktionen E20"])
+        self.assertEqual([o["value"] for o in c["Aktionen V50"]["options"]], ["kochen", "pause", "heim"])
+        self.assertEqual(c["Aktionen V50"]["id"], "saug:v50")
+        self.assertIsNone(c["Aktionen V50"]["selected"])
+
+    def test_wish_and_result(self):
+        m = self.mod()
+        status, body = m.action({"item": "saug:v50", "action": "choose", "value": "kochen"})
+        self.assertEqual(status, 200, body)
+        with open(os.path.join(self.base, "saugroboter_wunsch.json"), encoding="utf-8") as f:
+            wish = json.load(f)
+        self.assertEqual((wish["nr"], wish["id"], wish["geraet"]), (1, "kochen", "V50"))
+        c = self.choices()
+        self.assertEqual((c["Aktionen V50"]["selected"], c["Aktionen V50"]["note"]), ("kochen", "Wird gesendet …"))
+        with open(os.path.join(self.base, "saugroboter_stand.json"), "w", encoding="utf-8") as f:
+            json.dump({"nr": 1, "id": "kochen", "ok": True, "text": "gestartet", "zeit": MS}, f)
+        c = self.choices()
+        self.assertEqual((c["Aktionen V50"]["selected"], c["Aktionen V50"]["note"]), (None, "14:00: gestartet"))
+        # a wish the house never took over is named after 5 min
+        m.action({"item": "saug:e20", "action": "choose", "value": "heim"})
+        late = self.choices(NOW + 600)["Aktionen E20"]
+        self.assertTrue(late["note"].startswith("Nicht gesendet"))
+
+    def test_rejects_unknown(self):
+        m = self.mod()
+        self.assertEqual(m.action({"item": "saug:v50", "action": "choose", "value": "bad"})[0], 400)
+        self.assertEqual(m.action({"item": "saug:xyz", "action": "choose", "value": "pause"})[0], 404)
+        self.assertEqual(m.action({"item": "saug:v50", "action": "done", "value": "pause"})[0], 404)
+        self.assertFalse(os.path.exists(os.path.join(self.base, "saugroboter_wunsch.json")))
