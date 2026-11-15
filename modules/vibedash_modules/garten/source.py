@@ -57,13 +57,22 @@ def influx_days(cfg: dict, tz, fetch=fetch_json) -> dict:
     return out
 
 
-def base_devices(url: str, fetch=fetch_json) -> dict | None:
-    """-> {name: device} from the base station, None when it does not answer (shown as "Basis offline")."""
+def base_read(url: str, fetch=fetch_json) -> dict | None:
+    """-> {"devices": {name: device}, "basis": {laufzeit_s, uhr, wlan_rssi, …}} from the base station, None when it
+    does not answer (shown as "Basis offline")."""
     try:
-        res = fetch(url, 5)
-        return {str(g.get("name")): g for g in (res or {}).get("geraete") or [] if isinstance(g, dict)}
+        res = fetch(url, 5) or {}
+        devs = {str(g.get("name")): g for g in res.get("geraete") or [] if isinstance(g, dict)}
+        basis = res.get("basis") if isinstance(res.get("basis"), dict) else {}
+        return {"devices": devs, "basis": basis}
     except Exception:  # noqa: BLE001
         return None
+
+
+def base_devices(url: str, fetch=fetch_json) -> dict | None:
+    """-> {name: device} from the base station, None when it does not answer."""
+    r = base_read(url, fetch)
+    return None if r is None else r["devices"]
 
 
 COURSE = ("bodenfeuchte", "lufttemp", "luftfeuchte", "batterie_v")

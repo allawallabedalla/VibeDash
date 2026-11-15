@@ -7,6 +7,8 @@ days: {"gemessen": {date: {tmax, tmin, regen_mm, sonne_h}}, "prognose": {date: {
 model, no station at the house) and the forecast from today on. tips: [{"date": "YYYY-MM-DD", "tip": "- …\\n- …"}]
 newest last (the history file the tip writer keeps). areas: [{"name", "online", "live": base-station device | None,
 "course": {"x": [ms], "bodenfeuchte": [...], "lufttemp": [...]}}] – one block per garden area with a soil sensor.
+stations: [{"online", "basis": {laufzeit_s, uhr, wlan_rssi}, "devices": {name: device}}] – one status block per
+base station (reachable, uptime, Wi-Fi, LoRa reception per sensor); now_s checks the station's clock.
 """
 
 from __future__ import annotations
@@ -19,6 +21,9 @@ EMOJI = re.compile("[\U0001f000-\U0001faff☀-➿️‍⬀-⯿]")
 FROST_C = 2.0
 BAT_LOOK_V, BAT_ACT_V = 2.9, 2.7  # battery: yellow below 2.9 V, red below 2.7 V
 QUIET_S = 2700  # no packet for 45 min: red
+WLAN_LOOK_DBM = -80  # base station Wi-Fi: yellow below −80 dBm
+QUOTE_LOOK, QUOTE_ACT = 80, 50  # LoRa reception rate in %: yellow below 80, red below 50
+CLOCK_LOOK_S = 300  # base station clock off by more than 5 min: yellow
 
 TEXT = {
     "today": "Heute",
@@ -66,6 +71,28 @@ TEXT = {
     "temp_title": "Lufttemperatur 7 Tage",
     "course_note": "Stundenmittel.",
     "older_note": "Je Tag die Stichworte; ganze Texte im Haus-Programm.",
+    "base_title": "Basis-Station",
+    "base_state": "Basis",
+    "base_on": "online",
+    "base_off": "offline",
+    "base_on_sub": "antwortet",
+    "base_off_sub": "antwortet nicht",
+    "base_clock_off": "Uhr geht {m} min falsch",
+    "base_what": "Die Basis-Station im Heimnetz empfängt die LoRa-Pakete der Gartensensoren.",
+    "uptime": "Laufzeit",
+    "uptime_sub": "seit Neustart",
+    "wlan": "WLAN",
+    "wlan_good": "Signal gut",
+    "wlan_weak": "Signal schwach",
+    "wlan_what": "WLAN-Empfang der Basis-Station. Gelb unter −80 dBm.",
+    "quote": "Empfang",
+    "quote_sub": "{lost} verloren · {late} nachgereicht",
+    "quote_what": "Anteil der Sensor-Pakete, die an der Basis ankamen. Gelb unter 80 %, rot unter 50 %.",
+    "lora": "LoRa",
+    "lora_sub": "SNR {snr} dB",
+    "lora_what": "Funkpegel des letzten Pakets an der Basis (RSSI, SNR). Gelb bei SNR unter −10 dB "
+    "(nah an der Empfangsgrenze).",
+    "base_source": "Basis-Station (werte.json) im Heimnetz.",
 }
 
 
@@ -189,7 +216,111 @@ def area_sections(a: dict, t: dict) -> list:
     return out
 
 
-def build(days: dict, tips: list, today: date, now_ms: int, t: dict, areas=None) -> dict:
+def _dur(s) -> str:
+    """Seconds as "3 Tg" / "5 h" / "12 min"."""
+    if s >= 86400:
+        return f"{int(s // 86400)} Tg"
+    if s >= 3600:
+        return f"{int(s // 3600)} h"
+    return f"{int(s // 60)} min"
+
+
+def _num(x) -> bool:
+    return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+
+def station_section(st: dict, t: dict, now_s: float | None = None) -> dict:
+    """Tiles about the LoRa base station itself: reachable, uptime, Wi-Fi, reception per sensor."""
+    src = {"source": t["base_source"]}
+    if not st.get("online"):
+        tiles = [
+            {
+                "label": t["base_state"],
+                "value": t["base_off"],
+                "sub": t["base_off_sub"],
+                "state": "act",
+                "icon": "actCircle",
+                "color": "climate",
+                "info": {"what": t["base_what"], **src},
+            }
+        ]
+        return {"type": "tiles", "title": t["base_title"], "tiles": tiles}
+    b = st.get("basis") or {}
+    clock = b.get("uhr")
+    off = abs(now_s - clock) if _num(clock) and now_s is not None else 0
+    tile = {
+        "label": t["base_state"],
+        "value": t["base_on"],
+        "sub": t["base_clock_off"].format(m=round(off / 60)) if off > CLOCK_LOOK_S else t["base_on_sub"],
+        "icon": "lookCircle" if off > CLOCK_LOOK_S else "okCircle",
+        "color": "climate",
+        "info": {"what": t["base_what"], **src},
+    }
+    if off > CLOCK_LOOK_S:
+        tile["state"] = "look"
+    tiles = [tile]
+    if _num(b.get("laufzeit_s")):
+        tiles.append(
+            {
+                "label": t["uptime"],
+                "value": _dur(b["laufzeit_s"]),
+                "sub": t["uptime_sub"],
+                "icon": "refresh",
+                "color": "climate",
+            }
+        )
+    w = b.get("wlan_rssi")
+    if _num(w):
+        weak = w < WLAN_LOOK_DBM
+        tiles.append(
+            {
+                "label": t["wlan"],
+                "value": str(round(w)).replace("-", "−"),
+                "unit": "dBm",
+                "sub": t["wlan_weak"] if weak else t["wlan_good"],
+                **({"state": "look"} if weak else {}),
+                "icon": "home",
+                "color": "climate",
+                "info": {"what": t["wlan_what"], **src},
+            }
+        )
+    devs = st.get("devices") or {}
+    for name, g in devs.items():
+        suffix = f" {name}" if len(devs) > 1 else ""
+        q = g.get("empfangsquote")
+        if _num(q):
+            state = "act" if q < QUOTE_ACT else "look" if q < QUOTE_LOOK else None
+            tiles.append(
+                {
+                    "label": t["quote"] + suffix,
+                    "value": de(q, 0),
+                    "unit": "%",
+                    "sub": t["quote_sub"].format(lost=g.get("verloren") or 0, late=g.get("nachgereicht") or 0),
+                    **({"state": state} if state else {}),
+                    "icon": "target",
+                    "color": "climate",
+                    "info": {"what": t["quote_what"], **src},
+                }
+            )
+        rssi, snr = g.get("rssi"), g.get("snr")
+        if _num(rssi):
+            weak = _num(snr) and snr < -10
+            tiles.append(
+                {
+                    "label": t["lora"] + suffix,
+                    "value": str(round(rssi)).replace("-", "−"),
+                    "unit": "dBm",
+                    "sub": t["lora_sub"].format(snr=de(snr).replace("-", "−")) if _num(snr) else "",
+                    **({"state": "look"} if weak else {}),
+                    "icon": "forecast",
+                    "color": "climate",
+                    "info": {"what": t["lora_what"], **src},
+                }
+            )
+    return {"type": "tiles", "title": t["base_title"], "tiles": tiles}
+
+
+def build(days: dict, tips: list, today: date, now_ms: int, t: dict, areas=None, stations=None, now_s=None) -> dict:
     gemessen, prognose = days.get("gemessen") or {}, days.get("prognose") or {}
     sections, tiles = [], []
     for k, word in ((0, t["today"]), (1, t["tomorrow"])):
@@ -236,6 +367,8 @@ def build(days: dict, tips: list, today: date, now_ms: int, t: dict, areas=None)
     sections.append({"type": "tiles", "title": t["weather_title"], "tiles": tiles, "note": t["weather_note"]})
     for a in areas or []:
         sections += area_sections(a, t)
+    for st in stations or []:
+        sections.append(station_section(st, t, now_s))
 
     def rain(back):
         ds = [today + timedelta(days=k) for k in range(-back, 4)]
