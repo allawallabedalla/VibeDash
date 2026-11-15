@@ -69,6 +69,17 @@ def base_read(url: str, fetch=fetch_json) -> dict | None:
         return None
 
 
+_SEEN: dict = {}  # base url -> time of its last answer; lives as long as the modules service
+
+
+def seen(url: str, now: float | None = None) -> float | None:
+    """Note a base station's answer (now given) and return when it last answered (None: not since start)."""
+    with _LOCK:
+        if now is not None:
+            _SEEN[url] = now
+        return _SEEN.get(url)
+
+
 def base_devices(url: str, fetch=fetch_json) -> dict | None:
     """-> {name: device} from the base station, None when it does not answer."""
     r = base_read(url, fetch)

@@ -14,7 +14,7 @@ base station (reachable, uptime, Wi-Fi, LoRa reception per sensor); now_s checks
 from __future__ import annotations
 
 import re
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 PUA = re.compile(r"[-]")
 EMOJI = re.compile("[\U0001f000-\U0001faff☀-➿️‍⬀-⯿]")
@@ -75,8 +75,13 @@ TEXT = {
     "base_state": "Basis",
     "base_on": "online",
     "base_off": "offline",
-    "base_on_sub": "antwortet",
-    "base_off_sub": "antwortet nicht",
+    "base_on_sub": "erreicht {hm}",
+    "base_off_sub": "zuletzt {hm} · vor {ago}",
+    "base_never": "seit Dienststart nicht erreicht",
+    "last_data": "Letzte Daten",
+    "last_data_sub": "vor {ago}",
+    "last_data_none": "noch kein Paket",
+    "last_data_what": "Wann an der Basis zuletzt ein Sensor-Paket ankam. Rot, wenn seit über 45 min nichts kam.",
     "base_clock_off": "Uhr geht {m} min falsch",
     "base_what": "Die Basis-Station im Heimnetz empfängt die LoRa-Pakete der Gartensensoren.",
     "uptime": "Laufzeit",
@@ -222,6 +227,8 @@ def _dur(s) -> str:
         return f"{int(s // 86400)} Tg"
     if s >= 3600:
         return f"{int(s // 3600)} h"
+    if s < 60:
+        return "< 1 min"
     return f"{int(s // 60)} min"
 
 
@@ -229,15 +236,25 @@ def _num(x) -> bool:
     return isinstance(x, (int, float)) and not isinstance(x, bool)
 
 
-def station_section(st: dict, t: dict, now_s: float | None = None) -> dict:
-    """Tiles about the LoRa base station itself: reachable, uptime, Wi-Fi, reception per sensor."""
+def _hm(ts, tz) -> str:
+    return datetime.fromtimestamp(ts, tz).strftime("%H:%M")
+
+
+def station_section(st: dict, t: dict, now_s: float | None = None, tz=None) -> dict:
+    """Tiles about the LoRa base station itself: reachable (and when it last answered), newest sensor packet,
+    uptime, Wi-Fi, reception per sensor. st["seen"] = time of the last answer (also kept while offline)."""
     src = {"source": t["base_source"]}
+    seen = st.get("seen")
     if not st.get("online"):
+        if _num(seen) and now_s is not None:
+            sub = t["base_off_sub"].format(hm=_hm(seen, tz), ago=_dur(max(0, now_s - seen)))
+        else:
+            sub = t["base_never"]
         tiles = [
             {
                 "label": t["base_state"],
                 "value": t["base_off"],
-                "sub": t["base_off_sub"],
+                "sub": sub,
                 "state": "act",
                 "icon": "actCircle",
                 "color": "climate",
@@ -248,10 +265,12 @@ def station_section(st: dict, t: dict, now_s: float | None = None) -> dict:
     b = st.get("basis") or {}
     clock = b.get("uhr")
     off = abs(now_s - clock) if _num(clock) and now_s is not None else 0
+    at = seen if _num(seen) else now_s
+    reached = t["base_on_sub"].format(hm=_hm(at, tz)) if _num(at) else t["base_on"]
     tile = {
         "label": t["base_state"],
         "value": t["base_on"],
-        "sub": t["base_clock_off"].format(m=round(off / 60)) if off > CLOCK_LOOK_S else t["base_on_sub"],
+        "sub": t["base_clock_off"].format(m=round(off / 60)) if off > CLOCK_LOOK_S else reached,
         "icon": "lookCircle" if off > CLOCK_LOOK_S else "okCircle",
         "color": "climate",
         "info": {"what": t["base_what"], **src},
@@ -259,6 +278,22 @@ def station_section(st: dict, t: dict, now_s: float | None = None) -> dict:
     if off > CLOCK_LOOK_S:
         tile["state"] = "look"
     tiles = [tile]
+    devs = st.get("devices") or {}
+    ages = [g["alter_s"] for g in devs.values() if _num(g.get("alter_s"))]
+    if now_s is not None:
+        age = min(ages) if ages else None
+        quiet = age is None or age > QUIET_S
+        tiles.append(
+            {
+                "label": t["last_data"],
+                "value": _hm(now_s - age, tz) if age is not None else "–",
+                "sub": t["last_data_sub"].format(ago=_dur(age)) if age is not None else t["last_data_none"],
+                **({"state": "act"} if quiet else {}),
+                "icon": "clock",
+                "color": "climate",
+                "info": {"what": t["last_data_what"], **src},
+            }
+        )
     if _num(b.get("laufzeit_s")):
         tiles.append(
             {
@@ -284,7 +319,6 @@ def station_section(st: dict, t: dict, now_s: float | None = None) -> dict:
                 "info": {"what": t["wlan_what"], **src},
             }
         )
-    devs = st.get("devices") or {}
     for name, g in devs.items():
         suffix = f" {name}" if len(devs) > 1 else ""
         q = g.get("empfangsquote")
@@ -320,7 +354,9 @@ def station_section(st: dict, t: dict, now_s: float | None = None) -> dict:
     return {"type": "tiles", "title": t["base_title"], "tiles": tiles}
 
 
-def build(days: dict, tips: list, today: date, now_ms: int, t: dict, areas=None, stations=None, now_s=None) -> dict:
+def build(
+    days: dict, tips: list, today: date, now_ms: int, t: dict, areas=None, stations=None, now_s=None, tz=None
+) -> dict:
     gemessen, prognose = days.get("gemessen") or {}, days.get("prognose") or {}
     sections, tiles = [], []
     for k, word in ((0, t["today"]), (1, t["tomorrow"])):
@@ -368,7 +404,7 @@ def build(days: dict, tips: list, today: date, now_ms: int, t: dict, areas=None,
     for a in areas or []:
         sections += area_sections(a, t)
     for st in stations or []:
-        sections.append(station_section(st, t, now_s))
+        sections.append(station_section(st, t, now_s, tz))
 
     def rain(back):
         ds = [today + timedelta(days=k) for k in range(-back, 4)]
