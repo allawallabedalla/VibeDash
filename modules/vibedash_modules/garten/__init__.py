@@ -75,8 +75,11 @@ class Module:
                     ),
                 }
             )
-        stations = [{"online": r is not None, **(r or {"devices": {}, "basis": {}})} for r in bases.values()]
-        return board.build(days, tips, today, int(now * 1000), self.t, areas, stations, now)
+        stations = []
+        for url, r in bases.items():
+            seen = source.seen(url, now if r is not None else None)
+            stations.append({"online": r is not None, "seen": seen, **(r or {"devices": {}, "basis": {}})})
+        return board.build(days, tips, today, int(now * 1000), self.t, areas, stations, now, self.tz)
 
 
 def _num(x) -> bool:

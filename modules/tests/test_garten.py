@@ -7,7 +7,7 @@ import urllib.parse
 from datetime import date, timedelta
 
 from vibedash_modules.config import load_modules
-from vibedash_modules.garten import Module
+from vibedash_modules.garten import Module, source
 from vibedash_modules.garten.board import no_emoji
 
 from .helpers import TEMPLATES, TZ, at
@@ -239,7 +239,9 @@ class TestGartenSensor(TestGarten):
     def test_base_station(self):
         s = self.sections()
         tiles = {t["label"]: t for t in s["Basis-Station"]["tiles"]}
-        self.assertEqual((tiles["Basis"]["value"], tiles["Basis"]["sub"]), ("online", "antwortet"))
+        self.assertEqual((tiles["Basis"]["value"], tiles["Basis"]["sub"]), ("online", "erreicht 12:00"))
+        # newest packet at the base: 300 s ago
+        self.assertEqual((tiles["Letzte Daten"]["value"], tiles["Letzte Daten"]["sub"]), ("11:55", "vor 5 min"))
         self.assertEqual(tiles["Laufzeit"]["value"], "2 h")
         self.assertEqual((tiles["WLAN"]["value"], tiles["WLAN"]["sub"]), ("−74", "Signal gut"))
         self.assertEqual((tiles["Empfang"]["value"], tiles["Empfang"]["sub"]), ("95", "1 verloren · 3 nachgereicht"))
@@ -263,9 +265,29 @@ class TestGartenSensor(TestGarten):
         self.assertEqual(tiles["Empfang"]["state"], "act")
 
     def test_base_station_offline(self):
+        source._SEEN.clear()
         self.base_live = None
         tiles = self.sections()["Basis-Station"]["tiles"]
         self.assertEqual([(t["value"], t["state"]) for t in tiles], [("offline", "act")])
+        self.assertEqual(tiles[0]["sub"], "seit Dienststart nicht erreicht")
+
+    def test_base_station_last_seen(self):
+        source._SEEN.clear()
+        self.sections()  # answers at 12:00
+        self.base_live = None
+        later = NOW + 12 * 60
+        cfg = self.area_cfg()
+        m = Module(cfg, lambda p: p, self.fetch, lambda: later)
+        s = {x["title"]: x for x in m.board()["sections"]}
+        self.assertEqual(s["Basis-Station"]["tiles"][0]["sub"], "zuletzt 12:00 · vor 12 min")
+
+    def test_base_station_quiet_sensor(self):
+        self.base_live.update(alter_s=3042)
+        tiles = {t["label"]: t for t in self.sections()["Basis-Station"]["tiles"]}
+        self.assertEqual(
+            (tiles["Letzte Daten"]["value"], tiles["Letzte Daten"]["sub"], tiles["Letzte Daten"]["state"]),
+            ("11:09", "vor 50 min", "act"),
+        )
 
     def test_without_areas_unchanged(self):
         titles = [s["title"] for s in self.mod(self.influx_cfg()).board()["sections"]]
