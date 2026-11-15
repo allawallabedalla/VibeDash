@@ -27,6 +27,9 @@ LIVE = {
     "snr": 11.0,
     "zaehler": 1281,
     "ausfall": False,
+    "empfangsquote": 95.0,
+    "verloren": 1,
+    "nachgereicht": 3,
 }
 TODAY = date(2026, 10, 19)
 
@@ -56,6 +59,7 @@ class TestGarten(unittest.TestCase):
         self.rows = rows
         self.urls = []
         self.base_live = dict(LIVE)
+        self.basis = {"laufzeit_s": 7834, "uhr": NOW + 20, "wlan_rssi": -74, "verlauf": 6}
         history = [
             {"date": (TODAY - timedelta(days=k)).isoformat(), "tip": f"- Tipp {k}a – mehr\n- Tipp {k}b: Details 🌱"}
             for k in range(12, -1, -1)
@@ -71,7 +75,7 @@ class TestGarten(unittest.TestCase):
         if url.startswith(BASE):
             if self.base_live is None:
                 raise OSError("offline")
-            return {"geraete": [self.base_live]}
+            return {"basis": dict(self.basis), "geraete": [self.base_live]}
         if "bodenklima" in urllib.parse.unquote(url):
             x = [int((NOW - 3600 * (3 - k)) * 1000) for k in range(3)]
             return {
@@ -232,6 +236,38 @@ class TestGartenSensor(TestGarten):
         self.assertTrue(s["Obstwiese"]["text"].startswith("Basis offline"))
         self.assertIn("Bodenfeuchte 7 Tage", s)  # the course stays visible
 
+    def test_base_station(self):
+        s = self.sections()
+        tiles = {t["label"]: t for t in s["Basis-Station"]["tiles"]}
+        self.assertEqual((tiles["Basis"]["value"], tiles["Basis"]["sub"]), ("online", "antwortet"))
+        self.assertEqual(tiles["Laufzeit"]["value"], "2 h")
+        self.assertEqual((tiles["WLAN"]["value"], tiles["WLAN"]["sub"]), ("−74", "Signal gut"))
+        self.assertEqual((tiles["Empfang"]["value"], tiles["Empfang"]["sub"]), ("95", "1 verloren · 3 nachgereicht"))
+        self.assertEqual((tiles["LoRa"]["value"], tiles["LoRa"]["sub"]), ("−57", "SNR 11,0 dB"))
+        for t in tiles.values():
+            self.assertNotIn("state", t)
+        titles = list(s)
+        self.assertEqual(titles.index("Basis-Station"), titles.index("Regen je Tag") - 1)  # after the sensor block
+        self.assertEqual(sum(u.startswith(BASE) for u in self.urls), 1)  # one request per station
+
+    def test_base_station_warnings(self):
+        self.basis.update(wlan_rssi=-85, uhr=NOW - 900)
+        self.base_live.update(empfangsquote=66.7, rssi=-135, snr=-13.5)
+        tiles = {t["label"]: t for t in self.sections()["Basis-Station"]["tiles"]}
+        self.assertEqual((tiles["Basis"]["state"], tiles["Basis"]["sub"]), ("look", "Uhr geht 15 min falsch"))
+        self.assertEqual(tiles["WLAN"]["state"], "look")
+        self.assertEqual(tiles["Empfang"]["state"], "look")
+        self.assertEqual((tiles["LoRa"]["state"], tiles["LoRa"]["sub"]), ("look", "SNR −13,5 dB"))
+        self.base_live.update(empfangsquote=40.0)
+        tiles = {t["label"]: t for t in self.sections()["Basis-Station"]["tiles"]}
+        self.assertEqual(tiles["Empfang"]["state"], "act")
+
+    def test_base_station_offline(self):
+        self.base_live = None
+        tiles = self.sections()["Basis-Station"]["tiles"]
+        self.assertEqual([(t["value"], t["state"]) for t in tiles], [("offline", "act")])
+
     def test_without_areas_unchanged(self):
         titles = [s["title"] for s in self.mod(self.influx_cfg()).board()["sections"]]
         self.assertNotIn("Obstwiese", titles)
+        self.assertNotIn("Basis-Station", titles)

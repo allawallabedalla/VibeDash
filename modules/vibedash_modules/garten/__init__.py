@@ -62,8 +62,9 @@ class Module:
             if not (isinstance(a, dict) and a.get("name") and a.get("geraet") and a.get("basis")):
                 continue
             if a["basis"] not in bases:
-                bases[a["basis"]] = source.base_devices(a["basis"], self.fetch)
-            devs = bases[a["basis"]]
+                bases[a["basis"]] = source.base_read(a["basis"], self.fetch)
+            r = bases[a["basis"]]
+            devs = None if r is None else r["devices"]
             areas.append(
                 {
                     "name": str(a["name"]),
@@ -74,7 +75,8 @@ class Module:
                     ),
                 }
             )
-        return board.build(days, tips, today, int(now * 1000), self.t, areas)
+        stations = [{"online": r is not None, **(r or {"devices": {}, "basis": {}})} for r in bases.values()]
+        return board.build(days, tips, today, int(now * 1000), self.t, areas, stations, now)
 
 
 def _num(x) -> bool:
