@@ -723,4 +723,31 @@ export const en: Record<MessageKey, string> = {
     'Box = day, column = week (Monday on top). Green: below 0.5 kWh from the grid. Lilac: kWh from the grid, darker = more. Grey: no value, not counted. Tap for the day.',
   'cal.info.source':
     'Grid import meter, end of day minus the day before; implausible jumps stay grey. “No grid” only with readings at both day boundaries and no gap of 2 h or more, else grey (with a gap and 0.5 kWh or more: lilac, “≥”). The running day is missing.',
+  // Audit05 I-6/I-8
+  'hits.head': '{k} of {n} days hit',
+  'hits.goal': '± {p} % · goal ≈ 8 of 10',
+  'hits.none': 'No day judged yet',
+  'hits.window': 'hit when in here (± {p} %)',
+  'hits.span': 'range 8 of 10',
+  'hits.hit': 'hit',
+  'hits.miss': 'off',
+  'hits.label': 'Sun forecast day by day, pick a day',
+  'hits.noForecast': 'no forecast',
+  'hits.dayForecast': 'forecast ≈ {v} kWh{span}',
+  'hits.dayActual': 'actual {v} kWh, {verdict}',
+  'hits.noActual': 'actual missing',
+  'hits.todayRunning': 'today still running',
+  'hits.spanCount':
+    'Range (8 of 10 cases): actual inside on {k} of {n} days – own rule, not counted above.',
+  'hits.strip': '{k} of {n} days hit',
+  'hits.stripLabel': 'last {n} days',
+  'hits.info.what':
+    'Per day: the pale bar is where the forecast counts as a hit (± {p} % around the forecast, tick) – the same rule as the accuracy above. The dot is the measured yield: green = hit, coral = off. The thin line is the forecast range (8 of 10 cases). Tap to see the day.',
+  'hits.info.sourceHouse':
+    "The house's forecast from the evening before, actual from the inverter's meter reading. Today has no dot yet.",
+  'hits.info.sourceRule':
+    'Rule of thumb from the evening before (median of the last 7 days), actual from the meter reading. Today has no dot yet.',
+  'review.chart': 'Consumption, of it grid',
+  'hc.chart': 'Charged, of it grid',
+  'table.faint': 'pale = not measurable',
 };

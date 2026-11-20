@@ -732,6 +732,33 @@ export const de = {
     'Kästchen = Tag, Spalte = Woche (oben Montag). Grün: unter 0,5 kWh aus dem Netz. Lila: kWh aus dem Netz, dunkler = mehr. Grau: kein Wert, zählt nicht mit. Antippen zeigt den Tag.',
   'cal.info.source':
     'Netzbezug-Zähler, Tagesende minus Vortag; unplausible Sprünge bleiben grau. „Ohne Netz“ nur mit Zählerwert an beiden Tagesgrenzen und ohne Lücke ab 2 h am Tag, sonst grau (mit Lücke und ab 0,5 kWh: lila, „≥“). Der laufende Tag fehlt.',
+  // Audit05 I-6/I-8
+  'hits.head': '{k} von {n} Tagen getroffen',
+  'hits.goal': '± {p} % · Ziel ≈ 8 von 10',
+  'hits.none': 'Noch kein Tag bewertet',
+  'hits.window': 'getroffen, wenn hier (± {p} %)',
+  'hits.span': 'Spanne 8 von 10',
+  'hits.hit': 'getroffen',
+  'hits.miss': 'daneben',
+  'hits.label': 'Sonnenprognose Tag für Tag, Tag wählen',
+  'hits.noForecast': 'keine Prognose',
+  'hits.dayForecast': 'Prognose ≈ {v} kWh{span}',
+  'hits.dayActual': 'Ist {v} kWh, {verdict}',
+  'hits.noActual': 'Ist fehlt',
+  'hits.todayRunning': 'heute läuft noch',
+  'hits.spanCount':
+    'Spanne (8 von 10 Fällen): Ist an {k} von {n} Tagen drin – eigene Regel, zählt nicht oben.',
+  'hits.strip': '{k} von {n} Tagen getroffen',
+  'hits.stripLabel': 'letzte {n} Tage',
+  'hits.info.what':
+    'Je Tag: der blasse Balken ist der Bereich, in dem die Prognose als getroffen gilt (± {p} % um die Prognose, Strich) – dieselbe Regel wie bei der Treffsicherheit oben. Der Punkt ist der gemessene Ertrag: grün = getroffen, koralle = daneben. Die dünne Linie ist die Spanne der Prognose (8 von 10 Fällen). Antippen zeigt den Tag.',
+  'hits.info.sourceHouse':
+    'Prognose des Hauses vom Vorabend, Ist aus dem Zählerstand des Wechselrichters. Heute hat noch keinen Punkt.',
+  'hits.info.sourceRule':
+    'Faustregel vom Vorabend (Mittel der letzten 7 Tage), Ist aus dem Zählerstand. Heute hat noch keinen Punkt.',
+  'review.chart': 'Verbrauch, davon Netz',
+  'hc.chart': 'Geladen, davon Netz',
+  'table.faint': 'blass = nicht messbar',
 } as const;
 
 export type MessageKey = keyof typeof de;
