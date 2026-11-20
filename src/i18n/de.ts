@@ -735,30 +735,23 @@ export const de = {
   // Audit05 I-6/I-8
   'hits.head': '{k} von {n} Tagen getroffen',
   'hits.goal': '± {p} % · Ziel ≈ 8 von 10',
-  'hits.none': 'Noch kein Tag bewertet',
   'hits.window': 'getroffen, wenn hier (± {p} %)',
   'hits.span': 'Spanne 8 von 10',
   'hits.hit': 'getroffen',
   'hits.miss': 'daneben',
-  'hits.label': 'Sonnenprognose Tag für Tag, Tag wählen',
-  'hits.noForecast': 'keine Prognose',
+  'hits.label': 'Tag wählen',
   'hits.dayForecast': 'Prognose ≈ {v} kWh{span}',
   'hits.dayActual': 'Ist {v} kWh, {verdict}',
   'hits.noActual': 'Ist fehlt',
-  'hits.todayRunning': 'heute läuft noch',
-  'hits.spanCount':
-    'Spanne (8 von 10 Fällen): Ist an {k} von {n} Tagen drin – eigene Regel, zählt nicht oben.',
-  'hits.strip': '{k} von {n} Tagen getroffen',
+  'hits.spanCount': 'Spanne 8 von 10: Ist an {k} von {n} Tagen drin (eigene Regel)',
   'hits.stripLabel': 'letzte {n} Tage',
   'hits.info.what':
-    'Je Tag: der blasse Balken ist der Bereich, in dem die Prognose als getroffen gilt (± {p} % um die Prognose, Strich) – dieselbe Regel wie bei der Treffsicherheit oben. Der Punkt ist der gemessene Ertrag: grün = getroffen, koralle = daneben. Die dünne Linie ist die Spanne der Prognose (8 von 10 Fällen). Antippen zeigt den Tag.',
-  'hits.info.sourceHouse':
-    'Prognose des Hauses vom Vorabend, Ist aus dem Zählerstand des Wechselrichters. Heute hat noch keinen Punkt.',
-  'hits.info.sourceRule':
-    'Faustregel vom Vorabend (Mittel der letzten 7 Tage), Ist aus dem Zählerstand. Heute hat noch keinen Punkt.',
-  'review.chart': 'Verbrauch, davon Netz',
-  'hc.chart': 'Geladen, davon Netz',
-  'table.faint': 'blass = nicht messbar',
+    'Balken = getroffen-Bereich ± {p} % um die Prognose (Strich), Regel wie oben. Punkt = Ist: grün getroffen, koralle daneben. Dünne Linie = Spanne 8 von 10.',
+  'hits.info.source': '{m} vom Vorabend, Ist aus dem Zählerstand. Heute noch ohne Punkt.',
+  'review.chart': 'Verbrauch, lila = Netz',
+  'hc.chart': 'Geladen, lila = Haus aus Netz',
+  'charge.chart': 'Geladen, davon Sonne',
+  'gallery.tables': 'Tabellen mit Grafik',
 } as const;
 
 export type MessageKey = keyof typeof de;

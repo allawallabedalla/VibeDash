@@ -131,7 +131,7 @@
     <div
       class="strip"
       role="img"
-      aria-label={t('hits.strip', {
+      aria-label={t('hits.head', {
         k: days.filter((d) => d === true).length,
         n: days.filter((d) => d !== null).length,
       })}

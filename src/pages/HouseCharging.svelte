@@ -269,6 +269,11 @@
             grid: s.gridKwh === null ? '–' : num(s.gridKwh, 1),
             who: who(s.source),
           },
+          // the house's grid draw during the charge, at most the charge itself (Audit05 I-8)
+          chart: {
+            value: s.kwh,
+            ...(s.kwh !== null && s.gridKwh !== null ? { part: Math.min(s.gridKwh, s.kwh) } : {}),
+          },
         }))
       : [],
   );
@@ -366,7 +371,18 @@
       note={rows.length ? t('hc.gridNote') : undefined}
     >
       {#if rows.length}
-        <DataTable {columns} {rows} caption={tableTitle} />
+        <DataTable
+          {columns}
+          {rows}
+          caption={tableTitle}
+          chart={{
+            kind: 'bar',
+            label: t('hc.chart'),
+            unit: 'kWh',
+            color: 'var(--battery)',
+            partColor: 'var(--import)',
+          }}
+        />
       {:else}
         <p class="muted-note">{t('hc.noSessions')}</p>
       {/if}

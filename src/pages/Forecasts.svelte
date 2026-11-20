@@ -6,6 +6,7 @@
   import Card from '../components/Card.svelte';
   import ForecastHits from '../components/ForecastHits.svelte';
   import Segmented from '../components/Segmented.svelte';
+  import { forecastHitDays } from '../app/forecast-hits';
   import DayList, { type DayRow } from '../components/DayList.svelte';
   import SoftTimeSeries from '../components/SoftTimeSeries.svelte';
   import Tile from '../components/Tile.svelte';
@@ -15,7 +16,6 @@
     checkForecasts,
     CORRECT_TOLERANCE,
     dayAheadForecasts,
-    forecastHitDays,
     dayAheadLoad,
     mulberry32,
     outlook,
@@ -161,7 +161,7 @@
       ? undefined
       : {
           what: t('hits.info.what', { p: Math.round(CORRECT_TOLERANCE * 100) }),
-          source: own.length ? t('hits.info.sourceHouse') : t('hits.info.sourceRule'),
+          source: t('hits.info.source', { m: own.length ? t('model.sun') : t('model.sunRule') }),
         }}
   >
     <!-- the period switch sits left above the chart (G-03) -->

@@ -1,13 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  accuracy,
-  checkForecasts,
-  dayAheadForecasts,
-  forecastHitDays,
-  generateDemo,
-  hitCounts,
-  type HitDay,
-} from '../../src/demo';
+import { accuracy, checkForecasts, dayAheadForecasts, generateDemo } from '../../src/demo';
+import { forecastHitDays, hitCounts, type HitDay } from '../../src/app/forecast-hits';
 
 const demo = generateDemo();
 

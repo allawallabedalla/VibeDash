@@ -6,7 +6,7 @@
    * meter's actual as a dot: green inside the window, coral outside. Days
    * without a forecast stay empty; today has no dot yet. Tap or drag picks a day.
    */
-  import { hitCounts, type HitDay } from '../demo/forecast';
+  import { hitCounts, type HitDay } from '../app/forecast-hits';
   import { num, t } from '../i18n/index.svelte';
 
   interface Props {
@@ -80,13 +80,13 @@
   const kwh = (v: number) => num(v, v < 10 ? 1 : 0);
   const dayText = (d: HitDay) => {
     const head = long.format(noon(d));
-    if (d.forecast === null) return `${head}: ${t('hits.noForecast')}`;
+    if (d.forecast === null) return `${head}: ${t('state.noData')}`;
     const span = d.low !== null && d.high !== null ? ` (${kwh(d.low)}–${kwh(d.high)})` : '';
     const fc = t('hits.dayForecast', { v: kwh(d.forecast), span });
     const act =
       d.actual === null
         ? d.today
-          ? t('hits.todayRunning')
+          ? t('days.today')
           : t('hits.noActual')
         : t('hits.dayActual', {
             v: kwh(d.actual),
@@ -115,7 +115,7 @@
       <strong>{t('hits.head', { k: counts.k, n: counts.n })}</strong>
       <span class="goal">{t('hits.goal', { p: pct })}</span>
     {:else}
-      <strong>{t('hits.none')}</strong>
+      <strong>{t('progress.open')} · n = 0</strong>
     {/if}
   </p>
   <div class="legend" aria-hidden="true">

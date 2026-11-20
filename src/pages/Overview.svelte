@@ -294,7 +294,18 @@
     {/snippet}
     <!-- below the fold: loaded after the first paint (first-page budget) -->
     {#await import('../components/DataTable.svelte') then { default: DataTable }}
-      <DataTable {columns} {rows} caption={t('review.title')} />
+      <DataTable
+        {columns}
+        {rows}
+        caption={t('review.title')}
+        chart={{
+          kind: 'bar',
+          label: t('review.chart'),
+          unit: 'kWh',
+          color: 'var(--home)',
+          partColor: 'var(--import)',
+        }}
+      />
     {/await}
   </Card>
 
