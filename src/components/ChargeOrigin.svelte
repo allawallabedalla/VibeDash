@@ -3,9 +3,10 @@
    * "With which power does the car charge?" (Audit05 I-2): one stacked bar per day –
    * sun / house battery / grid – and above it the shares over the window as the legend.
    */
+  import { tc } from '../i18n/charge';
   import Card from './Card.svelte';
   import StackDayBars from './StackDayBars.svelte';
-  import { num, t } from '../i18n/index.svelte';
+  import { num } from '../i18n/index.svelte';
   import { originShares, type StackDay } from '../model/charge-origin';
 
   interface Props {
@@ -19,24 +20,24 @@
   const shares = $derived(originShares(bars));
   const open = $derived(bars.some((b) => b && b.open > 0));
   const colors = ['var(--sun)', 'var(--battery)', 'var(--import)', 'var(--faint)'];
-  const names = $derived([t('co.sun'), t('co.battery'), t('co.grid'), t('co.open')]);
+  const names = $derived([tc('co.sun'), tc('co.battery'), tc('co.grid'), tc('co.open')]);
 </script>
 
 <Card
-  title={t('co.title')}
+  title={tc('co.title')}
   icon="plugCar"
   color="var(--battery)"
-  info={{ what: t('co.info.what'), source: t('co.info.source') }}
+  info={{ what: tc('co.info.what'), source: tc('co.info.source') }}
   note={shares
-    ? t('co.note', { n: shares.n, kwh: num(shares.kwh, 0) })
+    ? tc('co.note', { n: shares.n, kwh: num(shares.kwh, 0) })
     : open
       ? names[3]
-      : t('co.none', { n: bars.length })}
+      : tc('co.none', { n: bars.length })}
 >
   {#if shares}
     <!-- the share line is the legend: colour, word, percent -->
     <p class="shares">
-      <span class="span">{t('co.days', { n: bars.length })}</span>
+      <span class="span">{tc('co.days', { n: bars.length })}</span>
       <span><i style:background={colors[0]}></i>{shares.sun} % {names[0]}</span>
       <span><i style:background={colors[1]}></i>{shares.battery} % {names[1]}</span>
       <span class="grid"><i style:background={colors[2]}></i>{shares.grid} % {names[2]}</span>
@@ -51,8 +52,8 @@
     unit="kWh"
     {partial}
     label={shares
-      ? `${t('co.title')}: ${shares.sun} % ${names[0]}, ${shares.battery} % ${names[1]}, ${shares.grid} % ${names[2]}`
-      : t('co.title')}
+      ? `${tc('co.title')}: ${shares.sun} % ${names[0]}, ${shares.battery} % ${names[1]}, ${shares.grid} % ${names[2]}`
+      : tc('co.title')}
   />
 </Card>
 

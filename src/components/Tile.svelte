@@ -39,14 +39,6 @@
     | { kind: 'origin'; parts: OriginPart[] }
     /** Battery filling with the charge; flow in W (> 0 charging). */
     | { kind: 'battery'; soc: number; flow?: number }
-    /** The night now → sunrise: shares 0–1 where the battery is empty (null = it lasts). */
-    | {
-        kind: 'reach';
-        empty: number | null;
-        early: number | null;
-        late: number | null;
-        ends: string[];
-      }
     /** Grid from the middle: W > 0 feed-in (right), < 0 import (left). */
     | { kind: 'pendulum'; watts: number; range?: number }
     /** Count as dots, e.g. 3 of 10. */
@@ -101,7 +93,6 @@
   import InfoButton from './InfoButton.svelte';
   import { flip } from './flip';
   import BatteryGauge from './BatteryGauge.svelte';
-  import ReachBar from './ReachBar.svelte';
   import Compare from './Compare.svelte';
   import Dots from './Dots.svelte';
   import OriginBar from './OriginBar.svelte';
@@ -203,13 +194,6 @@
           <OriginBar parts={graphic.parts} />
         {:else if graphic.kind === 'battery'}
           <BatteryGauge soc={graphic.soc} flow={graphic.flow} />
-        {:else if graphic.kind === 'reach'}
-          <ReachBar
-            empty={graphic.empty}
-            early={graphic.early}
-            late={graphic.late}
-            ends={graphic.ends}
-          />
         {:else if graphic.kind === 'pendulum'}
           <Pendulum watts={graphic.watts} range={graphic.range} />
         {:else if graphic.kind === 'dots'}

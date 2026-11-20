@@ -6,6 +6,7 @@
    * onPage "charging" (e.g. the car module) is shown here too, its sections
    * placed by slot: top above, plan after the plan, the rest at the end.
    */
+  import { tc } from '../i18n/charge';
   import { onMount } from 'svelte';
   import { currentData } from '../app/data.svelte';
   import BoardSections, { chargingBoard } from './BoardSections.svelte';
@@ -172,14 +173,14 @@
       ...(shares
         ? [
             {
-              label: t('out.noGrid'),
+              label: tc('out.noGrid'),
               icon: 'target' as const,
               color: 'var(--battery)',
               value: num(shares.sun + shares.battery),
               unit: '%',
-              sub: t('out.noGridSub', { n: shares.n }),
+              sub: tc('out.noGridSub', { n: shares.n }),
               graphic: { kind: 'ring' as const, value: (shares.sun + shares.battery) / 100 },
-              info: { what: t('co.info.what'), source: t('co.info.source') },
+              info: { what: tc('co.info.what'), source: tc('co.info.source') },
             },
           ]
         : []),
@@ -191,16 +192,16 @@
     const b = plan?.blocks.find((x) => x.start > house.now && x.start - house.now < 48 * 3_600_000);
     const d = b ? localMidnight(b.start, tz) : null;
     return {
-      label: t('out.next'),
+      label: tc('out.next'),
       icon: 'clock',
       color: 'var(--battery)',
-      value: b ? time(b.start, tz) : plan ? t('out.none') : '–',
+      value: b ? time(b.start, tz) : plan ? tc('out.none') : '–',
       sub: b
         ? `${d === today ? t('days.today') : dayLabel(d!)}${b.kwh !== null ? ` · ≈ ${num(b.kwh, 1)} kWh` : ''}`
         : plan
-          ? t('out.noneSub')
+          ? tc('out.noneSub')
           : t('hc.noPlan'),
-      info: { what: t('out.info.what'), source: t('hc.span.source') },
+      info: { what: tc('out.info.what'), source: t('hc.span.source') },
     };
   };
 
@@ -231,7 +232,7 @@
       const d = plan.days[k + Math.round((first - today) / 86_400_000)];
       if (!d || d.kwh === null) return null;
       const sp = spanOf(d);
-      return `${t('out.dayCar', { kwh: num(d.kwh) })}${sp ? ` · ${sp}` : ''}`;
+      return `${tc('out.dayCar', { kwh: num(d.kwh) })}${sp ? ` · ${sp}` : ''}`;
     });
   });
 
@@ -348,12 +349,12 @@
         title={view.a.plan.text ?? t('hc.planTitle')}
         icon="calendar"
         color="var(--battery)"
-        info={{ what: t('out.info.what'), source: t('out.info.source') }}
+        info={{ what: tc('out.info.what'), source: tc('out.info.source') }}
         note={t('hc.planNote', {
           made: view.a.plan.madeAt ? time(view.a.plan.madeAt, tz) : '–',
           soc: view.a.plan.socNow === null ? '–' : num(view.a.plan.socNow),
           min: view.a.plan.socMin === null ? '–' : num(view.a.plan.socMin),
-        }) + (outlook ? ` · ${t('out.noteLoad', { n: outlook.nLoad })}` : '')}
+        }) + (outlook ? ` · ${tc('out.noteLoad', { n: outlook.nLoad })}` : '')}
       >
         {#if outlook}
           <ChargeOutlook

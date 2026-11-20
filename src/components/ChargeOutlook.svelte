@@ -6,6 +6,7 @@
    * Everything here is a forecast; nothing is switched. Drawn at the real pixel width, so
    * text keeps its real size on the phone.
    */
+  import { tc } from '../i18n/charge';
   import { num, t, time } from '../i18n/index.svelte';
   import { daySums, type TimeBlock } from '../model/charge-outlook';
   import { localMidnight } from '../model/time';
@@ -140,7 +141,7 @@
   const dayName = (d: number, i: number) =>
     d === today
       ? i === 0 && hours[0]! > d
-        ? t('out.restToday')
+        ? tc('out.restToday')
         : t('days.today')
       : dayFmt.format(d + 12 * HOUR);
   const hasBand = $derived(pv.p10.some((v, i) => v !== null && pv.p90[i] !== null));
@@ -207,8 +208,8 @@
         <strong>{dayName(d.day, i)}</strong>
         <span
           >{d.sun.p50 === null
-            ? `${t('co.sun')} –`
-            : t('out.daySun', {
+            ? `${tc('co.sun')} –`
+            : tc('out.daySun', {
                 kwh: kwh(d.sun.p50),
                 range:
                   d.sun.p10 !== null && d.sun.p90 !== null
@@ -216,7 +217,7 @@
                     : '',
               })}</span
         >
-        <span>{dayNotes[i] ?? t('out.dayCar', { kwh: kwh(d.car) })}</span>
+        <span>{dayNotes[i] ?? tc('out.dayCar', { kwh: kwh(d.car) })}</span>
       </li>
     {/each}
   </ul>

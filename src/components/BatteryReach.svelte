@@ -5,8 +5,9 @@
    * it is empty and how much then comes from the grid. By day the last night as it was
    * (measured), and when the estimate starts. Loaded with the enlarged tile only.
    */
+  import { tr } from '../i18n/reach';
   import { num, t, time } from '../i18n/index.svelte';
-  import { emptyRange } from '../app/tiles';
+  import { emptyRange } from '../app/reach-tile';
   import { socFloor, type Reach } from '../model/reach';
   import type { Sample } from '../model/types';
 
@@ -116,25 +117,25 @@
     {@const r = reach}
     <h3>
       {#if r.emptyAt !== null}
-        {t('reach.emptyTitle', { at: time(r.emptyAt, tz), range: emptyRange(r, tz) })}
+        {tr('reach.emptyTitle', { at: time(r.emptyAt, tz), range: emptyRange(r, tz) })}
       {:else if r.emptyEarly !== null}
-        {t('reach.tightTitle')}
+        {tr('reach.tightTitle')}
       {:else}
-        {t('reach.yes')}
+        {tr('reach.yes')}
       {/if}
     </h3>
     <p class="sub">
       {#if r.emptyAt !== null}
-        {t('reach.emptySub', {
+        {tr('reach.emptySub', {
           kwh: fmt(r.grid.mean),
           lo: fmt(r.grid.low),
           hi: fmt(r.grid.high),
           sun: time(r.sunAt, tz),
         })}
       {:else if r.emptyEarly !== null}
-        {t('reach.tightSub', { at: time(r.emptyEarly, tz), kwh: fmt(r.grid.high) })}
+        {tr('reach.tightSub', { at: time(r.emptyEarly, tz), kwh: fmt(r.grid.high) })}
       {:else}
-        {t('reach.yesSub', {
+        {tr('reach.yesSub', {
           at: time(r.sunAt, tz),
           kwh: fmt(r.usable - r.need.mean),
           lo: fmt(Math.max(0, r.usable - r.need.high)),
@@ -143,14 +144,14 @@
       {/if}
     </p>
   {:else}
-    <h3>{t('reach.title')}</h3>
-    <p class="sub">{t('reach.day', { at: time(reach.eveningAt, tz) })}</p>
+    <h3>{tr('reach.title')}</h3>
+    <p class="sub">{tr('reach.day', { at: time(reach.eveningAt, tz) })}</p>
     {#if last}
       <p class="sub strong">
-        {t('reach.last')}:
+        {tr('reach.last')}:
         {last.emptyAt !== null
-          ? t('reach.lastEmpty', { at: time(last.emptyAt, tz), kwh: fmt(last.kwh) })
-          : t('reach.lastLasted', { min: num(last.min) })}
+          ? tr('reach.lastEmpty', { at: time(last.emptyAt, tz), kwh: fmt(last.kwh) })
+          : tr('reach.lastLasted', { min: num(last.min) })}
       </p>
     {/if}
   {/if}
@@ -158,21 +159,21 @@
   {#if reach.kind === 'night' || last}
     <div class="legend" aria-hidden="true">
       {#if reach.kind === 'night'}
-        <span><i class="k mean"></i>{t('reach.mean')}</span>
-        <span><i class="k band"></i>{t('reach.band')}</span>
+        <span><i class="k mean"></i>{tr('reach.mean')}</span>
+        <span><i class="k band"></i>{tr('reach.band')}</span>
         {#if reach.emptyAt !== null || reach.emptyEarly !== null}
-          <span><i class="k grid"></i>{t('co.grid')}</span>
+          <span><i class="k grid"></i>{tr('reach.grid')}</span>
         {/if}
       {:else}
         <span><i class="k measured"></i>{t('plan.legend.battery')}</span>
       {/if}
-      <span><i class="k floor"></i>{t('reach.floor', { pct: num(floorPct) })}</span>
+      <span><i class="k floor"></i>{tr('reach.floor', { pct: num(floorPct) })}</span>
     </div>
     <figure bind:clientWidth={width}>
       <svg
         viewBox="0 0 {W} {H}"
         role="img"
-        aria-label={reach.kind === 'night' ? t('reach.title') : t('reach.last')}
+        aria-label={reach.kind === 'night' ? tr('reach.title') : tr('reach.last')}
       >
         {#each [0, 50, 100] as v (v)}
           <line class="grid" x1={P.l} x2={W - P.r} y1={y(v)} y2={y(v)} />
@@ -203,7 +204,7 @@
                 ? 'end'
                 : x(r.emptyAt) < P.l + 90
                   ? 'start'
-                  : 'middle'}>{t('reach.mark', { at: time(r.emptyAt, tz) })}</text
+                  : 'middle'}>{tr('reach.mark', { at: time(r.emptyAt, tz) })}</text
             >
           {/if}
         {:else if last}
@@ -215,16 +216,16 @@
           >
         {/each}
         <text class="ax" x={P.l} y={H - 4}
-          >{reach.kind === 'night' ? t('reach.now') : time(span.from, tz)}</text
+          >{reach.kind === 'night' ? tr('reach.now') : time(span.from, tz)}</text
         >
         <text class="ax" x={W - P.r} y={H - 4} text-anchor="end"
-          >{t('reach.sun', { at: time(span.to, tz) })}</text
+          >{tr('reach.sun', { at: time(span.to, tz) })}</text
         >
       </svg>
     </figure>
     {#if reach.kind === 'night'}
       <p class="sub">
-        {t('reach.basis', {
+        {tr('reach.basis', {
           usable: fmt(reach.usable),
           floor: num(reach.floor.pct),
           need: fmt(reach.need.mean),

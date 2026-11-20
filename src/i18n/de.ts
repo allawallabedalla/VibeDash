@@ -745,60 +745,6 @@ export const de = {
   'hc.chart': 'Geladen, lila = Haus aus Netz',
   'charge.chart': 'Geladen, davon Sonne',
   'gallery.tables': 'Tabellen mit Grafik',
-
-
-  // Audit05 I-2/I-4/I-5
-  'co.title': 'Strom fürs Auto',
-  'co.days': '{n} Tage:',
-  'co.sun': 'Sonne',
-  'co.battery': 'Akku',
-  'co.grid': 'Netz',
-  'co.open': 'Herkunft offen',
-  'co.note': 'n = {n} Ladetage · {kwh} kWh',
-  'co.none': 'In {n} Tagen nicht geladen.',
-  'co.info.what':
-    'Je Tag ein Balken: gelb direkt von der Sonne, grün aus dem Hausakku, lila aus dem Netz. Ziel: wenig Lila. Grau = geladen, Herkunft noch offen (heute: folgt morgen); Ring = keine Aufzeichnung.',
-  'co.info.source':
-    'Tagesauswertung des Hauses (Zähler, Wallbox). Akku = vorher gespeicherter Strom, meist Sonne. Ganze Prozent.',
-  'out.restToday': 'Rest heute',
-  'out.daySun': 'Sonne ≈ {kwh} kWh{range}',
-  'out.dayCar': 'Auto ≈ {kwh} kWh',
-  'out.next': 'Nächste Ladung',
-  'out.none': 'keine',
-  'out.noneSub': 'in 48 h nichts geplant',
-  'out.noGrid': 'Ohne Netz',
-  'out.noGridSub': 'Auto, 30 Tage · n = {n}',
-  'out.noteLoad': 'Haus: Median, n = {n} Tage',
-  'out.info.what':
-    'Gelb gestrichelt die erwartete Sonne, Band = 8 von 10 Wetterfällen; blau gepunktet das Haus wie üblich; grüne Blöcke = Ladefenster. Darunter der Hausakku, wenn es so kommt.',
-  'out.info.source':
-    'Sonne: Prognose des Hauses. Haus: Median je Uhrzeit, 14 Tage. Ladefenster: Ladeplaner. Akku: daraus gerechnet, ohne Verluste (≈).',
-  'reach.empty': 'leer ≈ {at}{range} · n = {n}',
-  'reach.tight': 'knapp · leer ab ≈ {at} möglich · n = {n}',
-  'reach.lasts': 'reicht bis Sonne ≈ {at} · n = {n}',
-  'reach.now': 'jetzt',
-  'reach.sun': 'Sonne {at}',
-  'reach.title': 'Reicht der Akku bis Sonnenaufgang?',
-  'reach.yes': 'Reicht bis Sonnenaufgang',
-  'reach.yesSub': 'Sonne ab ≈ {at} · Rest ≈ {kwh} kWh ({lo}–{hi})',
-  'reach.tightTitle': 'Knapp',
-  'reach.tightSub': 'Bei viel Verbrauch leer ab ≈ {at}, dann Netz bis ≈ {kwh} kWh',
-  'reach.emptyTitle': 'Leer ≈ {at}{range}',
-  'reach.emptySub': 'Dann Netz ≈ {kwh} kWh ({lo}–{hi}) bis Sonne ≈ {sun}',
-  'reach.mark': 'leer ≈ {at}',
-  'reach.basis':
-    'nutzbar ≈ {usable} kWh (bis {floor} %) · Bedarf ≈ {need} ± {sd} kWh · n = {n} Nächte',
-  'reach.mean': 'Akku (Mittel)',
-  'reach.band': '± Streuung',
-  'reach.floor': 'Entladegrenze {pct} %',
-  'reach.day': 'Tagsüber lädt die Sonne; die Rechnung startet ab ≈ {at}.',
-  'reach.last': 'Letzte Nacht',
-  'reach.lastEmpty': 'leer ab {at}, dann Netz (ganzes Haus) ≈ {kwh} kWh',
-  'reach.lastLasted': 'reichte, tiefster Stand {min} %',
-  'reach.info.what':
-    'Nachts: Reicht der Akku, bis die Sonne das Haus trägt? Band = Streuung der letzten Nächte (± 1 Standardabweichung), danach Netz (lila).',
-  'reach.info.source':
-    'Ladestand, Kapazität, Entladegrenze (häufigster Tiefststand in 30 Tagen, sonst 5 %), Verbrauch über die Sonne hinaus zur selben Uhrzeit in bis zu 14 Nächten (ohne Lücken- und Ausreißer-Nächte). Ohne Verluste: Näherung.',
 } as const;
 
 export type MessageKey = keyof typeof de;

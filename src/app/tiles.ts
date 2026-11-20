@@ -21,7 +21,6 @@ import { freshFor, lastReport, steadyValue } from '../model/series';
 import { balanceW } from '../model/balance';
 import { addDays, localDateKey, localMidnight } from '../model/time';
 import { loading } from './loading';
-import type { batteryReach, Reach } from '../model/reach';
 
 const kw = (w: number | null) => (w === null ? null : w / 1000);
 const signed = (v: number, digits: number) =>
@@ -252,45 +251,9 @@ export function batteryCapacityKwh(data: DemoData): number | null {
   return v;
 }
 
-/** Does the battery last until sunrise? Only with a fresh charge and a known capacity (Audit05 I-4). */
-export function reachOf(data: DemoData, estimate: typeof batteryReach): Reach | null {
-  const soc = freshValue(data, 'battery_soc');
-  const cap = batteryCapacityKwh(data);
-  if (soc === null || cap === null) return null;
-  const s = (id: string) => data.series[id]?.samples ?? [];
-  return estimate({
-    now: data.now,
-    tz: data.timeZone,
-    socPct: soc,
-    capKwh: cap,
-    load: s('load_power'),
-    pv: s('pv_power'),
-    soc: s('battery_soc'),
-  });
-}
-
-/** " (02:50–04:30)" around the empty time; nothing when both ends read the same */
-export function emptyRange(r: Extract<Reach, { kind: 'night' }>, tz: string): string {
-  const lo = time(r.emptyEarly ?? r.emptyAt ?? r.sunAt, tz);
-  const hi = time(r.emptyLate ?? r.sunAt, tz);
-  return lo === hi ? '' : ` (${lo}–${hi})`;
-}
-
-/**
- * `estimate`: the night estimate (model/reach), loaded after the first paint by the
- * overview – without it the tile shows the battery as it is.
- */
-export function batteryTile(
-  data: DemoData,
-  estimate: typeof batteryReach | null = null,
-): TileProps {
+export function batteryTile(data: DemoData): TileProps {
   const soc = nowValue(data, 'battery_soc');
   const cap = batteryCapacityKwh(data);
-  const reach = estimate ? reachOf(data, estimate) : null;
-  const r = reach?.kind === 'night' ? reach : null;
-  const tz = data.timeZone;
-  const share = (at: number | null) =>
-    r && at !== null ? (at - data.now) / (r.sunAt - data.now) : null;
   return staleOr(data, 'battery_soc', {
     label: t('tile.battery'),
     icon: 'battery',
@@ -298,32 +261,13 @@ export function batteryTile(
     zoom: zoomLevel('battery_soc', t('tile.battery'), 'var(--battery)', '%', 0),
     value: num(soc),
     unit: '%',
-    // at night: when it is empty, with its spread and n; by day the energy in it
-    sub: r
-      ? r.emptyAt !== null
-        ? t('reach.empty', { at: time(r.emptyAt, tz), range: emptyRange(r, tz), n: r.n })
-        : r.emptyEarly !== null
-          ? t('reach.tight', { at: time(r.emptyEarly, tz), n: r.n })
-          : t('reach.lasts', { at: time(r.sunAt, tz), n: r.n })
-      : cap === null
-        ? undefined
-        : `${num((soc / 100) * cap, 1)} / ${num(cap, 1)} kWh`,
-    graphic: r
-      ? {
-          kind: 'reach',
-          empty: share(r.emptyAt),
-          early: share(r.emptyEarly),
-          late: share(r.emptyLate),
-          ends: [t('reach.now'), t('reach.sun', { at: time(r.sunAt, tz) })],
-        }
-      : { kind: 'battery', soc, flow: freshValue(data, 'battery_power') ?? 0 },
-    ...(reach ? { reach } : {}),
+    sub: cap === null ? undefined : `${num((soc / 100) * cap, 1)} / ${num(cap, 1)} kWh`,
+    graphic: { kind: 'battery', soc, flow: freshValue(data, 'battery_power') ?? 0 },
     info: {
-      what: t('info.battery.what') + (reach ? ` ${t('reach.info.what')}` : ''),
+      what: t('info.battery.what'),
       source:
         t('info.battery.source') +
-        (cap === null ? '' : ` ${t('info.battery.capacity', { cap: num(cap, 1) })}`) +
-        (reach ? ` ${t('reach.info.source')}` : ''),
+        (cap === null ? '' : ` ${t('info.battery.capacity', { cap: num(cap, 1) })}`),
     },
   });
 }
@@ -686,7 +630,6 @@ export function loadNowTile(data: DemoData): TileProps {
 /** Battery now: word for what it does. */
 export function batteryNowTile(data: DemoData): TileProps {
   const flow = freshValue(data, 'battery_power') ?? 0;
-  // "now" shows the battery itself; the night outlook lives on the overview (Audit05 I-4)
   const tile = batteryTile(data);
   if (tile.value === '–') return tile;
   return {
