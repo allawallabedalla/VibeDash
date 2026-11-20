@@ -312,7 +312,7 @@ def build(live: dict, history: list, links: list, now_ms: int, tz, t: dict) -> d
                     {"key": "ende", "label": t["col_end"], "phone": True},
                 ],
                 "rows": rows,
-                "chart": {"kind": "bar", "label": t["col_dur"], "unit": "h"},
+                "chart": {"kind": "bar", "label": t["col_dur"], "unit": "h", "col": "dauer"},
                 "note": t["jobs_note"],
             }
         )

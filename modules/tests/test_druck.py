@@ -94,7 +94,7 @@ class DruckTest(unittest.TestCase):
         jobs = table["rows"]
         self.assertEqual(jobs[0]["cells"]["ende"], "läuft")
         # duration as a bar in hours (Audit05 I-8)
-        self.assertEqual(table["chart"], {"kind": "bar", "label": "Dauer", "unit": "h"})
+        self.assertEqual(table["chart"], {"kind": "bar", "label": "Dauer", "unit": "h", "col": "dauer"})
         self.assertGreater(jobs[0]["chart"]["value"], 0)
 
     def test_long_time_left_in_hours(self):

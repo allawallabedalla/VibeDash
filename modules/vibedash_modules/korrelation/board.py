@@ -330,7 +330,7 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
                 }
                 for p in rank
             ],
-            "chart": {"kind": "dot", "label": "Stärke", "min": -1, "max": 1},
+            "chart": {"kind": "dot", "label": "Stärke", "min": -1, "max": 1, "col": "r"},
             "note": t["rank_note"],
             "info": {"what": t["rank_what"], "source": t["source"]},
         }

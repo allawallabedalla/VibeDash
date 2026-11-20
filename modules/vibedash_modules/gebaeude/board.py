@@ -367,7 +367,7 @@ def build(result: dict, stand_ms: int, t: dict) -> dict:
                     }
                     for x in s["raeume"]
                 ],
-                "chart": {"kind": "dot", "label": t["sun_k"], "color": "climate"},
+                "chart": {"kind": "dot", "label": t["sun_k"], "color": "climate", "col": "k"},
                 "note": t["sun_note"],
                 "info": info(s),
             }
@@ -398,7 +398,7 @@ def build(result: dict, stand_ms: int, t: dict) -> dict:
                     }
                     for x in old["lagen"]
                 ],
-                "chart": {"kind": "dot", "label": t["pv_dev"], "unit": "kWh", "color": "sun"},
+                "chart": {"kind": "dot", "label": t["pv_dev"], "unit": "kWh", "color": "sun", "col": "b"},
                 "note": t["pv_note"].format(von=old["von"][:7], bis=old["bis"][:7]),
                 "info": info(pv),
             }

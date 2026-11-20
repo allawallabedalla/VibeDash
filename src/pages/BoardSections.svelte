@@ -135,9 +135,12 @@
   const unitTitle = (s: BoardSection, title: string) =>
     s.type === 'bars' && s.unit && !title.includes(s.unit) ? `${title}, ${s.unit}` : title;
   // on the phone the first three columns, plus those the board marks "phone": true
+  // the column a graphic shows gives the phone its room (Audit05 I-8)
   const columnsOf = (
     cols: { key: string; label: string; align?: 'right'; phone?: boolean }[],
-  ): Column[] => cols.map((c, i) => ({ ...c, phone: c.phone ?? i < 3 }));
+    chartCol?: string,
+  ): Column[] =>
+    cols.map((c, i) => ({ ...c, phone: c.key === chartCol ? false : (c.phone ?? i < 3) }));
   const rowsOf = (
     rows: { cells: Record<string, string>; note?: string; chart?: TableChartCell }[],
   ): Row[] =>
@@ -333,7 +336,7 @@
       {:else if s.type === 'table'}
         {#if s.rows.length}
           <DataTable
-            columns={columnsOf(s.columns)}
+            columns={columnsOf(s.columns, s.chart?.col)}
             rows={rowsOf(s.rows)}
             caption={s.title}
             chart={chartOf(s.chart)}

@@ -99,7 +99,7 @@ def build(data: dict, now_ms: int, tz=None) -> dict:
                     }
                     for a in kinds
                 ],
-                "chart": {"kind": "bar", "label": "Anzahl"},
+                "chart": {"kind": "bar", "label": "Anzahl"},  # the number stays: next to it "davor" would read like it
             }
         )
 
@@ -246,7 +246,7 @@ def build(data: dict, now_ms: int, tz=None) -> dict:
                     }
                     for r in rooms
                 ],
-                "chart": {"kind": "dot", "label": "an bei Helligkeit, je Tag"},
+                "chart": {"kind": "dot", "label": "an bei Helligkeit, je Tag", "col": "h"},
                 "note": "Je Tag, Mittel ± Standardfehler.",
             }
         )

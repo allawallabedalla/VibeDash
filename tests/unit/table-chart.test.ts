@@ -58,6 +58,12 @@ describe('graphic column of a board table (Audit05 I-8)', () => {
     ]);
   });
 
+  it('keeps col only when it names one of the columns', () => {
+    const rows = [{ cells: {}, chart: { value: 1 } }];
+    expect(table({ kind: 'bar', label: 'x', col: 'a' }, rows).chart!.col).toBe('a');
+    expect(table({ kind: 'bar', label: 'x', col: 'zz' }, rows).chart!.col).toBeUndefined();
+  });
+
   it('ignores row values when the table has no chart', () => {
     expect(table(undefined, [{ cells: {}, chart: { value: 1 } }]).rows[0]).toEqual({
       cells: { a: '' },

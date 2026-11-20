@@ -3,7 +3,7 @@
 import unittest
 from datetime import UTC
 
-from vibedash_modules.knxlog.board import build, squeeze
+from vibedash_modules.knxlog.board import build, device_chart, squeeze
 
 M = 60_000
 
@@ -37,6 +37,12 @@ class Devices(unittest.TestCase):
         dev = next(s for s in b["sections"] if s.get("title") == "Geräte")
         self.assertEqual(dev["chart"], {"kind": "bar", "label": "Telegramme"})
         self.assertEqual([r["chart"]["value"] for r in dev["rows"]], [3, 0])
+
+    def test_one_busy_device_does_not_squash_the_scale(self):
+        rows = [{"chart": {"value": v}} for v in (10_000, 300, 250, 240, 200, 180, 0)]
+        self.assertEqual(device_chart(rows), {"kind": "bar", "label": "Telegramme", "min": 0, "max": 500})
+        even = [{"chart": {"value": v}} for v in (300, 250, 240, 200, 180)]
+        self.assertEqual(device_chart(even), {"kind": "bar", "label": "Telegramme"})
 
 
 if __name__ == "__main__":

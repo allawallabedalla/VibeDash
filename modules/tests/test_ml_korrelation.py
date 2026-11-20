@@ -185,7 +185,9 @@ class TestKorrelation(unittest.TestCase):
         self.assertTrue(cols[3]["phone"])
         self.assertEqual(rows[0]["cells"], {"p": rows[0]["cells"]["p"], "r": "−0,71", "rb": "−0,55", "n": "95 Std."})
         self.assertEqual(rows[1]["cells"]["n"], "Tage")
-        self.assertEqual(s["Alle nach Art"]["chart"], {"kind": "dot", "label": "Stärke", "min": -1, "max": 1})
+        self.assertEqual(
+            s["Alle nach Art"]["chart"], {"kind": "dot", "label": "Stärke", "min": -1, "max": 1, "col": "r"}
+        )
         self.assertAlmostEqual(rows[0]["chart"]["value"], -0.71, places=2)
         self.assertEqual(s["Was steckt dahinter"]["unit"], "Paare")
         self.assertEqual(b["updated"], self.data["stand_ms"])

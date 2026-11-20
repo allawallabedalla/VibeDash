@@ -66,7 +66,12 @@
     {#if c && c.value !== null}
       {#if chart!.kind === 'bar'}
         {@const b = span(0, c.value)}
-        <i class="bar" style:left="{b.left}%" style:width="max(2px, {b.width}%)"></i>
+        <i
+          class="bar"
+          class:over={c.value > s.hi || c.value < s.lo}
+          style:left="{b.left}%"
+          style:width="max(2px, {b.width}%)"
+        ></i>
         {#if c.part}
           {@const p = span(0, c.part)}
           <i
@@ -194,6 +199,10 @@
     height: 10px;
     border-radius: 3px;
     background: var(--c);
+  }
+  /* a value past the end of a fixed scale runs off the edge, fading out */
+  .bar.over {
+    mask-image: linear-gradient(90deg, #000 70%, transparent);
   }
   .err {
     top: 9px;

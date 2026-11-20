@@ -157,7 +157,7 @@ class TestGebaeude(unittest.TestCase):
         self.write(RESULT)
         b = self.board()
         sun, pv = b["sections"][4], b["sections"][5]
-        self.assertEqual(sun["chart"], {"kind": "dot", "label": "K/klarer Tag", "color": "climate"})
+        self.assertEqual(sun["chart"], {"kind": "dot", "label": "K/klarer Tag", "color": "climate", "col": "k"})
         for raum, row in zip(RESULT["sonne"]["raeume"], sun["rows"], strict=True):
             self.assertAlmostEqual(row["chart"]["value"], raum["klarer_tag_k"])
             self.assertAlmostEqual(row["chart"]["err"], 3 * raum["se"])

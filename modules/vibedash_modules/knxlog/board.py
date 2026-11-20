@@ -91,6 +91,20 @@ def value(ga, raw, cfg):
     return " ".join(f"{x:02x}" for x in b)
 
 
+def device_chart(rows: list) -> dict:
+    """Graphic column of the device table: telegrams as bars. One very busy device (the bridge sends thousands)
+    would squash all others to a line, so the scale then ends near the busy rest and that bar runs off the edge;
+    the number column stays (Audit05 I-8)."""
+    chart = {"kind": "bar", "label": "Telegramme"}
+    counts = sorted(r["chart"]["value"] for r in rows if r.get("chart", {}).get("value"))
+    if len(counts) >= 5:
+        p90 = counts[int(0.9 * (len(counts) - 1))]
+        if counts[-1] > 3 * p90 > 0:
+            step = 10 ** max(0, len(str(int(p90 * 1.5))) - 1)
+            chart.update(min=0, max=-(-int(p90 * 1.5) // step) * step)
+    return chart
+
+
 def build(data: dict, inventory: dict, cfg: dict, now_ms: int, tz) -> dict:
     c = {**DEFAULTS, **{k: v for k, v in cfg.items() if k in DEFAULTS}}
     devices = {a: tuple(v) for a, v in (inventory.get("geraete") or {}).items()}
@@ -316,7 +330,7 @@ def build(data: dict, inventory: dict, cfg: dict, now_ms: int, tz) -> dict:
                 {"key": "z", "label": "zuletzt"},
             ],
             "rows": device_rows,
-            "chart": {"kind": "bar", "label": "Telegramme"},
+            "chart": device_chart(device_rows),
             "note": "Markiert: still oder unbekannt.",
             "info": {
                 "what": "Jedes Bus-Gerät mit Telegrammen und letztem Lebenszeichen.",

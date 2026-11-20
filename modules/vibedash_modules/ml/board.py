@@ -121,7 +121,7 @@ def build(data: dict, now_ms: int, t: dict) -> dict:
                 "columns": [
                     {"key": "m", "label": t["c_model"]},
                     {"key": "p", "label": t["c_learned"], "align": "right"},
-                    {"key": "s", "label": t["c_state"]},
+                    {"key": "s", "label": t["c_state"], "phone": False},
                     {"key": "e", "label": t["c_done"]},
                 ],
                 "rows": rows,
