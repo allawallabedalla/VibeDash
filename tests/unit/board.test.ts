@@ -25,6 +25,16 @@ describe('board from a house service: checked and trimmed', () => {
     expect(b?.sections).toHaveLength(40);
     expect(b?.sections[39]?.title).toBe('T39');
   });
+  it('keeps "more" only when it is true', () => {
+    const b = sanitizeBoard({
+      updated: null,
+      sections: [
+        { type: 'text', title: 'A', text: 'x', more: true },
+        { type: 'text', title: 'B', text: 'x', more: 'yes' },
+      ],
+    });
+    expect(b?.sections.map((s) => s.more)).toEqual([true, undefined]);
+  });
   it('rejects what is not a board', () => {
     expect(sanitizeBoard(null)).toBeNull();
     expect(sanitizeBoard({ sections: 'x' })).toBeNull();

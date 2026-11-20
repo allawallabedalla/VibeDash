@@ -67,6 +67,16 @@ class TestDazu(unittest.TestCase):
         added = board_of(mods, "wartung")["sections"][len(own) :]
         self.assertEqual([s["type"] for s in added], ["choice"])
 
+    def test_mehr_marks_second_level(self):
+        cfg = os.path.join(self.base, "wartung.json")
+        with open(cfg, encoding="utf-8") as f:
+            c = json.load(f)
+        c["mehr"] = ["Updates"]
+        _write(cfg, c)
+        secs = board_of(load_modules(self.base), "wartung")["sections"]
+        marked = [s["title"] for s in secs if s.get("more")]
+        self.assertEqual(marked, ["Updates"])
+
 
 if __name__ == "__main__":
     unittest.main()

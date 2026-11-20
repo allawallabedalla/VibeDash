@@ -162,10 +162,16 @@
    */
   const results = new SvelteMap<number, { sections: BoardSection[]; label: string }>();
   type Shown = { s: BoardSection; calc?: number };
+  /** second-level sections (more: true) wait behind one button at the end */
+  const moreCount = $derived(sections.filter((s) => s.more && inSlot(s)).length);
+  let moreOpen = $state(false);
   const shown = $derived.by((): Shown[] => {
     const out: Shown[] = [];
-    sections.forEach((s, i) => {
-      if (!inSlot(s)) return;
+    const ordered = [...sections.entries()].sort(
+      ([, a], [, b]) => Number(!!a.more) - Number(!!b.more),
+    );
+    ordered.forEach(([i, s]) => {
+      if (!inSlot(s) || (s.more && !moreOpen)) return;
       // calculators reach the page only where the server has a way for their value
       if (s.type === 'calc' || s.type === 'pair') {
         out.push({ s, calc: i });
@@ -409,9 +415,35 @@
     </Card>
   {/if}
   <div class="row-gap"></div>
+  {#if moreCount && !s.more && (shown[i + 1] === undefined || shown[i + 1]!.s.more)}
+    <button
+      type="button"
+      class="link more"
+      aria-expanded={moreOpen}
+      onclick={() => (moreOpen = !moreOpen)}
+      ><span class="chev" class:open={moreOpen}><Icon name="chevron" /></span>
+      {t('board.more', { n: moreCount })}</button
+    >
+    <div class="row-gap"></div>
+  {/if}
 {/each}
 
 <style>
+  .chev {
+    display: inline-flex;
+    transform: rotate(90deg);
+    transition: transform 0.2s;
+  }
+  .chev.open {
+    transform: rotate(-90deg);
+  }
+  .more {
+    gap: 8px;
+    border: 0;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+  }
   .link {
     display: inline-flex;
     align-self: flex-start;

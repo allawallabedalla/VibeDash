@@ -19,9 +19,11 @@ def load_modules(base: str | None = None) -> dict:
     with a readable config file. Broken configs are reported, not fatal: one module must not stop the others.
     "dazu" (optional config key): modules whose sections are shown below this module's own, on the same tab, and
     whose buttons work there too – two modules on one tab (Audit05: fewer tabs). Each entry is a module name or
-    {"modul": name, "nur": [section title or type, …]} to bring only some of its sections."""
+    {"modul": name, "nur": [section title or type, …]} to bring only some of its sections.
+    "mehr" (optional config key, list of section titles): these sections wait behind "Details" at the end of the tab
+    (second level, nothing is lost; also for sections brought by "dazu")."""
     base = base or modules_dir()
-    out, errors, dazu = {}, {}, {}
+    out, errors, dazu, mehr = {}, {}, {}, {}
     for name in KNOWN:
         f = os.path.join(base, f"{name}.json")
         if not os.path.exists(f):
@@ -37,12 +39,17 @@ def load_modules(base: str | None = None) -> dict:
                 return p if os.path.isabs(p) else os.path.join(_base, p)
 
             extra = _dazu(cfg.pop("dazu", None))
+            more = cfg.pop("mehr", None)
+            if more is not None and not (isinstance(more, list) and all(isinstance(x, str) for x in more)):
+                raise ValueError("mehr must be a list of section titles")
             out[name] = mod.Module(cfg, path)
             if extra:
                 dazu[name] = {k: v for k, v in extra.items() if k in KNOWN and k != name}
+            if more:
+                mehr[name] = more
         except Exception as e:  # noqa: BLE001 – reported via /gesund
             errors[name] = f"{type(e).__name__}: {e}"[:200]
-    return {"modules": out, "errors": errors, "dazu": dazu}
+    return {"modules": out, "errors": errors, "dazu": dazu, "mehr": mehr}
 
 
 def _dazu(raw) -> dict:
@@ -81,6 +88,9 @@ def board_of(mods: dict, name: str) -> dict | None:
         b = {**b, "sections": [*b.get("sections", []), *secs]}
         times = [t for t in (b.get("updated"), ob.get("updated")) if t is not None]
         b["updated"] = min(times) if times else None  # the older part decides how fresh the tab is
+    more = mods.get("mehr", {}).get(name)
+    if more:
+        b = {**b, "sections": [{**s, "more": True} if s.get("title") in more else s for s in b.get("sections", [])]}
     return b
 
 
