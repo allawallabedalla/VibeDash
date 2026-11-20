@@ -90,6 +90,20 @@ class WasserBoard(unittest.TestCase):
         self.assertEqual(d["mean"], 120.0)
         self.assertIn("n 9", sec(b, "Zähler")["tiles"][2]["sub"])
 
+    def test_compare_per_person(self):
+        # 120 l a day, 2 people -> 60 l each, next to Germany 121, world ≈ 95, basic need 50
+        b = board.build(meter(), dict(LIVE), NOW, TZ, board.TEXT, personen=2)
+        c = next(s for s in b["sections"] if s["title"] == "Je Person und Tag im Vergleich")
+        self.assertEqual(c["values"], [60, 121, 95, 50])
+        self.assertIn("2 Personen", c["note"])
+        self.assertNotIn("Je Person und Tag im Vergleich", [s["title"] for s in build(meter())["sections"]])
+
+    def test_compare_waits_for_whole_days(self):
+        b = board.build(meter(days=1.5), dict(LIVE), NOW, TZ, board.TEXT, personen=2)
+        c = next(s for s in b["sections"] if s["title"] == "Je Person und Tag im Vergleich")
+        self.assertIsNone(c["values"][0])
+        self.assertIn("sammelt", c["note"])
+
     def test_since_due_date(self):
         b = build(meter())
         t = sec(b, "Zähler")["tiles"][1]

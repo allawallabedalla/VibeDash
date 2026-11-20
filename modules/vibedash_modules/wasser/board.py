@@ -61,6 +61,17 @@ TEXT = {
     "hours_title": "Verbrauch je Stunde",
     "hours_note": "Letzte 48 Stunden, aus dem Zählerstand; leer = keine Daten.",
     "days_title": "Verbrauch je Tag",
+    "cmp_title": "Je Person und Tag im Vergleich",
+    "cmp_labels": ["Wir", "Deutschland", "Welt (Mitte)", "Grundbedarf"],
+    "cmp_note": "Wir: ≈ {v} l je Person ({p} Personen, Mittel aus {n} ganzen Tagen, Garten eingerechnet). "
+    "Deutschland 121 l (BDEW 2023). Welt: etwa die Hälfte der Menschen nutzt unter ≈ 95 l (grobe Angabe, kein "
+    "amtlicher Weltwert). Grundbedarf ≈ 50 l (WHO).",
+    "cmp_collect": "Wir: sammelt – erst ab {k} ganzen Tagen (bisher {n}). Deutschland 121 l (BDEW 2023), Welt "
+    "≈ 95 l (grobe Angabe), Grundbedarf ≈ 50 l (WHO).",
+    "cmp_what": "Wasser je Person und Tag: unser Mittel der ganzen Tage geteilt durch die Personen im Haus, daneben "
+    "Vergleichswerte. Ein amtlicher Welt-Durchschnitt für Haushaltswasser existiert nicht; „Welt (Mitte)“ ist eine "
+    "grobe Angabe, darum mit ≈.",
+    "cmp_source": "Zähler (ganze Tage), Personen aus der Modul-Einstellung; BDEW 2023, WHO, OpenLearn/UN-Water.",
     "days_note": "Letzte 30 Tage; Linie = Mittel {mean} l (n {n}). Heute läuft noch.",
     "days_note_nomean": "Letzte 30 Tage; das Mittel braucht ganze Tage.",
     "nights_title": "Nachtverbrauch 2–5 Uhr",
@@ -193,7 +204,25 @@ def longest_still(rd, times, now) -> float | None:
     return max(longest, now - last_change)
 
 
-def build(rows: list, live: dict | None, now: float, tz, t: dict) -> dict:
+# Reference values per person and day (litres), with their source in the note (Audit05-Nutzerwunsch 20.11.2026)
+VERGLEICH_L = (121, 95, 50)  # Germany (BDEW 2023) · world, rough middle · basic need (WHO)
+CMP_MIN_DAYS = 3
+
+
+def whole_days(rd, now, tz, n=30) -> list:
+    """Litres of the last n days whose start AND end are covered by readings (a started day is no day)."""
+    today = datetime.fromtimestamp(now, tz).date()
+    out = []
+    for k in range(n, 0, -1):
+        d = today - timedelta(days=k)
+        a, b = _midnight(d, tz), _midnight(d + timedelta(days=1), tz)
+        sa, sb = stand_at(rd, a), stand_at(rd, b)
+        if sa is not None and sb is not None and sb >= sa:
+            out.append((sb - sa) * 1000)
+    return out
+
+
+def build(rows: list, live: dict | None, now: float, tz, t: dict, personen: int | None = None) -> dict:
     rows = [r for r in rows or [] if isinstance(r, dict) and isinstance(r.get("t"), (int, float))]
     rd = readings(rows)
     times = [float(r["t"]) for r in rows]
@@ -332,6 +361,23 @@ def build(rows: list, live: dict | None, now: float, tz, t: dict) -> dict:
     if mean is not None:
         days_sec["mean"] = round(mean, 1)
     sections.append(days_sec)
+    if personen:
+        wd = whole_days(rd, now, tz)
+        ours = sum(wd) / len(wd) / personen if len(wd) >= CMP_MIN_DAYS else None
+        sections.append(
+            {
+                "type": "bars",
+                "title": t["cmp_title"],
+                "unit": "l",
+                "labels": t["cmp_labels"],
+                "values": [round(ours) if ours is not None else None, *VERGLEICH_L],
+                "color": "climate",
+                "note": t["cmp_note"].format(v=_de(ours), p=personen, n=len(wd))
+                if ours is not None
+                else t["cmp_collect"].format(k=CMP_MIN_DAYS, n=len(wd)),
+                "info": {"what": t["cmp_what"], "source": t["cmp_source"]},
+            }
+        )
     sections.append(
         {
             "type": "bars",
