@@ -335,26 +335,40 @@ export async function load(opts: { month?: boolean } = {}): Promise<void> {
     } else if (state.status !== 'ready') state = quick;
     if (!month) {
       // only the last day was fetched: keep the older part of the month the page already has
-      if (quick.status === 'ready' && keep) {
-        const series = Object.fromEntries(
-          Object.entries(quick.data.series).map(([id, x]) => [id, joinRecent(keep[id], x)]),
-        );
-        const d = quick.data;
-        state = {
-          ...quick,
-          data: { ...d, series, issues: detectIssues(series, d.entities, d.now, d.notes) },
-        };
-      }
+      if (quick.status === 'ready' && keep) state = withRecent(quick, keep, quick.data.series);
       return;
     }
     const full = await loadLive(body.timeZone, body.backends ?? [], '31d');
     if (run !== loads) return;
-    // a failed month must not replace a working day
-    if (full.status === 'ready' || quick.status !== 'ready') state = full;
+    // A failed month must not replace a working day. The month may come from the server cache (up to 2 min
+    // old) and is thinned out: keep the fresher last day, so tiles do not flip to "data missing" (Audit05 N4-01).
+    if (full.status === 'ready' && quick.status === 'ready')
+      state = withRecent(full, full.data.series, quick.data.series);
+    else if (full.status === 'ready' || quick.status !== 'ready') state = full;
   } else {
     state = { status: 'ready', source: 'demo', backends: [], data: generateDemo(), missing: [] };
     version++;
   }
+}
+
+/** `base` with each series = older part from `older`, newest part from `recent` (when that is not behind). */
+function withRecent(
+  base: Ready,
+  older: Record<string, Series | undefined>,
+  recent: Record<string, Series>,
+): State {
+  const series: Record<string, Series> = {};
+  for (const [id, own] of Object.entries(base.data.series)) {
+    const o = older[id];
+    const r = recent[id] ?? own;
+    series[id] =
+      o && (o.samples.at(-1)?.t ?? 0) > (r.samples.at(-1)?.t ?? 0) ? o : joinRecent(o, r);
+  }
+  const d = base.data;
+  return {
+    ...base,
+    data: { ...d, series, issues: detectIssues(series, d.entities, d.now, d.notes) },
+  };
 }
 
 // ── snapshot of the last visit (this device only) ─────────────────────────────

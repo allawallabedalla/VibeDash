@@ -238,7 +238,7 @@ export const de = {
     'Anteil Sonnenstrom an allem, was in den letzten 30 Tagen ins Auto ging – nach Energie gewichtet. Ladungen ohne Angabe zählen nicht mit.',
   'plan.title': 'Ladeplan',
   'plan.lead':
-    'Wie viel das Auto ohne Netzstrom laden kann – heute, heute Nacht und morgen. Nur geplant und gezeigt, nichts wird geschaltet.',
+    'Wie viel das Auto ohne Netzstrom laden kann – heute, heute Nacht und morgen. Geschaltet wird nur von der Ladesteuerung des Hauses.',
   'plan.leadDemo':
     'Demo-Haus ohne Auto: Wie viel hätte ein Auto (60 kWh, 6–16 A) ohne Netzstrom laden können? Nur geplant, nichts wird geschaltet.',
   'plan.car': 'Auto laden',
@@ -704,7 +704,7 @@ export const de = {
   'hc.trace.aria': 'Auto lädt mit {car} kW, Einspeisung {feed} kW',
   'hc.planTitle': 'Ladeplan',
   'hc.planNote':
-    'Plan von {made} Uhr · Hausakku jetzt {soc} %, in 24 h tiefstens {min} %. Nur Anzeige, VibeDash schaltet nichts.',
+    'Plan von {made} Uhr · Hausakku jetzt {soc} %, in 24 h tiefstens {min} %. Laden schaltet der Haus-Wächter; „Jetzt laden“ startet sofort.',
   'hc.pastTitle': 'Ladungen',
   'hc.perDay': 'An der Wallbox geladen (14 Tage)',
   'hc.gridNote':

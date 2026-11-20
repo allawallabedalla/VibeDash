@@ -236,7 +236,7 @@ export const en: Record<MessageKey, string> = {
     'Share of solar power in everything that went into the car in the last 30 days – weighted by energy. Charges without a share are not counted.',
   'plan.title': 'Charge plan',
   'plan.lead':
-    'How much the car can charge without grid power – today, tonight and tomorrow. Planned and shown only; nothing is switched.',
+    'How much the car can charge without grid power – today, tonight and tomorrow. Only the house’s charging control switches.',
   'plan.leadDemo':
     'Demo home without a car: how much could a car (60 kWh, 6–16 A) have charged without grid power? Planned only; nothing is switched.',
   'plan.car': 'Charge car',
@@ -695,7 +695,7 @@ export const en: Record<MessageKey, string> = {
   'hc.trace.aria': 'Car charging with {car} kW, feed-in {feed} kW',
   'hc.planTitle': 'Charge plan',
   'hc.planNote':
-    'Plan of {made} · house battery now {soc} %, lowest {min} % in 24 h. Display only, VibeDash switches nothing.',
+    'Plan of {made} · house battery now {soc} %, lowest {min} % in 24 h. The house guard switches charging; “Charge now” starts at once.',
   'hc.pastTitle': 'Charges',
   'hc.perDay': 'Charged at the wallbox (14 days)',
   'hc.gridNote':
