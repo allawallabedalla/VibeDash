@@ -26,19 +26,20 @@ NIGHTS_IN_ROW = 3
 
 TEXT = {
     "tile": "Wasser",
-    "tile_sub": "Zähler {stand} m³ · gestern {yday} l",
+    "tile_sub": "gestern {yday} l",
     "tile_sub_nodata": "noch keine Werte",
     "tile_since": "seit {hm}",
-    "tile_what": "Verbrauch heute: Zählerstand jetzt minus Zählerstand um Mitternacht.",
+    "tile_what": "Verbrauch heute: Zählerstand jetzt minus Zählerstand um Mitternacht. Zählerstand jetzt {stand} m³ "
+    "(genau wie auf dem Zähler-Display).",
     "tile_source": "Funk-Wasserzähler über die Basis-Station im Heimnetz, Verlauf aus InfluxDB.",
     "warn_outage": "Zähler sendet nicht",
     "warn_status": "Status {status}",
     "warn_stale": "Daten fehlen seit {ago}",
     "tiles_title": "Zähler",
     "since_due": "Seit Stichtag",
-    "since_due_sub": "Stand {stand} − Stichtag {due} m³",
-    "since_due_what": "Verbrauch seit dem Stichtag, den der Zähler selbst speichert (meist der Jahreswechsel der "
-    "Abrechnung).",
+    "since_due_sub": "seit dem letzten Stichtag (Datum sendet der Zähler nicht)",
+    "since_due_what": "Verbrauch seit dem Stichtag, den der Zähler selbst speichert: Zählerstand {stand} m³ minus "
+    "Stichtagswert {due} m³. Das Datum des Stichtags steht nicht im Funktelegramm (meist die Jahresablesung).",
     "mean": "Ø Tag",
     "mean_sub": "30 Tage · n {n}",
     "mean_what": "Mittel der ganzen Tage der letzten 30 Tage mit Werten; n = Zahl der Tage.",
@@ -62,7 +63,7 @@ TEXT = {
     "hours_note": "Letzte 48 Stunden, aus dem Zählerstand; leer = keine Daten.",
     "days_title": "Verbrauch je Tag",
     "cmp_title": "Je Person und Tag im Vergleich",
-    "cmp_labels": ["Wir je Person", "Deutschland 121 l", "Welt ≈ 95 l", "Grundbedarf ≈ 50 l"],
+    "cmp_labels": ["Wir je Person", "Deutschland", "Welt (grob)", "Grundbedarf"],  # the chart adds the value
     "cmp_note": "Linie = wir je Person und ganzem Tag ({p} Personen, Garten eingerechnet), im Mittel ≈ {v} l (n {n}). "
     "Gestrichelt: Deutschland (BDEW 2023), Welt (grobe Angabe, kein amtlicher Weltwert), Grundbedarf (WHO).",
     "cmp_collect": "Unsere Linie erscheint mit den ersten ganzen Tagen (bisher {n}). Gestrichelt: Deutschland 121 l "
@@ -262,7 +263,8 @@ def build(rows: list, live: dict | None, now: float, tz, t: dict, personen: int 
         warn = t["tile_sub_nodata"]
 
     hl, hv = hours(rd, times, now, tz)
-    sub = t["tile_sub"].format(stand=_de(stand, 3), yday=_de(yday_l)) if stand is not None else t["tile_sub_nodata"]
+    # decimals only where they say something (Nutzer 20.11.2026): the exact meter reading lives in the ⓘ
+    sub = t["tile_sub"].format(yday=_de(yday_l)) if stand is not None else t["tile_sub_nodata"]
     if since is not None:
         sub = f"{t['tile_since'].format(hm=datetime.fromtimestamp(since, tz).strftime('%H:%M'))} · {sub}"
     if warn:
@@ -275,7 +277,7 @@ def build(rows: list, live: dict | None, now: float, tz, t: dict, personen: int 
         "icon": "droplet",
         "color": "climate",
         "state": "act" if (ausfall or (warn and warn != t["tile_sub_nodata"])) else "ok",
-        "info": {"what": t["tile_what"], "source": t["tile_source"]},
+        "info": {"what": t["tile_what"].format(stand=_de(stand, 3)), "source": t["tile_source"]},
     }
     if any(v is not None for v in hv[-24:]):
         home["spark"] = hv[-24:]
@@ -297,12 +299,15 @@ def build(rows: list, live: dict | None, now: float, tz, t: dict, personen: int 
     tiles = [
         {
             "label": t["since_due"],
-            "value": _de(stand - due, 3) if stand is not None and due is not None and stand >= due else "–",
+            "value": _de(stand - due, 1) if stand is not None and due is not None and stand >= due else "–",
             "unit": "m³",
-            "sub": t["since_due_sub"].format(stand=_de(stand, 3), due=_de(due, 3)),
+            "sub": t["since_due_sub"],
             "icon": "droplet",
             "color": "climate",
-            "info": {"what": t["since_due_what"], "source": t["tile_source"]},
+            "info": {
+                "what": t["since_due_what"].format(stand=_de(stand, 3), due=_de(due, 3)),
+                "source": t["tile_source"],
+            },
         },
         {
             "label": t["mean"],

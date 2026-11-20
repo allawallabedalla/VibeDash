@@ -27,6 +27,21 @@ class TestBoardsOfAllModules(unittest.TestCase):
     def setUpClass(cls):
         cls.boards = all_boards()
 
+    def test_viele_nachkommastellen_nur_im_info(self):
+        b = {
+            "sections": [
+                {
+                    "type": "tiles",
+                    "title": "T",
+                    "tiles": [{"label": "A", "value": "84,806", "info": {"what": "genau 124,021 m³", "source": "x"}}],
+                }
+            ]
+        }
+        v = pruefe(b)
+        self.assertEqual(len([x for x in v if "Nachkommastellen" in x]), 1)
+        b["sections"][0]["tiles"][0]["value"] = "84,8"
+        self.assertFalse([x for x in pruefe(b) if "Nachkommastellen" in x])
+
     def test_every_module_has_a_board(self):
         from vibedash_modules import KNOWN
 
