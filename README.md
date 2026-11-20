@@ -212,7 +212,11 @@ go to the module automatically:
 ```
 
 Each module is switched on by its config in `local/modules/<name>.json`; the house's own
-contents (plan, notes) live next to it and never in the repo. Templates: `modules/templates/`.
+contents (plan, notes) live next to it and never in the repo. **Two modules on one tab:**
+`"dazu": ["updates"]` in `wartung.json` appends the sections of `updates` below the
+maintenance plan; its buttons (item ids `updates:…`) still reach `updates`, a calculator goes to the
+first module that has one. `{"modul": "korrelation", "nur": ["pair"]}` brings only some sections
+(by title or type). Drop the second board from `mapping.boards` then – fewer tabs, nothing lost. Templates: `modules/templates/`.
 The calendar goes out at `/feed/wartung/kalender.ics` (only for modules the mapping names).
 Details, config keys and the house extension point (`einschub_url`): [modules/README.md](modules/README.md).
 Run it with `docker compose` (service `modules` in `compose.example.yaml`, already in the
