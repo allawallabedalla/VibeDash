@@ -17,6 +17,9 @@
   import { planFromApi, planFromDemo, type PlanApi, type PlanView } from '../app/plan';
   import ChargePlan from './ChargePlan.svelte';
   import BoardSections, { chargingBoard } from './BoardSections.svelte';
+  import ChargeOrigin from '../components/ChargeOrigin.svelte';
+  import { demoChargeDays } from '../demo/charging';
+  import { originStack } from '../model/charge-origin';
 
   const demo = currentSource() === 'demo';
   const timeZone = $derived(currentData().timeZone);
@@ -121,6 +124,23 @@
   });
 
   const DAY = 86_400_000;
+
+  // the demo's made-up charges by origin (Audit05 I-2); live houses show theirs on the house charging page
+  const demoOrigin = $derived.by(() => {
+    if (!demo) return null;
+    const d = demoChargeDays(currentData());
+    const fmt = new Intl.DateTimeFormat(locale, { timeZone, day: 'numeric', month: 'numeric' });
+    return {
+      bars: originStack(
+        d.map((x) => x.day),
+        d,
+        d.map((x) => x.kwh),
+      ),
+      labels: d.map((x, i) =>
+        i === d.length - 1 ? t('days.today') : fmt.format(x.day + 12 * 3_600_000),
+      ),
+    };
+  });
   const locale = $derived(i18n.locale === 'de' ? 'de-DE' : 'en-GB');
 
   const tiles = $derived.by<TileProps[]>(() => {
@@ -243,7 +263,7 @@
     {#if planState.s === 'loading'}
       <p class="muted-note" role="status">{t('state.loading')}</p>
     {:else if planState.s === 'ready'}
-      <ChargePlan plan={planState.plan} {timeZone} />
+      <ChargePlan plan={planState.plan} {timeZone} now={currentData().now} />
     {:else if planState.s === 'collecting'}
       <Card title={t('plan.title')} icon="clock" color="var(--muted)">
         <p class="muted-note">
@@ -260,6 +280,15 @@
         <button type="button" class="retry" onclick={loadPlan}>{t('state.retry')}</button>
       </Card>
     {/if}
+  {/if}
+
+  {#if demoOrigin}
+    <h2>{t('hc.pastTitle')}</h2>
+    <ChargeOrigin
+      bars={demoOrigin.bars}
+      labels={demoOrigin.labels}
+      partial={demoOrigin.bars.length - 1}
+    />
   {/if}
 
   {#if store.evcc}

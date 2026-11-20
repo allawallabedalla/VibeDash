@@ -17,6 +17,9 @@
  *   plan:     { summaryUrl, blocksUrl?, fields?, span? } – an external planner's
  *             summary and blocks; `fields` names its JSON keys (defaults in
  *             PLAN_FIELDS), `span` says what its two day numbers mean (README)
+ *   origin:   { sun, battery, grid } – series ids (mapping.series, kind "energy",
+ *             one value per local day stamped at its start, kWh): where the car's
+ *             energy came from that day. Without it the page shows one colour.
  */
 import type { FetchLike } from '../src/adapters/influx1';
 
@@ -66,6 +69,22 @@ export interface ChargingMapping {
     forced?: string;
   };
   plan?: { summaryUrl: string; blocksUrl?: string; fields?: PlanFields; span?: PlanSpan };
+  origin?: ChargeOrigin;
+}
+
+/** Series ids of the car's energy per day by origin (Audit05 I-2). */
+export interface ChargeOrigin {
+  sun: string;
+  battery: string;
+  grid: string;
+}
+
+/** One local day: kWh into the car from the sun, the house battery and the grid; null = not known. */
+export interface OriginDay {
+  day: number;
+  sun: number | null;
+  battery: number | null;
+  grid: number | null;
 }
 
 export interface ChargeSession {
@@ -211,4 +230,28 @@ export async function fetchPlan(
     plan.blocksUrl ? get(plan.blocksUrl).catch(() => []) : Promise.resolve([]),
   ]);
   return parsePlan(s, b, plan.fields);
+}
+
+/**
+ * The three daily series side by side, one row per day start (oldest first). A day
+ * missing in one series keeps null there – a gap, never 0. Negative values (read
+ * errors) count as missing.
+ */
+export function originDays(
+  sun: readonly { t: number; v: number }[],
+  battery: readonly { t: number; v: number }[],
+  grid: readonly { t: number; v: number }[],
+): OriginDay[] {
+  const rows = new Map<number, OriginDay>();
+  const put = (list: readonly { t: number; v: number }[], k: 'sun' | 'battery' | 'grid') => {
+    for (const p of list) {
+      const r = rows.get(p.t) ?? { day: p.t, sun: null, battery: null, grid: null };
+      r[k] = Number.isFinite(p.v) && p.v >= 0 ? Math.round(p.v * 100) / 100 : null;
+      rows.set(p.t, r);
+    }
+  };
+  put(sun, 'sun');
+  put(battery, 'battery');
+  put(grid, 'grid');
+  return [...rows.values()].sort((a, b) => a.day - b.day);
 }

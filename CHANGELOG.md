@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Infographics car & battery (Audit05 I-2/I-4/I-5):** „Strom fürs Auto“ – daily bars stacked sun / battery / grid
+  with a 30-day share line (`mapping.charging.origin`, three daily series; without it the old one-colour bars);
+  the list of charges is folded below. 48-hour outlook on the charging page: sun fan 10–90 % with its mean, usual
+  house load, charge windows as blocks, house battery as its own strip (replaces the day lanes, the plan tiles
+  today/tomorrow and PlanChart). Battery tile at night: „leer ≈ 03:40 (02:50–04:30) · n“ or „reicht bis Sonne“
+  from the last nights (mean ± sd), enlarged with the course and the grid after; the estimate loads after the
+  first paint. The `#/zeitstrahl` prototype (made-up data) only in demo mode.
+
 - **Laden: Stärke und Ziel** (car module, `steuerung.ampere_stufen` / `ziel_stufen`): two more choices under
   „Laden“ – current (e.g. 6/10/13/16 A, with ≈ kW) and target (e.g. 60/80 %/Voll; in kWh from now while the car's
   charge level is unknown). A tap starts „Jetzt laden“ with it or changes the running one; the other value stays.

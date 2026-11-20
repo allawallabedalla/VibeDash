@@ -6,6 +6,7 @@
    * onPage "charging" (e.g. the car module) is shown here too, its sections
    * placed by slot: top above, plan after the plan, the rest at the end.
    */
+  import { tc } from '../i18n/charge';
   import { onMount } from 'svelte';
   import { currentData } from '../app/data.svelte';
   import BoardSections, { chargingBoard } from './BoardSections.svelte';
@@ -17,8 +18,13 @@
   import { i18n, num, t, time } from '../i18n/index.svelte';
   import { addDays, localDateKey, localMidnight } from '../model/time';
   import ChargeTrace from './ChargeTrace.svelte';
+  import Icon from '../components/Icon.svelte';
   import PageHead from './PageHead.svelte';
   import { carNext } from '../model/outlook';
+  import ChargeOrigin from '../components/ChargeOrigin.svelte';
+  import { originShares, originStack, type OriginDay } from '../model/charge-origin';
+  import ChargeOutlook from '../components/ChargeOutlook.svelte';
+  import { houseOutlook } from '../app/house-outlook';
 
   interface Session {
     start: number;
@@ -57,6 +63,8 @@
     maxKw: number | null;
     /** what the plan's two day numbers mean (mapping.charging.plan.span) */
     span: 'quantiles' | 'cautious-good' | null;
+    /** the car's energy per day by origin (mapping.charging.origin); absent = one colour */
+    origin?: OriginDay[];
   }
 
   const house = $derived(currentData());
@@ -121,38 +129,11 @@
 
   const tiles = $derived.by<TileProps[]>(() => {
     if (view.s !== 'ready') return [];
-    const { now, sessions, plan, span, maxKw } = view.a;
+    const { now, sessions, plan, maxKw } = view.a;
     const doneToday = sessions
       .filter((s) => localDateKey(s.start, tz) === localDateKey(house.now, tz))
       .reduce((a, s) => a + (s.kwh ?? 0), 0);
     const kw = now.powerW !== null ? now.powerW / 1000 : null;
-    const day = (i: number, label: string): TileProps => {
-      const d = plan?.days[i];
-      return {
-        label,
-        icon: 'forecast',
-        color: 'var(--battery)',
-        approx: d?.kwh !== null && d?.kwh !== undefined,
-        value: d?.kwh !== null && d?.kwh !== undefined ? num(d.kwh) : '–',
-        unit: d?.kwh !== null && d?.kwh !== undefined ? 'kWh' : undefined,
-        sub: spanOf(d) ?? (plan ? t('hc.noCharge') : t('hc.noPlan')),
-        info: {
-          what: span === 'cautious-good' ? t('hc.span.what') : t('hc.range.what'),
-          source: t('hc.span.source'),
-        },
-        ...(d && d.kwh !== null && d.high !== null
-          ? {
-              graphic: {
-                kind: 'scale' as const,
-                value: d.kwh,
-                min: 0,
-                max: Math.max(10, Math.ceil((d.high ?? d.kwh) / 10) * 10 + 10),
-                band: { low: d.low ?? d.kwh, high: d.high },
-              },
-            }
-          : {}),
-      };
-    };
     return [
       {
         label: t('hc.now'),
@@ -188,36 +169,77 @@
             ? t('hc.todayRunning', { kwh: num(now.kwhSoFar, 1) })
             : t('hc.todayDone'),
       },
-      day(0, t('hc.planToday')),
-      day(1, t('hc.planTomorrow')),
+      nextTile(plan),
+      ...(shares
+        ? [
+            {
+              label: tc('out.noGrid'),
+              icon: 'target' as const,
+              color: 'var(--battery)',
+              value: num(shares.sun + shares.battery),
+              unit: '%',
+              sub: tc('out.noGridSub', { n: shares.n }),
+              graphic: { kind: 'ring' as const, value: (shares.sun + shares.battery) / 100 },
+              info: { what: tc('co.info.what'), source: tc('co.info.source') },
+            },
+          ]
+        : []),
     ];
   });
 
-  // plan blocks of today and tomorrow on a 0–24 h lane each
-  const lanes = $derived.by(() => {
-    if (view.s !== 'ready' || !view.a.plan) return [];
-    const blocks = view.a.plan.blocks;
-    return [0, 1].map((k) => {
-      const d0 = addDays(today, k, tz);
-      const d1 = addDays(d0, 1, tz);
-      const len = d1 - d0;
-      return {
-        label: k === 0 ? t('days.today') : t('hc.tomorrow'),
-        blocks: blocks
-          .filter((b) => b.end > d0 && b.start < d1)
-          .map((b) => ({
-            left: (100 * (Math.max(b.start, d0) - d0)) / len,
-            width: (100 * (Math.min(b.end, d1) - Math.max(b.start, d0))) / len,
-            text: `${time(b.start, tz)}–${time(b.end, tz)} · ${b.amps ?? '–'} A · ${num(b.kwh ?? 0, 1)} kWh${b.reason ? ` · ${b.reason}` : ''}`,
-          })),
-        now: k === 0 ? (100 * (house.now - d0)) / len : null,
-      };
+  /** the next planned charge within the window (Audit05 I-5: replaces the tiles plan today/tomorrow) */
+  const nextTile = (plan: Plan | null): TileProps => {
+    const b = plan?.blocks.find((x) => x.start > house.now && x.start - house.now < 48 * 3_600_000);
+    const d = b ? localMidnight(b.start, tz) : null;
+    return {
+      label: tc('out.next'),
+      icon: 'clock',
+      color: 'var(--battery)',
+      value: b ? time(b.start, tz) : plan ? tc('out.none') : '–',
+      sub: b
+        ? `${d === today ? t('days.today') : dayLabel(d!)}${b.kwh !== null ? ` · ≈ ${num(b.kwh, 1)} kWh` : ''}`
+        : plan
+          ? tc('out.noneSub')
+          : t('hc.noPlan'),
+      info: { what: tc('out.info.what'), source: t('hc.span.source') },
+    };
+  };
+
+  // the next 48 hours: sun fan, usual load, charge windows, battery strip (Audit05 I-5)
+  const blocksKw = $derived(
+    view.s === 'ready' && view.a.plan
+      ? view.a.plan.blocks.map((b) => ({
+          start: b.start,
+          end: b.end,
+          kw:
+            b.kwh !== null
+              ? b.kwh / ((b.end - b.start) / 3_600_000)
+              : b.amps !== null
+                ? (b.amps * 230 * 3) / 1000
+                : null,
+        }))
+      : [],
+  );
+  const outlook = $derived(
+    view.s === 'ready' && view.a.plan ? houseOutlook(house, blocksKw, view.a.maxKw ?? 11) : null,
+  );
+  /** the planner's own numbers for today and tomorrow, with what they mean */
+  const dayNotes = $derived.by(() => {
+    if (view.s !== 'ready' || !view.a.plan || !outlook) return [];
+    const plan = view.a.plan;
+    const first = localMidnight(outlook.hours[0]!, tz);
+    return [0, 1, 2].map((k) => {
+      const d = plan.days[k + Math.round((first - today) / 86_400_000)];
+      if (!d || d.kwh === null) return null;
+      const sp = spanOf(d);
+      return `${tc('out.dayCar', { kwh: num(d.kwh) })}${sp ? ` · ${sp}` : ''}`;
     });
   });
 
-  const perDay = $derived(
+  /** kWh of the finished charges started on each day (0 = none; the records cover the 31 days) */
+  const chargedOn = (list: number[]) =>
     view.s === 'ready'
-      ? days.map((d) => {
+      ? list.map((d) => {
           const key = localDateKey(d, tz);
           const v =
             view.s === 'ready'
@@ -225,10 +247,26 @@
                   .filter((s) => localDateKey(s.start, tz) === key)
                   .reduce((a, s) => a + (s.kwh ?? 0), 0)
               : 0;
-          return v > 0 ? v : null;
+          return v;
         })
-      : [],
+      : [];
+  // the old one-colour bars draw 0 as a dash
+  const perDay = $derived(chargedOn(days).map((v) => (v > 0 ? v : null)));
+
+  // with the origin of the car's energy: 30 days stacked sun / battery / grid (Audit05 I-2)
+  const days30 = Array.from({ length: 30 }, (_, i) => addDays(today, i - 29, tz));
+  const originBars = $derived(
+    view.s === 'ready' && view.a.origin
+      ? originStack(days30, view.a.origin, chargedOn(days30))
+      : null,
   );
+  const shares = $derived(originBars ? originShares(originBars) : null);
+  const shortDay = (d: number) =>
+    d === today
+      ? t('days.today')
+      : new Intl.DateTimeFormat(locale, { timeZone: tz, day: 'numeric', month: 'numeric' }).format(
+          d + 12 * 3_600_000,
+        );
 
   const columns: Column[] = $derived([
     { key: 'start', label: t('hc.col.start') },
@@ -292,7 +330,7 @@
     <p class="muted-note">{t('hc.error')}</p>
   {:else}
     <h2>{cb ? t('charge.wallbox') : t('hc.nowTitle')}</h2>
-    <TileRow count={4}>
+    <TileRow count={tiles.length}>
       {#each tiles as tile (tile.label)}<Tile {...tile} />{/each}
     </TileRow>
 
@@ -311,39 +349,28 @@
         title={view.a.plan.text ?? t('hc.planTitle')}
         icon="calendar"
         color="var(--battery)"
+        info={{ what: tc('out.info.what'), source: tc('out.info.source') }}
         note={t('hc.planNote', {
           made: view.a.plan.madeAt ? time(view.a.plan.madeAt, tz) : '–',
           soc: view.a.plan.socNow === null ? '–' : num(view.a.plan.socNow),
           min: view.a.plan.socMin === null ? '–' : num(view.a.plan.socMin),
-        })}
+        }) + (outlook ? ` · ${tc('out.noteLoad', { n: outlook.nLoad })}` : '')}
       >
-        <div class="lanes">
-          {#each lanes as l (l.label)}
-            <div class="lane">
-              <span class="lname">{l.label}</span>
-              <div class="track">
-                {#each [6, 12, 18] as h (h)}<span class="tick" style:left="{(h / 24) * 100}%"
-                  ></span>{/each}
-                {#each l.blocks as b (b.left)}
-                  <span class="block" style:left="{b.left}%" style:width="{b.width}%" title={b.text}
-                  ></span>
-                {/each}
-                {#if l.now !== null}<span class="now" style:left="{l.now}%"></span>{/if}
-              </div>
-            </div>
-            <ul class="blist">
-              {#each l.blocks as b (b.left)}<li>{b.text}</li>{/each}
-              {#if !l.blocks.length}<li class="muted">{t('hc.noCharge')}</li>{/if}
-            </ul>
-          {/each}
-          <!-- same grid as a lane, labels at their hour (Audit02 DE2-02) -->
-          <div class="lane axis" aria-hidden="true">
-            <span></span>
-            <div class="ticks">
-              {#each [6, 12, 18] as h (h)}<span style:left="{(h / 24) * 100}%">{h}</span>{/each}
-            </div>
-          </div>
-        </div>
+        {#if outlook}
+          <ChargeOutlook
+            hours={outlook.hours}
+            pv={outlook.pv}
+            load={outlook.load}
+            blocks={blocksKw}
+            car={outlook.car}
+            soc={outlook.soc}
+            floorPct={outlook.floorPct}
+            now={house.now}
+            timeZone={tz}
+            {locale}
+            {dayNotes}
+          />
+        {/if}
       </Card>
     {/if}
 
@@ -353,40 +380,51 @@
     {/if}
 
     <h2>{t('hc.pastTitle')}</h2>
-    <Card title={t('hc.perDay')} icon="battery" color="var(--battery)">
-      <DayBars
-        values={perDay}
-        labels={days.map(dayLabel)}
-        color="var(--battery)"
-        unit="kWh"
-        partial={13}
-        label={t('hc.perDay')}
-      />
-    </Card>
-    <div class="row-gap"></div>
-    <Card
-      title={tableTitle}
-      icon="clock"
-      color="var(--muted)"
-      note={rows.length ? t('hc.gridNote') : undefined}
-    >
-      {#if rows.length}
-        <DataTable
-          {columns}
-          {rows}
-          caption={tableTitle}
-          chart={{
-            kind: 'bar',
-            label: t('hc.chart'),
-            unit: 'kWh',
-            color: 'var(--battery)',
-            partColor: 'var(--import)',
-          }}
+    {#if originBars}
+      <ChargeOrigin bars={originBars} labels={days30.map(shortDay)} partial={29} />
+    {:else}
+      <Card title={t('hc.perDay')} icon="battery" color="var(--battery)">
+        <DayBars
+          values={perDay}
+          labels={days.map(dayLabel)}
+          color="var(--battery)"
+          unit="kWh"
+          partial={13}
+          label={t('hc.perDay')}
         />
-      {:else}
-        <p class="muted-note">{t('hc.noSessions')}</p>
-      {/if}
-    </Card>
+      </Card>
+    {/if}
+    <div class="row-gap"></div>
+    <!-- the list of charges is the second level: folded below the graphic (Audit05 I-2) -->
+    <details class="more">
+      <summary
+        ><span class="chev" aria-hidden="true"><Icon name="chevron" size={18} /></span>{tableTitle}
+        · {rows.length}</summary
+      >
+      <Card
+        title={tableTitle}
+        icon="clock"
+        color="var(--muted)"
+        note={rows.length ? t('hc.gridNote') : undefined}
+      >
+        {#if rows.length}
+          <DataTable
+            {columns}
+            {rows}
+            caption={tableTitle}
+            chart={{
+              kind: 'bar',
+              label: t('hc.chart'),
+              unit: 'kWh',
+              color: 'var(--battery)',
+              partColor: 'var(--import)',
+            }}
+          />
+        {:else}
+          <p class="muted-note">{t('hc.noSessions')}</p>
+        {/if}
+      </Card>
+    </details>
   {/if}
 
   {#if cb && emb.board}
@@ -396,76 +434,32 @@
 </div>
 
 <style>
-  .lanes {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .lane {
-    display: grid;
-    grid-template-columns: 64px 1fr;
-    align-items: center;
-    gap: 10px;
-  }
-  .lname {
-    font-size: 14px;
-    font-weight: 600;
-  }
-  .track {
-    position: relative;
-    height: 22px;
-    border-radius: 6px;
-    background: var(--track);
-  }
-  .tick {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 1px;
-    background: var(--line);
-  }
-  .block {
-    position: absolute;
-    top: 3px;
-    bottom: 3px;
-    border-radius: 4px;
-    background: color-mix(in srgb, var(--battery) 45%, var(--surface));
-    box-shadow: inset -3px 0 0 var(--battery);
-  }
-  .now {
-    position: absolute;
-    top: -4px;
-    bottom: -4px;
-    width: 2px;
-    margin-left: -1px;
-    background: var(--text);
-  }
-  .blist {
+  .more > summary {
     list-style: none;
-    margin: 0 0 8px 74px;
-    padding: 0;
-    font-size: var(--small);
-    color: var(--text-2);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 22px;
+    background: var(--surface-2);
+    box-shadow: inset 0 0 0 1px var(--line);
+    color: var(--text);
+    font-weight: 600;
+    cursor: pointer;
   }
-  .blist .muted {
-    color: var(--muted);
+  .more > summary::-webkit-details-marker {
+    display: none;
   }
-  .axis .ticks {
-    position: relative;
-    height: 18px;
-    font-size: var(--small);
-    color: var(--muted);
+  .chev {
+    display: inline-flex;
+    transform: rotate(90deg);
+    transition: transform 0.2s;
   }
-  .axis .ticks span {
-    position: absolute;
-    transform: translateX(-50%);
+  .more[open] .chev {
+    transform: rotate(-90deg);
   }
-  @media (max-width: 600px) {
-    .lane {
-      grid-template-columns: 52px 1fr;
-    }
-    .blist {
-      margin-left: 62px;
-    }
+  .more[open] > summary {
+    margin-bottom: 10px;
   }
 </style>

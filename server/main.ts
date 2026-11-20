@@ -15,7 +15,7 @@ import { readTabs, writeTabs } from './tabs';
 import { claimChecker, codeChecker, evccAdmin, scan, stateFile } from './setup';
 import { createBackends } from './backends';
 import { encodeBody, gzipStatic } from './compress';
-import { chargeSessions, fetchPlan } from './charging';
+import { chargeSessions, fetchPlan, originDays } from './charging';
 import type { InfluxResponse } from '../src/adapters/influx1';
 import { allowedHosts, hostOf } from './hosts';
 import { evccClient } from '../src/adapters/evcc';
@@ -233,6 +233,20 @@ if (deps.mapping?.charging && backendsQuery) {
     },
     plan: async () => (c.plan ? fetchPlan(fetch, c.plan, config.timeoutMs) : null),
   };
+  // where the car's energy came from, per day (Audit05 I-2): three daily series of the mapping
+  const og = c.origin;
+  const read = deps.series;
+  if (og && read) {
+    deps.charging.origin = async (days) => {
+      const t = Date.now();
+      // one day more: the series are stamped at the local day start
+      const from = t - (days + 1) * 86_400_000;
+      const [a, b, g] = await Promise.all(
+        [og.sun, og.battery, og.grid].map((id) => read(deps.mapping!.series[id]!, from, t)),
+      );
+      return originDays(a!.samples, b!.samples, g!.samples);
+    };
+  }
   log('charging: from the house records (read-only)');
 }
 

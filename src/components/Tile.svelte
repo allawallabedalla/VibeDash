@@ -72,6 +72,8 @@
      * tile shows the value, the graphic larger and the explanation.
      */
     zoom?: TileZoomSpec;
+    /** battery tile: does it last until sunrise (shown large in the enlarged view) */
+    reach?: import('../model/reach').Reach;
   }
 
   export interface TileZoomSpec {
@@ -115,6 +117,7 @@
     pending,
     loading = false,
     zoom,
+    reach,
   }: TileProps = $props();
 
   const uid = $props.id();
@@ -227,7 +230,21 @@
 {#if zoomed}
   {#await import('./TileZoom.svelte') then { default: TileZoom }}
     <TileZoom
-      tile={{ label, icon, color, value, unit, approx, sub, graphic, status, info, pending, zoom }}
+      tile={{
+        label,
+        icon,
+        color,
+        value,
+        unit,
+        approx,
+        sub,
+        graphic,
+        status,
+        info,
+        pending,
+        zoom,
+        reach,
+      }}
       onclose={() => (zoomed = false)}
     />
   {/await}

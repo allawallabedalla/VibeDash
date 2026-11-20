@@ -130,8 +130,9 @@
     {#await import('../gallery/Gallery.svelte') then { default: Gallery }}
       <Gallery />
     {/await}
-  {:else if router.route === 'zeitstrahl'}
-    <!-- Prototype with made-up data (charge windows); not in the tabs, loaded only here. -->
+  {:else if router.route === 'zeitstrahl' && demoOnly}
+    <!-- Prototype with made-up data (charge windows): only in demo mode, never next to a real house
+         (Audit05 P4-21) – the real 48-hour outlook is on the charging page. Loaded only here. -->
     {#await import('../pages/ChargeTimelinePage.svelte') then { default: ChargeTimelinePage }}
       <ChargeTimelinePage />
     {/await}

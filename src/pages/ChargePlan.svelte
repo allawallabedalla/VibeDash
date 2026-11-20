@@ -5,7 +5,8 @@
    * "what if …?". Plans and shows only; nothing is switched.
    */
   import Card from '../components/Card.svelte';
-  import PlanChart from '../components/PlanChart.svelte';
+  import ChargeOutlook from '../components/ChargeOutlook.svelte';
+  import { blocksFromHourly } from '../model/charge-outlook';
   import Segmented from '../components/Segmented.svelte';
   import Tile from '../components/Tile.svelte';
   import TileRow from '../components/TileRow.svelte';
@@ -14,7 +15,16 @@
   import { ampsToKw, kwToAmps, whatIf, ALPHA } from '../model/plan';
   import { i18n, num, t } from '../i18n/index.svelte';
 
-  let { plan, timeZone }: { plan: PlanView; timeZone: string } = $props();
+  let { plan, timeZone, now }: { plan: PlanView; timeZone: string; now: number } = $props();
+
+  // the plan on the 48-hour time line (Audit05 I-5): battery in % with the start value first
+  const pct = (v: number) => (100 * v) / plan.battery.capacityKwh;
+  const outlookSoc = $derived({
+    p10: [pct(plan.soc0Kwh), ...plan.soc.p10.map(pct)],
+    p50: [pct(plan.soc0Kwh), ...plan.soc.p50.map(pct)],
+    p90: [pct(plan.soc0Kwh), ...plan.soc.p90.map(pct)],
+  });
+  const blocks = $derived(blocksFromHourly(plan.hours, plan.carKw));
 
   const locale = $derived(i18n.locale === 'de' ? 'de-DE' : 'en-GB');
   const hourFmt = $derived(
@@ -127,6 +137,7 @@
 <TileRow count={3}>
   {#each tiles as tile (tile.label)}<Tile {...tile} />{/each}
 </TileRow>
+<div class="row-gap"></div>
 
 <Card
   title={t('plan.chart')}
@@ -136,25 +147,20 @@
     (plan.untested ? ` · ${t('plan.untested')}` : '')}
   info={{ what: t('plan.info.chart.what'), source: t('plan.info.car.source') }}
 >
-  <PlanChart
+  <ChargeOutlook
     hours={plan.hours}
     pv={plan.pv}
     load={plan.load}
-    carKw={plan.carKw}
-    soc={plan.soc}
-    capacityKwh={plan.battery.capacityKwh}
+    {blocks}
+    car={plan.carKw}
+    soc={outlookSoc}
+    floorPct={plan.battery.minSocPct}
+    {now}
     {timeZone}
     {locale}
-    labels={{
-      pv: t('plan.legend.pv'),
-      band: t('plan.legend.band'),
-      load: t('plan.legend.load'),
-      car: t('plan.legend.car'),
-      battery: t('plan.legend.battery'),
-      now: t('plan.now'),
-    }}
   />
 </Card>
+<div class="row-gap"></div>
 
 <Card
   title={t('plan.whatIf')}
