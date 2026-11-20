@@ -14,6 +14,10 @@
     yieldTodayTile,
   } from '../app/tiles';
   import AccuracyCard from '../components/AccuracyCard.svelte';
+  import DataTable from '../components/DataTable.svelte';
+  import ForecastHits from '../components/ForecastHits.svelte';
+  import { demoTables } from '../demo/tables';
+  import { forecastHitDays } from '../app/forecast-hits';
   import DayList, { type DayRow } from '../components/DayList.svelte';
   import SoftTimeSeries from '../components/SoftTimeSeries.svelte';
   import SourceArc from '../components/SourceArc.svelte';
@@ -31,6 +35,8 @@
     accuracy,
     generateDemo,
     checkForecasts,
+    CORRECT_TOLERANCE,
+    dayAheadForecasts,
     mulberry32,
     outlook,
     pvTimeSeries,
@@ -155,6 +161,9 @@
 
   let period = $state<Period>('day');
   const tsData = $derived(pvTimeSeries(demo, period));
+  // day by day (Audit05 I-6) and tables with a graphic column (I-8)
+  const hitDays = forecastHitDays(demo, dayAheadForecasts(demo), 21);
+  const tables = demoTables();
 
   let tab = $state('overview');
   const tabs = $derived([
@@ -278,6 +287,24 @@
       locale={i18n.locale === 'de' ? 'de-DE' : 'en-GB'}
     />
   </Card>
+
+  <Card title={t('ts.title')} icon="sun" color="var(--sun)">
+    <ForecastHits
+      days={hitDays}
+      tolerance={CORRECT_TOLERANCE}
+      timeZone={tz}
+      locale={i18n.locale === 'de' ? 'de-DE' : 'en-GB'}
+    />
+  </Card>
+
+  <h2>{t('gallery.tables')}</h2>
+  <div class="cards">
+    {#each tables as tb (tb.title)}
+      <Card title={tb.title} icon="calendar" color="var(--muted)">
+        <DataTable columns={tb.columns} rows={tb.rows} caption={tb.title} chart={tb.chart} />
+      </Card>
+    {/each}
+  </div>
 
   <h2>{t('gallery.days')}</h2>
   <Card

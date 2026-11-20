@@ -14,6 +14,8 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from ..fmt import unsigned_zero
+
 TZ = ZoneInfo("Europe/Berlin")
 WT_LANG = {"Mon": "Mo", "Tue": "Di", "Wed": "Mi", "Thu": "Do", "Fri": "Fr", "Sat": "Sa", "Sun": "So"}
 # Audit04 DA-16/EM-19: "Failure" ist ein Fehler, kein „aus“
@@ -39,7 +41,7 @@ WALLBOX_FRISCH_S = 600  # the house's charge control state counts only this long
 
 
 def de(x, nd=0):
-    return "–" if x is None else f"{x:.{nd}f}".replace(".", ",")
+    return "–" if x is None else f"{unsigned_zero(x, nd):.{nd}f}".replace(".", ",").replace("-", "−")
 
 
 def alter(sek):

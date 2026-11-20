@@ -4,6 +4,9 @@
   import { tomorrowTile, yieldTodayTile } from '../app/tiles';
   import AccuracyCard from '../components/AccuracyCard.svelte';
   import Card from '../components/Card.svelte';
+  import ForecastHits from '../components/ForecastHits.svelte';
+  import Segmented from '../components/Segmented.svelte';
+  import { forecastHitDays } from '../app/forecast-hits';
   import DayList, { type DayRow } from '../components/DayList.svelte';
   import SoftTimeSeries from '../components/SoftTimeSeries.svelte';
   import Tile from '../components/Tile.svelte';
@@ -11,6 +14,7 @@
   import {
     accuracy,
     checkForecasts,
+    CORRECT_TOLERANCE,
     dayAheadForecasts,
     dayAheadLoad,
     mulberry32,
@@ -36,9 +40,9 @@
 
   // the house's own PV forecast is judged when there is one; else the built-in rule (G-13, Audit04 ST-02)
   const own = $derived(houseDayForecasts(house));
-  const sun = $derived(
-    accuracy(checkForecasts(house, own.length ? own : dayAheadForecasts(house), 'pv_energy')),
-  );
+  const sunForecasts = $derived(own.length ? own : dayAheadForecasts(house));
+  const sunChecks = $derived(checkForecasts(house, sunForecasts, 'pv_energy'));
+  const sun = $derived(accuracy(sunChecks));
   // the house without the car when it has that meter: charging days made the range 19–35 kWh (Audit04 ST-14)
   const loadId = $derived(house.series.home_energy?.samples.length ? 'home_energy' : 'load_energy');
   const load = $derived(accuracy(checkForecasts(house, dayAheadLoad(house, loadId), loadId)));
@@ -89,7 +93,11 @@
   const showOutlook = currentSource() === 'demo';
   // With a forecasting service, its cards replace the built-in models.
   let serviceActive = $state(false);
-  const tsData = $derived(pvTimeSeries(house, period));
+  // today: the power curve; 7 / 30 days: forecast and actual day by day, judged like the card (Audit05 I-6)
+  const tsData = $derived(pvTimeSeries(house, 'day'));
+  const hitDays = $derived(
+    period === 'day' ? [] : forecastHitDays(house, sunForecasts, period === 'week' ? 7 : 30),
+  );
 
   const days = $derived(showOutlook ? outlook(house, mulberry32(7)) : []);
   const dayRows = $derived<DayRow[]>(
@@ -130,6 +138,7 @@
         n={sun.n}
         interval={sun.interval}
         history={sun.history}
+        days={sunChecks.slice(-30).map((c) => c.correct)}
       />
       <AccuracyCard
         label={t('model.load')}
@@ -144,27 +153,49 @@
   {/if}
 
   <h2>{t('gallery.timeseries')}</h2>
-  <Card title={t('ts.title')} icon="sun" color="var(--sun)">
-    <SoftTimeSeries
-      data={tsData}
-      periods={[
-        { id: 'day', label: t('ts.day') },
-        { id: 'week', label: t('ts.week') },
-        { id: 'month', label: t('ts.month') },
-      ]}
-      bind:period={() => period, (v) => (period = v as Period)}
-      labels={{
-        actual: t('ts.actual'),
-        forecast: t(`ts.fc.${tsData.kind}`),
-        recomputed: t('ts.fc.recomputed'),
-        band: t('ts.band'),
-        periods: t('ts.periods'),
-        empty: t('state.noData'),
-      }}
-      unit={tsData.unit === 'kW' ? 'kW' : t('ts.perDay')}
-      timeZone={tz}
-      {locale}
-    />
+  <Card
+    title={t('ts.title')}
+    icon="sun"
+    color="var(--sun)"
+    info={period === 'day'
+      ? undefined
+      : {
+          what: t('hits.info.what', { p: Math.round(CORRECT_TOLERANCE * 100) }),
+          source: t('hits.info.source', { m: own.length ? t('model.sun') : t('model.sunRule') }),
+        }}
+  >
+    <!-- the period switch sits left above the chart (G-03) -->
+    <div class="period">
+      <Segmented
+        options={[
+          { id: 'day', label: t('ts.day') },
+          { id: 'week', label: t('ts.week') },
+          { id: 'month', label: t('ts.month') },
+        ]}
+        bind:value={() => period, (v) => (period = v as Period)}
+        label={t('ts.periods')}
+      />
+    </div>
+    {#if period === 'day'}
+      <SoftTimeSeries
+        data={tsData}
+        periods={[]}
+        period="day"
+        labels={{
+          actual: t('ts.actual'),
+          forecast: t(`ts.fc.${tsData.kind}`),
+          recomputed: t('ts.fc.recomputed'),
+          band: t('ts.band'),
+          periods: t('ts.periods'),
+          empty: t('state.noData'),
+        }}
+        unit="kW"
+        timeZone={tz}
+        {locale}
+      />
+    {:else}
+      <ForecastHits days={hitDays} tolerance={CORRECT_TOLERANCE} timeZone={tz} {locale} />
+    {/if}
   </Card>
 
   {#if showOutlook}
@@ -191,3 +222,18 @@
     {/if}
   {/if}
 </div>
+
+<style>
+  .period {
+    display: flex;
+  }
+  @media (max-width: 600px) {
+    .period :global(.seg) {
+      display: flex;
+      width: 100%;
+    }
+    .period :global(.seg button) {
+      flex: 1;
+    }
+  }
+</style>

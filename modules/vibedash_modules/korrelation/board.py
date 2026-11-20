@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from ..fmt import clean
+from ..fmt import clean, number, unsigned_zero
 
 # most interesting first; the bar chart and every list keep this order (technical ones at the end)
 GROUPS = ("unklar", "erklaert", "zeit", "technik")
@@ -61,7 +61,7 @@ TEXT = {
 
 
 def de(x, nd=2) -> str:
-    return "–" if x is None else f"{x:.{nd}f}".replace(".", ",").replace("-", "−")
+    return "–" if x is None else f"{unsigned_zero(x, nd):.{nd}f}".replace(".", ",").replace("-", "−")
 
 
 def _key(p):
@@ -325,10 +325,12 @@ def build(data: dict, now_ms: int, t: dict, tz) -> dict:
             "rows": [
                 {
                     "cells": {"p": pair(p), "r": de(p["r"]), "rb": de(p.get("rb")), "n": n_text(p)},
+                    "chart": {"value": number(p.get("r"))},
                     "note": t[f"g_{group(p)}"],
                 }
                 for p in rank
             ],
+            "chart": {"kind": "dot", "label": "Stärke", "min": -1, "max": 1, "col": "r"},
             "note": t["rank_note"],
             "info": {"what": t["rank_what"], "source": t["source"]},
         }

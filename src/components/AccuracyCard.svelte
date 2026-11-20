@@ -25,8 +25,23 @@
     collecting?: { have: number; need: number; from: string };
     /** Extra fact, e.g. "beats the rule of thumb by 12 %" or "from backtest". */
     note?: string;
+    /**
+     * The verdict of each of the last judged days, oldest first: drawn as a row of
+     * marks instead of the trend line (Audit05 I-6) – the days themselves, not a rolling share.
+     */
+    days?: (boolean | null)[];
   }
-  let { label, pct: given, n, interval, history, openFrom, collecting, note }: Props = $props();
+  let {
+    label,
+    pct: given,
+    n,
+    interval,
+    history,
+    openFrom,
+    collecting,
+    note,
+    days,
+  }: Props = $props();
 
   // a verdict only from enough days (P-06); below that "open · n" with its range
   const pct = $derived(n >= MIN_JUDGED_DAYS ? given : null);
@@ -112,7 +127,22 @@
       ></div>{/if}
   </div>
 
-  {#if !collecting && pct !== null && history.filter((v) => v !== null).length >= 2}
+  {#if !collecting && days && days.length >= 2}
+    <div
+      class="strip"
+      role="img"
+      aria-label={t('hits.head', {
+        k: days.filter((d) => d === true).length,
+        n: days.filter((d) => d !== null).length,
+      })}
+    >
+      {#each days as d, i (i)}<span class:hit={d === true} class:miss={d === false}></span>{/each}
+    </div>
+    <div class="foot strip-foot">
+      <span>{t('hits.stripLabel', { n: days.length })}</span>
+      {#if trend}<span class="trend {trend.cls}">{trend.text}</span>{/if}
+    </div>
+  {:else if !collecting && pct !== null && history.filter((v) => v !== null).length >= 2}
     <div class="spark">
       <div class="axis"><span>{t('acc.axisTop')}</span><span>0</span></div>
       <div class="plot">
@@ -273,6 +303,27 @@
     margin-left: 50px;
     font-size: var(--small);
     color: var(--muted);
+  }
+  .strip {
+    display: flex;
+    gap: 2px;
+    height: 16px;
+    margin-top: 6px;
+  }
+  .strip span {
+    flex: 1;
+    min-width: 0;
+    border-radius: 3px;
+    background: var(--track);
+  }
+  .strip .hit {
+    background: var(--good);
+  }
+  .strip .miss {
+    background: var(--highlight);
+  }
+  .strip-foot {
+    margin-left: 0;
   }
   .trend.up {
     color: var(--good-text);

@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import re
 
+from ..fmt import unsigned_zero
+
 PUA = re.compile(r"[-]")
 
 TEXT = {
@@ -92,7 +94,8 @@ def clean(x, max_len=400) -> str:
 def de(x, nd=1, plus=False) -> str:
     if x is None:
         return "–"
-    s = f"{x:+.{nd}f}" if plus else f"{x:.{nd}f}"
+    x = unsigned_zero(x, nd)
+    s = f"{x:+.{nd}f}" if plus and x else f"{x:.{nd}f}"
     return s.replace(".", ",").replace("-", "−")
 
 
@@ -100,6 +103,15 @@ def t95(df) -> float:
     """Student t for a two-sided 95 % range (small n)."""
     table = {1: 12.71, 2: 4.30, 3: 3.18, 4: 2.78, 5: 2.57, 6: 2.45, 7: 2.36, 8: 2.31, 9: 2.26, 10: 2.23}
     return table.get(df, 2.0) if df >= 1 else float("inf")
+
+
+def _num(x):
+    """A finite number for a graphic column, else None (a gap stays a gap)."""
+    try:
+        v = float(x)
+    except (TypeError, ValueError):
+        return None
+    return v if v == v and abs(v) != float("inf") else None
 
 
 def _ok(b) -> bool:
@@ -348,10 +360,17 @@ def build(result: dict, stand_ms: int, t: dict) -> dict:
                             "k": f"{de(x['klarer_tag_k'], 1, plus=True)} ± {de(3 * x['se'], 1)}",
                             # sun that cools is implausible – with 8 rooms one chance hit is expected (Audit04 ST-17)
                             "m": (t["odd"] if x["klarer_tag_k"] < 0 else t["yes"]) if x["messbar"] else t["no"],
-                        }
+                        },
+                        # the same value ± as the cell; not measurable = pale (Audit05 I-8)
+                        "chart": {
+                            "value": _num(x.get("klarer_tag_k")),
+                            "err": _num(3 * x["se"]) if _num(x.get("se")) is not None else None,
+                            **({} if x["messbar"] else {"faint": True}),
+                        },
                     }
                     for x in s["raeume"]
                 ],
+                "chart": {"kind": "dot", "label": t["sun_k"], "color": "climate", "col": "k"},
                 "note": t["sun_note"],
                 "info": info(s),
             }
@@ -373,6 +392,7 @@ def build(result: dict, stand_ms: int, t: dict) -> dict:
                             "b": f"{de(x['bias'], 1, plus=True)} ± {de(x['bias_se'])} kWh",
                             "n": str(x["n"]),
                         },
+                        "chart": {"value": _num(x.get("bias")), "err": _num(x.get("bias_se"))},
                         **(
                             {"state": "look"}
                             if abs(x["bias"]) > 2 * (x["bias_se"] or 99) and abs(x["bias"]) > 5
@@ -381,6 +401,7 @@ def build(result: dict, stand_ms: int, t: dict) -> dict:
                     }
                     for x in old["lagen"]
                 ],
+                "chart": {"kind": "dot", "label": t["pv_dev"], "unit": "kWh", "color": "sun", "col": "b"},
                 "note": t["pv_note"].format(von=old["von"][:7], bis=old["bis"][:7]),
                 "info": info(pv),
             }

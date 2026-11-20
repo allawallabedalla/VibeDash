@@ -126,7 +126,9 @@ class TestGarten(unittest.TestCase):
         self.assertEqual(tiles["Heute"]["value"], "10°")
         self.assertEqual(tiles["Heute"]["unit"], "/ 3°")
         self.assertEqual(tiles["Morgen"]["sub"], "0,5 mm Regen · ≈ 4 h Sonne")
-        self.assertEqual((tiles["Frost"]["value"], tiles["Frost"]["state"]), ("-1°", "look"))
+        self.assertEqual(
+            (tiles["Frost"]["value"], tiles["Frost"]["state"]), ("−1°", "look")
+        )  # a real minus (Audit05 G5-14)
         self.assertEqual(tiles["Regen Woche"]["value"], "9,0")  # 6 × 1 mm + 3 mm
         self.assertEqual(tiles["Regen Woche"]["sub"], "an 7 Tagen · Wettermodell")
         bars = s["Regen je Tag"]

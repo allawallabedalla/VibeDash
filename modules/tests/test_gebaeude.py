@@ -146,11 +146,25 @@ class TestGebaeude(unittest.TestCase):
         self.assertEqual(ww["values"], [0, 0, 4, 0, 0, 0, 3, 0])
         self.assertEqual(ww["note"], "Duschen (Bad-Feuchte): sammelt (1 erkannt, Feuchte seit 3 Tagen)")
         sun = b["sections"][4]["rows"]
-        self.assertEqual(sun[1]["cells"], {"r": "Bad", "k": "−0,0 ± 0,6", "m": "nein"})
+        self.assertEqual(sun[1]["cells"], {"r": "Bad", "k": "0,0 ± 0,6", "m": "nein"})
         pv = b["sections"][5]
         self.assertEqual(pv["rows"][0]["state"], "look")
         self.assertNotIn("state", pv["rows"][1])
         self.assertEqual(pv["note"], "Alte Tagesprognose 2026-03–2026-10; − = zu niedrig.")
+
+    def test_tables_bring_their_graphic(self):
+        # Audit05 I-8: the same value ± as the cell, not measurable = pale
+        self.write(RESULT)
+        b = self.board()
+        sun, pv = b["sections"][4], b["sections"][5]
+        self.assertEqual(sun["chart"], {"kind": "dot", "label": "K/klarer Tag", "color": "climate", "col": "k"})
+        for raum, row in zip(RESULT["sonne"]["raeume"], sun["rows"], strict=True):
+            self.assertAlmostEqual(row["chart"]["value"], raum["klarer_tag_k"])
+            self.assertAlmostEqual(row["chart"]["err"], 3 * raum["se"])
+            self.assertEqual(row["chart"].get("faint", False), not raum["messbar"])
+        self.assertEqual(pv["chart"]["kind"], "dot")
+        self.assertEqual(pv["chart"]["unit"], "kWh")
+        self.assertEqual(pv["rows"][0]["chart"], {"value": -20.0, "err": 2.0})
 
     def test_collecting(self):
         self.write(
@@ -201,6 +215,10 @@ class TestGebaeude(unittest.TestCase):
 
     def test_helpers(self):
         self.assertEqual(de(-1.25, 1, plus=True), "−1,2")
+        # what rounds to zero has no sign: never "−0,0" or "+0,0"
+        self.assertEqual(de(-0.04, 1, plus=True), "0,0")
+        self.assertEqual(de(-0.04), "0,0")
+        self.assertEqual(de(0.06, 1, plus=True), "+0,1")
         self.assertEqual(blocks([1] * 24)[1], [3] * 8)
 
 

@@ -10,7 +10,7 @@ res (house service, config "paar_url", GET ?a=&b=&ebene=h|d): {"ok": true, "eben
 
 from __future__ import annotations
 
-from ..fmt import clean
+from ..fmt import clean, unsigned_zero
 
 TEXT = {
     "p_strength_what": "Wie gleichmäßig beide gemeinsam steigen (bis 1) oder gegenläufig sind (bis −1); 0 = kein "
@@ -38,7 +38,7 @@ REASON = {
 
 
 def de(x, nd=2) -> str:
-    return "–" if x is None else f"{x:.{nd}f}".replace(".", ",").replace("-", "−")
+    return "–" if x is None else f"{unsigned_zero(x, nd):.{nd}f}".replace(".", ",").replace("-", "−")
 
 
 def short(x) -> str:

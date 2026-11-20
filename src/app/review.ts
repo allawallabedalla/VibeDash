@@ -54,6 +54,11 @@ export function reviewRows(data: DemoData, count: number): Row[] {
         import: kwh(i),
         autarky: l && i !== undefined ? `${num(Math.max(0, 1 - i / l) * 100)} %` : '–',
       },
+      // graphic column: consumption, its grid part in the import colour (Audit05 I-8)
+      chart: {
+        value: l ?? null,
+        ...(l !== undefined && i !== undefined ? { part: Math.min(i, l) } : {}),
+      },
       note: known.get(day)
         ? t('review.known', { text: known.get(day)! })
         : loadGaps.has(day)

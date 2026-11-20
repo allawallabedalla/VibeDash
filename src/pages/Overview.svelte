@@ -211,7 +211,7 @@
   const columns = $derived([
     { key: 'day', label: t('review.day') },
     { key: 'sun', label: t('review.sun'), align: 'right' as const },
-    { key: 'load', label: t('review.load'), align: 'right' as const },
+    { key: 'load', label: t('review.load'), align: 'right' as const, phone: false }, // the bar shows it on the phone
     { key: 'feed', label: t('review.feed'), align: 'right' as const, phone: false },
     { key: 'import', label: t('review.import'), align: 'right' as const, phone: false },
     { key: 'autarky', label: t('review.autarky'), align: 'right' as const },
@@ -294,7 +294,18 @@
     {/snippet}
     <!-- below the fold: loaded after the first paint (first-page budget) -->
     {#await import('../components/DataTable.svelte') then { default: DataTable }}
-      <DataTable {columns} {rows} caption={t('review.title')} />
+      <DataTable
+        {columns}
+        {rows}
+        caption={t('review.title')}
+        chart={{
+          kind: 'bar',
+          label: t('review.chart'),
+          unit: 'kWh',
+          color: 'var(--home)',
+          partColor: 'var(--import)',
+        }}
+      />
     {/await}
   </Card>
 

@@ -235,7 +235,7 @@
     // on the phone the starter is worth more than the duration (Audit04 EM-12)
     { key: 'dur', label: t('hc.col.duration'), align: 'right', phone: false },
     { key: 'kwh', label: 'kWh', align: 'right' },
-    { key: 'grid', label: t('hc.col.grid'), align: 'right' },
+    { key: 'grid', label: t('hc.col.grid'), align: 'right', phone: false }, // the bar's purple part on the phone
     { key: 'who', label: t('hc.col.who') },
   ]);
   // records may start later than the 31-day window – then say since when (Audit04 EM-18)
@@ -268,6 +268,11 @@
             kwh: s.kwh === null ? '–' : num(s.kwh, 1),
             grid: s.gridKwh === null ? '–' : num(s.gridKwh, 1),
             who: who(s.source),
+          },
+          // the house's grid draw during the charge, at most the charge itself (Audit05 I-8)
+          chart: {
+            value: s.kwh,
+            ...(s.kwh !== null && s.gridKwh !== null ? { part: Math.min(s.gridKwh, s.kwh) } : {}),
           },
         }))
       : [],
@@ -366,7 +371,18 @@
       note={rows.length ? t('hc.gridNote') : undefined}
     >
       {#if rows.length}
-        <DataTable {columns} {rows} caption={tableTitle} />
+        <DataTable
+          {columns}
+          {rows}
+          caption={tableTitle}
+          chart={{
+            kind: 'bar',
+            label: t('hc.chart'),
+            unit: 'kWh',
+            color: 'var(--battery)',
+            partColor: 'var(--import)',
+          }}
+        />
       {:else}
         <p class="muted-note">{t('hc.noSessions')}</p>
       {/if}

@@ -16,6 +16,8 @@ from __future__ import annotations
 import re
 from datetime import date, datetime, timedelta
 
+from ..fmt import unsigned_zero
+
 PUA = re.compile(r"[-]")
 EMOJI = re.compile("[\U0001f000-\U0001faff☀-➿️‍⬀-⯿]")
 FROST_C = 2.0
@@ -115,7 +117,7 @@ def no_emoji(t) -> str:
 
 
 def de(x, nd=1) -> str:
-    return "–" if x is None else f"{x:.{nd}f}".replace(".", ",")
+    return "–" if x is None else f"{unsigned_zero(x, nd):.{nd}f}".replace(".", ",").replace("-", "−")
 
 
 def recent_tips(history: list, today: date, days: int = 7) -> list:

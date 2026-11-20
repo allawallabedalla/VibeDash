@@ -221,6 +221,11 @@
           duration:
             s.end === null ? t('charge.running') : `${num((s.end - s.start) / 3_600_000, 1)} h`,
         },
+        // graphic column: charged energy, its solar part in the sun colour (Audit05 I-8)
+        chart: {
+          value: s.energyKWh,
+          ...(s.solarPct !== null ? { part: (s.energyKWh * s.solarPct) / 100 } : {}),
+        },
       }));
   });
 </script>
@@ -292,7 +297,18 @@
           />
         {/snippet}
         {#if rows.length}
-          <DataTable {columns} {rows} caption={t('charge.history')} />
+          <DataTable
+            {columns}
+            {rows}
+            caption={t('charge.history')}
+            chart={{
+              kind: 'bar',
+              label: t('charge.chart'),
+              unit: 'kWh',
+              color: 'var(--battery)',
+              partColor: 'var(--sun)',
+            }}
+          />
         {:else}
           <p class="muted-note">{t('charge.none')}</p>
         {/if}

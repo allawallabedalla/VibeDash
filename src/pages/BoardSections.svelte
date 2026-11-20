@@ -53,12 +53,22 @@
    */
   import { SvelteMap, SvelteSet } from 'svelte/reactivity';
   import { currentData, store } from '../app/data.svelte';
-  import type { BoardColor, BoardSection, BoardTile } from '../model/board';
+  import type {
+    BoardColor,
+    BoardSection,
+    BoardTile,
+    TableChart,
+    TableChartCell,
+  } from '../model/board';
   import { t } from '../i18n/index.svelte';
   import AccuracyCard from '../components/AccuracyCard.svelte';
   import BoardPlan from '../components/BoardPlan.svelte';
   import Card from '../components/Card.svelte';
-  import DataTable, { type Column, type Row } from '../components/DataTable.svelte';
+  import DataTable, {
+    type Column,
+    type Row,
+    type TableChartSpec,
+  } from '../components/DataTable.svelte';
   import DayBars from '../components/DayBars.svelte';
   import Segmented from '../components/Segmented.svelte';
   import ItemActions from '../components/ItemActions.svelte';
@@ -125,11 +135,23 @@
   const unitTitle = (s: BoardSection, title: string) =>
     s.type === 'bars' && s.unit && !title.includes(s.unit) ? `${title}, ${s.unit}` : title;
   // on the phone the first three columns, plus those the board marks "phone": true
+  // the column a graphic shows gives the phone its room (Audit05 I-8)
   const columnsOf = (
     cols: { key: string; label: string; align?: 'right'; phone?: boolean }[],
-  ): Column[] => cols.map((c, i) => ({ ...c, phone: c.phone ?? i < 3 }));
-  const rowsOf = (rows: { cells: Record<string, string>; note?: string }[]): Row[] =>
-    rows.map((r, i) => ({ id: String(i), cells: r.cells, ...(r.note ? { note: r.note } : {}) }));
+    chartCol?: string,
+  ): Column[] =>
+    cols.map((c, i) => ({ ...c, phone: c.key === chartCol ? false : (c.phone ?? i < 3) }));
+  const rowsOf = (
+    rows: { cells: Record<string, string>; note?: string; chart?: TableChartCell }[],
+  ): Row[] =>
+    rows.map((r, i) => ({
+      id: String(i),
+      cells: r.cells,
+      ...(r.note ? { note: r.note } : {}),
+      ...(r.chart ? { chart: r.chart } : {}),
+    }));
+  const chartOf = (c: TableChart | undefined): TableChartSpec | undefined =>
+    c && { ...c, color: c.color ? C[c.color] : undefined };
   /**
    * Time-span switches: sections with the same "group" share one choice; the
    * switch sits above the first of them that brings ranges.
@@ -313,7 +335,12 @@
         />
       {:else if s.type === 'table'}
         {#if s.rows.length}
-          <DataTable columns={columnsOf(s.columns)} rows={rowsOf(s.rows)} caption={s.title} />
+          <DataTable
+            columns={columnsOf(s.columns, s.chart?.col)}
+            rows={rowsOf(s.rows)}
+            caption={s.title}
+            chart={chartOf(s.chart)}
+          />
         {:else}
           <p class="muted-note">{t('board.empty')}</p>
         {/if}

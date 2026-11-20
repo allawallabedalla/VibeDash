@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
+from ..fmt import unsigned_zero
+
 GAP_MS = 300_000  # readings further apart are a gap (printer off, service stopped)
 WORKING = {"PRINTING", "PAUSED"}
 
@@ -83,7 +85,7 @@ TEXT = {
 def de(x, nd=1) -> str:
     if x is None:
         return "–"
-    s = f"{x:,.{nd}f}"
+    s = f"{unsigned_zero(x, nd):,.{nd}f}".replace("-", "−")
     return s.replace(",", " ").replace(".", ",")
 
 
@@ -294,7 +296,9 @@ def build(live: dict, history: list, links: list, now_ms: int, tz, t: dict) -> d
                     "start": _when(j["start"], now_ms, tz),
                     "dauer": ("≥ " if j["late"] else "") + dur((end - j["start"]) / 1000),
                     "ende": res,
-                }
+                },
+                # duration in hours; an end only known as "at least" is pale (Audit05 I-8)
+                "chart": {"value": round((end - j["start"]) / 3_600_000, 2), **({"faint": True} if j["late"] else {})},
             }
             if j["end_state"] in ("ERROR", "ATTENTION"):
                 row["state"] = "act"
@@ -310,6 +314,7 @@ def build(live: dict, history: list, links: list, now_ms: int, tz, t: dict) -> d
                     {"key": "ende", "label": t["col_end"], "phone": True},
                 ],
                 "rows": rows,
+                "chart": {"kind": "bar", "label": t["col_dur"], "unit": "h", "col": "dauer"},
                 "note": t["jobs_note"],
             }
         )

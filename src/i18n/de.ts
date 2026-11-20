@@ -732,6 +732,26 @@ export const de = {
     'Kästchen = Tag, Spalte = Woche (oben Montag). Grün: unter 0,5 kWh aus dem Netz. Lila: kWh aus dem Netz, dunkler = mehr. Grau: kein Wert, zählt nicht mit. Antippen zeigt den Tag.',
   'cal.info.source':
     'Netzbezug-Zähler, Tagesende minus Vortag; unplausible Sprünge bleiben grau. „Ohne Netz“ nur mit Zählerwert an beiden Tagesgrenzen und ohne Lücke ab 2 h am Tag, sonst grau (mit Lücke und ab 0,5 kWh: lila, „≥“). Der laufende Tag fehlt.',
+  // Audit05 I-6/I-8
+  'hits.head': '{k} von {n} Tagen im Fenster getroffen',
+  'hits.goal': '± {p} % · Ziel ≈ 8 von 10',
+  'hits.window': 'getroffen, wenn hier (± {p} %)',
+  'hits.span': 'Spanne 8 von 10',
+  'hits.hit': 'getroffen',
+  'hits.miss': 'daneben',
+  'hits.label': 'Tag wählen',
+  'hits.dayForecast': 'Prognose ≈ {v} kWh{span}',
+  'hits.dayActual': 'Ist {v} kWh, {verdict}',
+  'hits.noActual': 'Ist fehlt',
+  'hits.spanCount': 'Spanne 8 von 10: Ist {k} von {n} Tagen drin (eigene Regel)',
+  'hits.stripLabel': 'letzte {n} Tage',
+  'hits.info.what':
+    'Balken: getroffen-Bereich ± {p} % um die Prognose (Strich). Punkt: Ist. Linie: Spanne 8 von 10.',
+  'hits.info.source': '{m} vom Vorabend, Ist vom Zähler.',
+  'review.chart': 'Verbrauch, lila = Netz',
+  'hc.chart': 'Geladen, lila = Haus aus Netz',
+  'charge.chart': 'Geladen, davon Sonne',
+  'gallery.tables': 'Tabellen mit Grafik',
 } as const;
 
 export type MessageKey = keyof typeof de;

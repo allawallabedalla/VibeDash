@@ -30,6 +30,11 @@ def level(st):
     return {"io": "ok", "beobachten": "look", "nio": "act"}.get(str(st or "").lower())
 
 
+def unsigned_zero(x, nd):
+    """x, but 0.0 when it rounds to zero at nd digits: −0,04 is shown as 0,0, never as "−0,0" (Audit05)."""
+    return 0.0 if round(x, nd) == 0 else x
+
+
 def number(x):
     try:
         v = float(x)

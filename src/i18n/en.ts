@@ -723,4 +723,24 @@ export const en: Record<MessageKey, string> = {
     'Box = day, column = week (Monday on top). Green: below 0.5 kWh from the grid. Lilac: kWh from the grid, darker = more. Grey: no value, not counted. Tap for the day.',
   'cal.info.source':
     'Grid import meter, end of day minus the day before; implausible jumps stay grey. “No grid” only with readings at both day boundaries and no gap of 2 h or more, else grey (with a gap and 0.5 kWh or more: lilac, “≥”). The running day is missing.',
+  // Audit05 I-6/I-8
+  'hits.head': '{k} of {n} days in view hit',
+  'hits.goal': '± {p} % · goal ≈ 8 of 10',
+  'hits.window': 'hit when in here (± {p} %)',
+  'hits.span': 'range 8 of 10',
+  'hits.hit': 'hit',
+  'hits.miss': 'off',
+  'hits.label': 'Pick a day',
+  'hits.dayForecast': 'forecast ≈ {v} kWh{span}',
+  'hits.dayActual': 'actual {v} kWh, {verdict}',
+  'hits.noActual': 'actual missing',
+  'hits.spanCount': 'Range 8 of 10: actual inside {k} of {n} days (own rule)',
+  'hits.stripLabel': 'last {n} days',
+  'hits.info.what':
+    'Bar: hit window ± {p} % around the forecast (tick). Dot: actual. Line: range 8 of 10.',
+  'hits.info.source': '{m} from the evening before, actual from the meter.',
+  'review.chart': 'Consumption, purple = grid',
+  'hc.chart': 'Charged, purple = house from grid',
+  'charge.chart': 'Charged, of it solar',
+  'gallery.tables': 'Tables with a graphic',
 };

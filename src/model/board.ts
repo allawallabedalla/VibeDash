@@ -19,7 +19,9 @@
  *     { "type": "table", "title": "…", "columns": [ { "key": "a", "label": "A", "align": "right", "phone": true } ],
  *       "rows": [ { "cells": { "a": "1" }, "state": "look", "note": "…" } ] },
  *       (on the phone columns from the fourth on are hidden unless "phone": true; "note": a short muted line
- *        under the first cell)
+ *        under the first cell; optional graphic column: "chart": { "kind": "bar" | "dot", "label": "…", "unit": "…",
+ *        "min": 0, "max": 100, "color": "home", "col": "<key of the column it shows, hidden on the phone>" } with per row "chart": { "value": 1.2, "err": 0.3, "part": 0.4,
+ *        "faint": true } – one shared scale with a zero line, null = empty, faint = not measurable)
  *     { "type": "list", "title": "…", "items": [ { "text": "…", "meta": "…", "state": "act", "info": "…" } ] },
  *     { "type": "accuracy", "title": "…", "models": [ { "label": "…", "pct": 82, "n": 31,
  *         "history": [80, 82], "note": "…", "collecting": { "have": 12, "need": 30 },
@@ -154,7 +156,14 @@ export type BoardSection =
   | (Base & {
       type: 'table';
       columns: { key: string; label: string; align?: 'right'; phone?: boolean }[];
-      rows: { cells: Record<string, string>; state?: BoardState; note?: string }[];
+      rows: {
+        cells: Record<string, string>;
+        state?: BoardState;
+        note?: string;
+        chart?: TableChartCell;
+      }[];
+      /** a graphic column: per row a bar or a dot with error bar on one shared scale (G-04) */
+      chart?: TableChart;
     })
   | (Base & { type: 'list'; items: BoardListItem[] })
   | (Base & {
@@ -367,6 +376,64 @@ function link(v: unknown): { label: string; url: string } | null {
   return label && /^https?:\/\/\S+$/.test(url) ? { label, url } : null;
 }
 
+/**
+ * Graphic column of a table (Audit05 I-8, G-04: every table gets a graphic):
+ * "bar" = a bar from 0 to the value, "dot" = the value as a dot with ± err.
+ * All rows share one scale (min/max, else from the values, always with 0).
+ */
+export interface TableChart {
+  kind: 'bar' | 'dot';
+  label: string;
+  unit?: string;
+  min?: number;
+  max?: number;
+  color?: BoardColor;
+  /** key of the column whose number the graphic shows: that column is left out on the phone */
+  col?: string;
+}
+/** One row's value: null = no value (empty); faint = not measurable (drawn pale); part = share drawn in a second colour. */
+export interface TableChartCell {
+  value: number | null;
+  err?: number;
+  part?: number;
+  faint?: boolean;
+}
+/** Largest magnitude a chart value may have – keeps the scale sane. */
+const CHART_LIMIT = 1e9;
+const chartNum = (v: unknown): number | null => {
+  const n = num(v);
+  return n !== null && Math.abs(n) <= CHART_LIMIT ? n : null;
+};
+/** The chart of a table, or undefined when it is not a valid one. */
+function tableChart(v: unknown, keys: string[]): TableChart | undefined {
+  if (!isObj(v) || (v.kind !== 'bar' && v.kind !== 'dot')) return undefined;
+  const min = chartNum(v.min);
+  const max = chartNum(v.max);
+  return {
+    ...(typeof v.col === 'string' && keys.includes(v.col) ? { col: v.col } : {}),
+    kind: v.kind,
+    label: text(v.label, 40),
+    ...(opt(v.unit, 12) ? { unit: opt(v.unit, 12) } : {}),
+    ...(min !== null && max !== null && max > min ? { min, max } : {}),
+    ...(v.color ? { color: color(v.color) } : {}),
+  };
+}
+/** One row's chart value; err > 0, part between 0 and the value (same sign). */
+function chartCell(v: unknown): TableChartCell | undefined {
+  if (!isObj(v)) return undefined;
+  const value = chartNum(v.value);
+  const err = chartNum(v.err);
+  const part = chartNum(v.part);
+  return {
+    value,
+    ...(value !== null && err !== null && err > 0 ? { err } : {}),
+    ...(value !== null && part !== null && part * value >= 0
+      ? { part: Math.abs(part) > Math.abs(value) ? value : part }
+      : {}),
+    ...(v.faint === true ? { faint: true } : {}),
+  };
+}
+
 /** Check and trim a service's answer; null when it is not a board at all. */
 export function sanitizeBoard(raw: unknown): Board | null {
   if (!isObj(raw) || !Array.isArray(raw.sections)) return null;
@@ -463,20 +530,35 @@ export function sanitizeBoard(raw: unknown): Board | null {
             ...(typeof c.phone === 'boolean' ? { phone: c.phone } : {}),
           }))
           .filter((c) => c.key);
+        const chart = tableChart(
+          s.chart,
+          columns.map((c) => c.key),
+        );
+        const rows = list(s.rows, 500)
+          .filter(isObj)
+          .map((r) => {
+            const cells = isObj(r.cells) ? r.cells : {};
+            const cell = chart ? chartCell(r.chart) : undefined;
+            return {
+              cells: Object.fromEntries(columns.map((c) => [c.key, text(cells[c.key], 200)])),
+              ...(state(r.state) ? { state: state(r.state) } : {}),
+              ...(opt(r.note, 80) ? { note: opt(r.note, 80) } : {}),
+              ...(cell ? { chart: cell } : {}),
+            };
+          });
+        // a chart without a single value would only be an empty column
+        const drawn = chart && rows.some((r) => r.chart && r.chart.value !== null);
         sections.push({
           ...base,
           type: 'table',
           columns,
-          rows: list(s.rows, 500)
-            .filter(isObj)
-            .map((r) => {
-              const cells = isObj(r.cells) ? r.cells : {};
-              return {
-                cells: Object.fromEntries(columns.map((c) => [c.key, text(cells[c.key], 200)])),
-                ...(state(r.state) ? { state: state(r.state) } : {}),
-                ...(opt(r.note, 80) ? { note: opt(r.note, 80) } : {}),
-              };
-            }),
+          rows: drawn
+            ? rows
+            : rows.map((r) => {
+                delete r.chart;
+                return r;
+              }),
+          ...(drawn ? { chart } : {}),
         });
         break;
       }
