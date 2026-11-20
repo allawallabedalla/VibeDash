@@ -62,12 +62,11 @@ TEXT = {
     "hours_note": "Letzte 48 Stunden, aus dem Zählerstand; leer = keine Daten.",
     "days_title": "Verbrauch je Tag",
     "cmp_title": "Je Person und Tag im Vergleich",
-    "cmp_labels": ["Wir", "Deutschland", "Welt (Mitte)", "Grundbedarf"],
-    "cmp_note": "Wir: ≈ {v} l je Person ({p} Personen, Mittel aus {n} ganzen Tagen, Garten eingerechnet). "
-    "Deutschland 121 l (BDEW 2023). Welt: etwa die Hälfte der Menschen nutzt unter ≈ 95 l (grobe Angabe, kein "
-    "amtlicher Weltwert). Grundbedarf ≈ 50 l (WHO).",
-    "cmp_collect": "Wir: sammelt – erst ab {k} ganzen Tagen (bisher {n}). Deutschland 121 l (BDEW 2023), Welt "
-    "≈ 95 l (grobe Angabe), Grundbedarf ≈ 50 l (WHO).",
+    "cmp_labels": ["Wir je Person", "Deutschland 121 l", "Welt ≈ 95 l", "Grundbedarf ≈ 50 l"],
+    "cmp_note": "Linie = wir je Person und ganzem Tag ({p} Personen, Garten eingerechnet), im Mittel ≈ {v} l (n {n}). "
+    "Gestrichelt: Deutschland (BDEW 2023), Welt (grobe Angabe, kein amtlicher Weltwert), Grundbedarf (WHO).",
+    "cmp_collect": "Unsere Linie erscheint mit den ersten ganzen Tagen (bisher {n}). Gestrichelt: Deutschland 121 l "
+    "(BDEW 2023), Welt ≈ 95 l (grobe Angabe), Grundbedarf ≈ 50 l (WHO).",
     "cmp_what": "Wasser je Person und Tag: unser Mittel der ganzen Tage geteilt durch die Personen im Haus, daneben "
     "Vergleichswerte. Ein amtlicher Welt-Durchschnitt für Haushaltswasser existiert nicht; „Welt (Mitte)“ ist eine "
     "grobe Angabe, darum mit ≈.",
@@ -210,15 +209,17 @@ CMP_MIN_DAYS = 3
 
 
 def whole_days(rd, now, tz, n=30) -> list:
-    """Litres of the last n days whose start AND end are covered by readings (a started day is no day)."""
+    """[(noon ms, litres | None)] of the last n finished days; litres only when start AND end are covered by readings
+    (a started day is no day – it stays a gap)."""
     today = datetime.fromtimestamp(now, tz).date()
     out = []
     for k in range(n, 0, -1):
         d = today - timedelta(days=k)
         a, b = _midnight(d, tz), _midnight(d + timedelta(days=1), tz)
         sa, sb = stand_at(rd, a), stand_at(rd, b)
-        if sa is not None and sb is not None and sb >= sa:
-            out.append((sb - sa) * 1000)
+        out.append(
+            (int((a + b) / 2 * 1000), (sb - sa) * 1000 if sa is not None and sb is not None and sb >= sa else None)
+        )
     return out
 
 
@@ -362,19 +363,27 @@ def build(rows: list, live: dict | None, now: float, tz, t: dict, personen: int 
         days_sec["mean"] = round(mean, 1)
     sections.append(days_sec)
     if personen:
+        # line per whole day, the reference values as flat dashed lines (Nutzer 20.11.2026)
         wd = whole_days(rd, now, tz)
-        ours = sum(wd) / len(wd) / personen if len(wd) >= CMP_MIN_DAYS else None
+        per = [round(v / personen) if v is not None else None for _, v in wd]
+        got = [v for v in per if v is not None]
+        lab = t["cmp_labels"]
         sections.append(
             {
-                "type": "bars",
+                "type": "series",
                 "title": t["cmp_title"],
                 "unit": "l",
-                "labels": t["cmp_labels"],
-                "values": [round(ours) if ours is not None else None, *VERGLEICH_L],
-                "color": "climate",
-                "note": t["cmp_note"].format(v=_de(ours), p=personen, n=len(wd))
-                if ours is not None
-                else t["cmp_collect"].format(k=CMP_MIN_DAYS, n=len(wd)),
+                "x": [x for x, _ in wd],
+                "lines": [
+                    {"label": lab[0], "values": per, "color": "climate", "dashed": False},
+                    *(
+                        {"label": lab[i + 1], "values": [ref] * len(wd), "color": "muted", "dashed": True}
+                        for i, ref in enumerate(VERGLEICH_L)
+                    ),
+                ],
+                "note": t["cmp_note"].format(v=_de(sum(got) / len(got)), p=personen, n=len(got))
+                if len(got) >= CMP_MIN_DAYS
+                else t["cmp_collect"].format(n=len(got)),
                 "info": {"what": t["cmp_what"], "source": t["cmp_source"]},
             }
         )
