@@ -82,14 +82,6 @@ export const de = {
     'Hauszähler und Netzbezugszähler seit Mitternacht, nicht aus Leistung hochgerechnet.',
 
   'spark.sun': 'Sonne, 24 h',
-  'spark.home': 'Verbrauch heute und üblich',
-  'spark.homeBand': 'Band: üblich (8 von 10 Tagen, n = {n})',
-  'spark.grid': 'Netz, 24 h',
-  'spark.gridImport': 'Bezug {v} kWh',
-  'spark.gridFeed': 'Einspeisung {v} kWh',
-  'spark.gridOpen': 'offen',
-  'spark.gridInfo':
-    'Kurve: oben Strom ins Netz, unten Strom aus dem Netz. Spitze Bezug {peak} kW. Summen aus dem Netzzähler, letzte 24 Stunden.',
   'spark.temp': 'Wohnzimmer, 24 h',
   'spark.gap': 'Lücke {from}–{to}',
 
@@ -329,7 +321,6 @@ export const de = {
     'Der VibeDash-Server hat keine Daten geliefert: {reason}. Die Zugangsdaten und die Datenbank prüfen, dann erneut versuchen.',
   'page.today': 'Heute',
   'page.review': 'Rückblick',
-  'page.house': 'Haus',
   'flow.asOf': 'Stand {time}',
   'flow.next.carUntil': 'Auto lädt laut Plan bis {time}',
   'flow.next.carUntilKwh': 'Auto lädt laut Plan bis {time} (≈ {kwh} kWh)',
@@ -509,8 +500,6 @@ export const de = {
   'flow.feedIn': 'Einspeisung',
   'flow.import': 'Bezug',
   'flow.still': 'ruht',
-  'page.sources': 'Woher der Strom kommt',
-  'page.trends': 'Letzte 24 Stunden',
   'page.models': 'Wie gut die Vorhersagen sind',
   'page.method':
     'Beide Modelle rechnen am Vorabend nur mit Tagen, die da schon vorbei waren. Korrekt = Ist innerhalb ±20 %, geprüft gegen den Zählerstand.',
@@ -595,14 +584,6 @@ export const de = {
   'week.batterySub': 'tiefster und höchster',
   'week.socRange': 'Hausakku von–bis',
   'week.loadPerDay': 'Verbrauch je Tag',
-  'week.whereTo': 'Wohin ging der Sonnenstrom?',
-  'week.whereFrom': 'Woher kam der Hausstrom?',
-  'week.toHouse': 'ins Haus',
-  'week.toBattery': 'in den Akku',
-  'week.toGrid': 'ins Netz',
-  'week.fromSun': 'Sonne direkt',
-  'week.fromBattery': 'aus dem Akku',
-  'week.fromGrid': 'aus dem Netz',
   'week.todayUntil': 'heute bis {time}',
   'week.todayApart':
     'Abgeschlossene Tage; {until} getrennt, nicht in den Summen: Sonne {pv} · Verbrauch {load} · Netz {imp} kWh.',
@@ -631,7 +612,6 @@ export const de = {
   'page.period': 'Zeitraum',
   'year.title': 'Im Jahr',
   'year.sun': 'Sonnenstrom',
-  'year.import': 'Netzbezug',
   'year.feed': 'Einspeisung',
   'year.caption': 'Tageswerte, Mittel über 7 Tage',
   'year.since': 'seit {from}: {sum} kWh laut Zähler',
@@ -642,7 +622,6 @@ export const de = {
     'Zählerstand am Tagesende minus Vortag; ältere Tage aus der früheren Messreihe desselben Zählers.',
   'year.info.demo': 'Erfundene Werte des Demo-Hauses.',
   'year.sun.sentence': '**Sonnenstrom** gestern erzeugt',
-  'year.import.sentence': 'kamen gestern **aus dem Netz**',
   'year.feed.sentence': 'gingen gestern **ins Netz**',
   'week.house': 'Haus',
   'week.rooms': 'Räume',
@@ -718,6 +697,41 @@ export const de = {
   'hc.noSessions': 'Keine Ladungen in den letzten 31 Tagen.',
   'hc.error': 'Ladedaten gerade nicht lesbar.',
   'hc.todayRunning': 'davon {kwh} kWh laufende Ladung (aus der Leistung summiert)',
+
+  // Audit05 I-1/I-3/I-7
+  'oday.title': 'Woher kam der Strom heute?',
+  'oday.sun': 'Sonne direkt',
+  'oday.feed': 'Einspeisung (oben)',
+  'oday.ahead': 'blass: üblich',
+  'oday.aheadSun': 'blass: üblich, gelb = Sonne laut Prognose',
+  'oday.readout': '{time} · {load} kW: Sonne {sun} · Akku {battery} · Netz {grid}',
+  'oday.readoutFc': '{time} · üblich {load} kW, Sonne ≈ {sun} kW',
+  'oday.readoutGap': '{time} · keine Messwerte',
+  'oday.note': 'Antippen zeigt eine Viertelstunde. Üblich = Median aus {n} Tagen.',
+  'oday.info.what':
+    'Verbrauch je Viertelstunde, gestapelt: Sonne direkt, Akku, Netz. Grauer Streifen oben: Einspeisung, eigene Skala (Zahl = kW). Ab jetzt blass: üblicher Verbrauch, gelb davon die Sonne laut Prognose; Akku oder Netz für den Rest sagt sie nicht voraus.',
+  'oday.info.source':
+    'Viertelstunden-Mittel der Leistung von Wechselrichter, Akku und Netz; erst Sonne, dann Akku, Rest Netz. kWh daraus summiert (≈, Zähler kann abweichen). Lücken schraffiert, nie 0. Üblich: Median je Viertelstunde, n = {n} Tage vor heute.',
+  'bands.title': 'Wohin ging der Sonnenstrom, woher kam der Hausstrom?',
+  'bands.sun': 'Sonnenstrom',
+  'bands.house': 'Hausstrom',
+  'bands.toHouse': 'direkt ins Haus',
+  'bands.toBattery': 'in den Akku',
+  'bands.toGrid': 'ins Netz',
+  'bands.fromBattery': 'aus dem Akku',
+  'bands.fromGrid': 'aus dem Netz',
+  'bands.info':
+    'Ein Maßstab für beide Bänder: gleiche kWh sind gleich lang, die Teile sind Anteile ihres Bandes (Wochensummen der vollständigen Tage). „≥“: ein Teil fehlt.',
+  'cal.title': 'An wie vielen Tagen brauchten wir kein Netz?',
+  'cal.of': 'von {n} Tagen ohne Netz',
+  'cal.missingDays': '{n} Tage ohne Messung',
+  'cal.free': 'ohne Netz (< 0,5 kWh)',
+  'cal.missing': 'keine Messung',
+  'cal.dayGap': '{date} · ohne Netz (über Messlücke)',
+  'cal.info.what':
+    'Kästchen = Tag, Spalte = Woche (oben Montag). Grün: unter 0,5 kWh aus dem Netz. Lila: kWh aus dem Netz, dunkler = mehr. Grau: kein Wert, zählt nicht mit. Antippen zeigt den Tag.',
+  'cal.info.source':
+    'Netzbezug-Zähler, Tagesende minus Vortag; unplausible Sprünge bleiben grau. Über eine Lücke von mehreren Tagen zählt der Zähler weiter: unter 0,5 kWh insgesamt heißt, alle diese Tage waren ohne Netz. Der laufende Tag fehlt.',
 } as const;
 
 export type MessageKey = keyof typeof de;

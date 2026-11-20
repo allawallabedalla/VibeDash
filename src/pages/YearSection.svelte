@@ -6,11 +6,14 @@
    */
   import { onMount } from 'svelte';
   import { currentSource } from '../app/data.svelte';
+  import Card from '../components/Card.svelte';
+  import NoGridCalendar from '../components/NoGridCalendar.svelte';
   import YearCard from '../components/YearCard.svelte';
   import { demoDaily, type DemoData, type YearKind } from '../demo';
   import { i18n, num, t } from '../i18n/index.svelte';
   import { localDateKey, localMidnight } from '../model/time';
   import { yearLines } from '../model/year';
+  import { calendarDays, lastWeeks, type DailyRow } from '../model/calendar';
   import type { IconName } from '../components/Icon.svelte';
 
   let { house }: { house: DemoData } = $props();
@@ -35,15 +38,6 @@
       sentence: () => split(t('year.sun.sentence')),
     },
     {
-      kind: 'import',
-      id: 'import_energy',
-      title: t('year.import'),
-      icon: 'grid',
-      color: 'var(--import)',
-      textColor: 'var(--import-text)',
-      sentence: () => split(t('year.import.sentence')),
-    },
-    {
       kind: 'feed',
       id: 'feed_in_energy',
       title: t('year.feed'),
@@ -62,7 +56,7 @@
   const tz = $derived(house.timeZone);
   const demo = currentSource() === 'demo';
   /** [day end, energy or null, energy over a gap of days before it (counted by the meter)] */
-  type Row = [number, number | null] | [number, null, number];
+  type Row = DailyRow;
   let rows = $state<Record<string, Row[]>>({});
 
   onMount(async () => {
@@ -91,6 +85,16 @@
       ms + 12 * 3_600_000,
     );
   const today = $derived(localDateKey(house.now, tz));
+
+  // calendar "days without grid" from the import meter's daily values (Audit05 I-3);
+  // the running day is left out, days without a value stay grey
+  const calendar = $derived.by(() => {
+    const r = rows.import_energy;
+    if (!r?.length) return [];
+    const yesterday = localDateKey(localMidnight(house.now, tz) - 12 * 3_600_000, tz);
+    // at most the last 53 weeks: the question is about this year, not the whole history
+    return lastWeeks(calendarDays(r, (t0) => localDateKey(t0 + 12 * 3_600_000, tz), yesterday));
+  });
 
   const cards = $derived(
     topics
@@ -139,8 +143,24 @@
   );
 </script>
 
-{#if cards.length}
+{#if cards.length || calendar.length}
   <h2>{t('year.title')}</h2>
+  {#if calendar.length}
+    <div class="cal">
+      <Card
+        title={t('cal.title')}
+        icon="grid"
+        color="var(--import)"
+        note={demo ? t('year.demo') : undefined}
+        info={{
+          what: t('cal.info.what'),
+          source: demo ? t('year.info.demo') : t('cal.info.source'),
+        }}
+      >
+        <NoGridCalendar days={calendar} />
+      </Card>
+    </div>
+  {/if}
   <div class="year">
     {#each cards as c (c.id)}
       <YearCard
@@ -167,13 +187,19 @@
 <style>
   .year {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
+  }
+  .cal {
+    margin-bottom: 16px;
   }
   @media (max-width: 1000px) {
     .year {
       grid-template-columns: 1fr;
       gap: 10px;
+    }
+    .cal {
+      margin-bottom: 10px;
     }
   }
 </style>

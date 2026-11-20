@@ -21,7 +21,8 @@
   import Tabs from '../components/Tabs.svelte';
   import TileRow from '../components/TileRow.svelte';
   import Card from '../components/Card.svelte';
-  import FlowBars from '../components/FlowBars.svelte';
+  import OriginDay from '../components/OriginDay.svelte';
+  import ShareBands from '../components/ShareBands.svelte';
   import RoomRanges from '../components/RoomRanges.svelte';
   import Progress from '../components/Progress.svelte';
   import Sparkline from '../components/Sparkline.svelte';
@@ -35,10 +36,9 @@
     pvTimeSeries,
     type Period,
     last24h,
-    last24hEnergy,
-    typicalProfile,
   } from '../demo';
-  import GridCard from '../pages/GridCard.svelte';
+  import { originToday, stepLookup } from '../app/origin-day';
+  import { demoSunForecast } from '../app/sun-forecast';
   import { i18n, num, t, time } from '../i18n/index.svelte';
   import { localMidnight } from '../model/time';
 
@@ -49,11 +49,9 @@
   const kw = (w: number | null) => (w === null ? null : w / 1000);
 
   const pv24 = last24h(demo, 'pv_power').map(kw);
-  const load24 = last24h(demo, 'load_power').map(kw);
-  const grid24 = last24h(demo, 'grid_power').map(kw);
   const temp24 = last24h(demo, 'living_temp');
-  const loadBand = typicalProfile(demo, 'load_power');
-  const loadBandKw = { low: loadBand.low.map(kw), high: loadBand.high.map(kw) };
+  const sunFc = demoSunForecast(demo);
+  const origin = originToday(demo, sunFc ? stepLookup(sunFc.at, sunFc.stepMs, sunFc.p50) : null);
 
   const sensorGap = demo.issues.find(
     (i) => i.kind === 'gap' && i.entityIds.includes('living_temp'),
@@ -242,25 +240,6 @@
       <Sparkline values={pv24} color="var(--sun)" min={0} label={t('spark.sun')} />
     </Card>
     <Card
-      title={t('spark.home')}
-      icon="home"
-      color="var(--home)"
-      note={t('spark.homeBand', { n: loadBand.n })}
-    >
-      <Sparkline
-        values={load24}
-        band={loadBandKw}
-        color="var(--home)"
-        min={0}
-        label={t('spark.home')}
-      />
-    </Card>
-    <GridCard
-      values={grid24}
-      importKwh={last24hEnergy(demo, 'import_energy')}
-      feedKwh={last24hEnergy(demo, 'feed_in_energy')}
-    />
-    <Card
       title={t('spark.temp')}
       icon="thermometer"
       color="var(--climate)"
@@ -269,6 +248,12 @@
       <Sparkline values={temp24} color="var(--climate)" label={t('spark.temp')} />
     </Card>
   </div>
+
+  {#if origin}
+    <Card title={t('oday.title')} icon="home" color="var(--home)">
+      <OriginDay day={origin} timeZone={tz} />
+    </Card>
+  {/if}
 
   <h2>{t('gallery.timeseries')}</h2>
   <Card title={t('ts.title')} icon="sun" color="var(--sun)">
@@ -344,26 +329,55 @@
         ]}
       />
     </Card>
-    <Card title={t('week.whereTo')} icon="sun" color="var(--sun)">
-      <FlowBars
-        flows={[
+    <Card title={t('bands.title')} icon="sun" color="var(--sun)">
+      <ShareBands
+        label={t('bands.title')}
+        bands={[
           {
-            label: t('week.toHouse'),
-            value: 62,
-            color: 'var(--sun-soft)',
-            textColor: 'var(--sun-text)',
+            label: t('bands.sun'),
+            segments: [
+              {
+                label: t('bands.toHouse'),
+                value: 62,
+                color: 'var(--sun)',
+                textColor: 'var(--sun-text)',
+              },
+              {
+                label: t('bands.toBattery'),
+                value: 41,
+                color: 'var(--battery)',
+                textColor: 'var(--good-text)',
+              },
+              {
+                label: t('bands.toGrid'),
+                value: 108,
+                color: 'var(--feed)',
+                textColor: 'var(--feed-text)',
+              },
+            ],
           },
           {
-            label: t('week.toBattery'),
-            value: 103,
-            color: 'var(--battery)',
-            textColor: 'var(--good-text)',
-          },
-          {
-            label: t('week.toGrid'),
-            value: 108,
-            color: 'var(--feed)',
-            textColor: 'var(--feed-text)',
+            label: t('bands.house'),
+            segments: [
+              {
+                label: t('oday.sun'),
+                value: 62,
+                color: 'var(--sun)',
+                textColor: 'var(--sun-text)',
+              },
+              {
+                label: t('bands.fromBattery'),
+                value: 38,
+                color: 'var(--battery)',
+                textColor: 'var(--good-text)',
+              },
+              {
+                label: t('bands.fromGrid'),
+                value: 9,
+                color: 'var(--import)',
+                textColor: 'var(--import-text)',
+              },
+            ],
           },
         ]}
       />
