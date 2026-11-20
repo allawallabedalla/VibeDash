@@ -20,7 +20,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from .config import load_modules, modules_dir
+from .config import board_of, calc_owner, load_modules, modules_dir, owner_of
 
 NAME = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
 FEED = re.compile(r"^[a-z0-9_-]{1,40}\.[a-z]{2,4}$")
@@ -63,10 +63,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": True, "modules": sorted(m["modules"]), "errors": m["errors"]})
             parts = path.strip("/").split("/")
             if len(parts) == 2 and parts[0] == "board" and NAME.match(parts[1]):
-                mod = self._mods()["modules"].get(parts[1])
-                if not mod:
+                b = board_of(self._mods(), parts[1])
+                if b is None:
                     return self._send(404, {"error": "unknown_module"})
-                return self._send(200, mod.board())
+                return self._send(200, b)
             if len(parts) == 3 and parts[0] == "feed" and NAME.match(parts[1]) and FEED.match(parts[2]):
                 mod = self._mods()["modules"].get(parts[1])
                 ctype = getattr(mod, "feeds", {}).get(parts[2]) if mod else None
@@ -96,7 +96,9 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError:
             return self._send(400, {"ok": False, "error": "bad_json"})
         try:
-            mod = self._mods()["modules"].get(parts[1])
+            mods = self._mods()
+            name = owner_of(mods, parts[1], d.get("item")) if parts[2] == "action" else calc_owner(mods, parts[1])
+            mod = mods["modules"].get(name)
             if not mod or not hasattr(mod, parts[2]):
                 return self._send(404, {"ok": False, "error": f"no_{parts[2]}"})
             status, body = mod.action(d) if parts[2] == "action" else mod.calc(d)
