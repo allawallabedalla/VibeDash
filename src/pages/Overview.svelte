@@ -28,7 +28,6 @@
   import { localMidnight } from '../model/time';
   import { i18n, t } from '../i18n/index.svelte';
   import PageHead from './PageHead.svelte';
-  import WeatherDaysCard from './WeatherDaysCard.svelte';
 
   const house = $derived(currentData());
 
@@ -223,9 +222,6 @@
   <PageHead title={t('page.overview')} />
 
   <div class="status"><StatusBar label={t('status.label')} items={status} /></div>
-
-  <WeatherDaysCard {house} />
-  <div class="row-gap"></div>
 
   <TileRow count={4}>
     {#each row1 as tile (tile.label)}<Tile {...tile} />{/each}
