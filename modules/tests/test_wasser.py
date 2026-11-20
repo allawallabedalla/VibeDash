@@ -94,15 +94,19 @@ class WasserBoard(unittest.TestCase):
         # 120 l a day, 2 people -> 60 l each, next to Germany 121, world ≈ 95, basic need 50
         b = board.build(meter(), dict(LIVE), NOW, TZ, board.TEXT, personen=2)
         c = next(s for s in b["sections"] if s["title"] == "Je Person und Tag im Vergleich")
-        self.assertEqual(c["values"], [60, 121, 95, 50])
+        self.assertEqual(c["type"], "series")
+        ours, de_, world, need = (ln["values"] for ln in c["lines"])
+        self.assertEqual(set(v for v in ours if v is not None), {60})
+        self.assertEqual((set(de_), set(world), set(need)), ({121}, {95}, {50}))  # flat reference lines
+        self.assertTrue(all(ln["dashed"] for ln in c["lines"][1:]))
         self.assertIn("2 Personen", c["note"])
         self.assertNotIn("Je Person und Tag im Vergleich", [s["title"] for s in build(meter())["sections"]])
 
     def test_compare_waits_for_whole_days(self):
         b = board.build(meter(days=1.5), dict(LIVE), NOW, TZ, board.TEXT, personen=2)
         c = next(s for s in b["sections"] if s["title"] == "Je Person und Tag im Vergleich")
-        self.assertIsNone(c["values"][0])
-        self.assertIn("sammelt", c["note"])
+        self.assertLessEqual(sum(v is not None for v in c["lines"][0]["values"]), 1)
+        self.assertIn("ersten ganzen Tagen", c["note"])
 
     def test_since_due_date(self):
         b = build(meter())
