@@ -99,7 +99,9 @@ class TestKnxLog(unittest.TestCase):
         )
         self.assertEqual((tiles["Defekte"]["value"], tiles["Defekte"]["state"]), ("1", "act"))
         self.assertEqual(tiles["Defekte"]["sub"], "dazu 1 Hinweise")
-        lines = {x["label"]: sum(x["values"]) for x in s["Bus-Verkehr je 15 min"]["lines"]}
+        lines = {x["label"]: sum(v or 0 for v in x["values"]) for x in s["Bus-Verkehr je 15 min"]["lines"]}
+        bus = s["Bus-Verkehr je 15 min"]["lines"][0]["values"]
+        self.assertIn(None, bus)  # quarter hours without any telegram are gaps, not 0
         self.assertEqual(lines, {"Heizung": 1, "Licht und Schalten": 2, "Präsenz und Türen": 1})
         devs = {r["cells"]["a"]: r for r in s["Geräte"]["rows"]}
         self.assertEqual(devs["1.1.2"]["cells"]["z"], "nichts in 24 h")
