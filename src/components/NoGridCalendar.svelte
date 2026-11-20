@@ -42,7 +42,11 @@
     weeks.forEach((w, i) => {
       if (w.month === null) return;
       const x = L + i * colW;
-      if (out.length && x - out.at(-1)!.x < 34) return;
+      // too close: a part month at the very start gives way to the next one
+      if (out.length && x - out.at(-1)!.x < 34) {
+        if (out.length > 1) return;
+        out.pop();
+      }
       out.push({ x, label: monthName(w.month) });
     });
     return out;

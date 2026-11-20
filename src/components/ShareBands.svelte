@@ -130,14 +130,22 @@
     bottom: 0;
     display: grid;
     place-items: center;
-    background: color-mix(in srgb, var(--c) 55%, var(--surface));
     box-shadow: inset -2px 0 0 var(--surface);
     overflow: hidden;
+  }
+  /* the colour as a layer under the text (a plain colour for the contrast check, Audit01 DE-01) */
+  .seg::before {
+    content: '';
+    position: absolute;
+    inset: 0 2px 0 0;
+    background: var(--c);
+    opacity: 0.5;
   }
   .seg:first-child {
     border-radius: 8px 0 0 8px;
   }
   .in {
+    position: relative;
     font-size: 14px;
     font-weight: 600;
     color: var(--text);

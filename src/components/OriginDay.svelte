@@ -218,7 +218,9 @@
       <!-- feed-in strip on top, own scale -->
       <line class="base" x1={L} x2={width - R} y1={STRIP} y2={STRIP} />
       {#each feedArea as d, i (i)}<path {d} class="feed" />{/each}
-      <text class="axis feed-label" x={L - 6} y={STRIP} text-anchor="end">{num(feedMax)} kW</text>
+      {#if feedPeak > 0}
+        <text class="axis feed-label" x={L - 6} y={STRIP} text-anchor="end">{num(feedMax)} kW</text>
+      {/if}
 
       {#each yMarks as v (v)}
         <line class="grid" x1={L} x2={width - R} y1={yAt(v)} y2={yAt(v)} />
