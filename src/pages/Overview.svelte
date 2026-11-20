@@ -151,10 +151,15 @@
   // the period switch sits at the curve it filters; the autarky tile above is
   // always today, the autarky of the chosen period stands under the curve
   let period = $state<Period>('day');
+  // the night estimate of the battery tile (Audit05 I-4) comes after the first paint (first page < 200 KB)
+  let reach = $state<typeof import('../model/reach').batteryReach | null>(null);
+  onMount(() => {
+    void import('../model/reach').then((m) => (reach = m.batteryReach));
+  });
   const row1 = $derived([
     sunTile(house, sunFc),
     loadTile(house),
-    batteryTile(house),
+    batteryTile(house, reach),
     gridTile(house),
   ]);
   const row2 = $derived(

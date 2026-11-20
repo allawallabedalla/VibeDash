@@ -10,6 +10,7 @@
   import { store } from '../app/data.svelte';
   import { num, t, time } from '../i18n/index.svelte';
   import { buckets, coveredFrom, windowStats, ZOOM_WINDOWS, type ZoomWindow } from '../model/zoom';
+  import BatteryReach from './BatteryReach.svelte';
   import Explanation from './Explanation.svelte';
   import Icon from './Icon.svelte';
   import LineChart from './LineChart.svelte';
@@ -86,6 +87,17 @@
     {#if tile.sub}<p class="sub">{tile.sub}</p>{/if}
     {#if tile.pending}<p class="sub">{tile.pending}</p>{/if}
   </div>
+
+  {#if tile.reach && data}
+    <!-- battery: does it last until sunrise (Audit05 I-4), before its own course -->
+    <BatteryReach
+      reach={tile.reach}
+      tz={data.timeZone}
+      {now}
+      soc={data.series.battery_soc?.samples ?? []}
+      grid={data.series.grid_power?.samples ?? []}
+    />
+  {/if}
 
   {#if lines.length}
     <div class="seg-row">
