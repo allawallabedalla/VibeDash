@@ -193,7 +193,16 @@ class TestKnx(unittest.TestCase):
                     "sicherheit_text": "sicher",
                 }
             ],
-            "licht": [{"raum": "Flur", "an_hell_text": "12 %", "hand_trotz_melder_text": None}],
+            "licht": [
+                {
+                    "raum": "Flur",
+                    "an_hell_text": "12 %",
+                    "hand_trotz_melder_text": None,
+                    "an_hell": 1.5,
+                    "an_hell_se": 0.5,
+                },
+                {"raum": "Bad", "an_hell_text": None},
+            ],
         }
 
     def tearDown(self):
@@ -232,6 +241,14 @@ class TestKnx(unittest.TestCase):
         self.assertEqual([x["dashed"] for x in night["lines"]], [False, True])
         self.assertEqual(b["sections"][7]["items"][0]["text"], "Flur: Nachtlicht (−3 ± 1)")
         self.assertEqual(b["sections"][8]["rows"][0]["cells"]["t"], "–")
+        # graphic columns (Audit05 I-8): reports as bars, light per room as dot ± standard error, gaps stay empty
+        kinds = b["sections"][2]
+        self.assertEqual(kinds["chart"], {"kind": "bar", "label": "Anzahl"})
+        self.assertEqual(kinds["rows"][0]["chart"], {"value": 3.0})
+        rooms = b["sections"][8]
+        self.assertEqual(rooms["chart"]["kind"], "dot")
+        self.assertEqual(rooms["rows"][0]["chart"], {"value": 1.5, "err": 0.5})
+        self.assertEqual(rooms["rows"][1]["chart"], {"value": None, "err": None})
 
     def test_house_down_keeps_defects_section(self):
         def broken(url, timeout=60):

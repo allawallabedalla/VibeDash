@@ -177,6 +177,7 @@ def build(data: dict, inventory: dict, cfg: dict, now_ms: int, tz) -> dict:
                     "n": str(cnt) if cnt else "–",
                     "z": at(last) if last else "nichts in 24 h",
                 },
+                "chart": {"value": cnt},
                 **({"state": "look"} if quiet or (addr not in devices and addr != b_addr) else {}),
             }
         )
@@ -315,6 +316,7 @@ def build(data: dict, inventory: dict, cfg: dict, now_ms: int, tz) -> dict:
                 {"key": "z", "label": "zuletzt"},
             ],
             "rows": device_rows,
+            "chart": {"kind": "bar", "label": "Telegramme"},
             "note": "Markiert: still oder unbekannt.",
             "info": {
                 "what": "Jedes Bus-Gerät mit Telegrammen und letztem Lebenszeichen.",

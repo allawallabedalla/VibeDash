@@ -111,6 +111,8 @@ def build(data: dict, now_ms: int, t: dict) -> dict:
             }
             if (number(f.get("prozent")) or 0) >= 100:
                 row["state"] = "ok"
+            # graphic column on a fixed 0–100 scale; "offen" stays empty (Audit05 I-8)
+            row["chart"] = {"value": number(f.get("prozent"))}
             rows.append(row)
         sections.append(
             {
@@ -123,6 +125,7 @@ def build(data: dict, now_ms: int, t: dict) -> dict:
                     {"key": "e", "label": t["c_done"]},
                 ],
                 "rows": rows,
+                "chart": {"kind": "bar", "label": t["c_learned"], "unit": "%", "min": 0, "max": 100},
                 "note": t["table_note"],
             }
         )

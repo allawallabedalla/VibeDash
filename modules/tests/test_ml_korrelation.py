@@ -71,6 +71,9 @@ class TestMl(unittest.TestCase):
         self.assertEqual(table["rows"][0]["state"], "ok")
         self.assertNotIn("state", table["rows"][1])
         self.assertEqual(table["rows"][1]["cells"]["e"], "Feb.")
+        # graphic column on a fixed 0–100 scale (Audit05 I-8)
+        self.assertEqual(table["chart"], {"kind": "bar", "label": "Lernstand", "unit": "%", "min": 0, "max": 100})
+        self.assertTrue(all(isinstance(r["chart"]["value"], float) for r in table["rows"]))
 
     def test_progress_without_percent_says_open(self):
         data = json.loads(json.dumps(self.data))
@@ -79,6 +82,7 @@ class TestMl(unittest.TestCase):
         heiz = {x["label"]: x for x in acc["models"]}["Heizung"]
         self.assertNotIn("Lernstand", [d["label"] for d in heiz["details"]])
         self.assertEqual(table["rows"][1]["cells"]["p"], "offen")
+        self.assertIsNone(table["rows"][1]["chart"]["value"])  # open = empty, not 0
         self.assertNotIn("None", json.dumps(table))
 
     def test_house_down(self):
@@ -181,6 +185,8 @@ class TestKorrelation(unittest.TestCase):
         self.assertTrue(cols[3]["phone"])
         self.assertEqual(rows[0]["cells"], {"p": rows[0]["cells"]["p"], "r": "−0,71", "rb": "−0,55", "n": "95 Std."})
         self.assertEqual(rows[1]["cells"]["n"], "Tage")
+        self.assertEqual(s["Alle nach Art"]["chart"], {"kind": "dot", "label": "Stärke", "min": -1, "max": 1})
+        self.assertAlmostEqual(rows[0]["chart"]["value"], -0.71, places=2)
         self.assertEqual(s["Was steckt dahinter"]["unit"], "Paare")
         self.assertEqual(b["updated"], self.data["stand_ms"])
 

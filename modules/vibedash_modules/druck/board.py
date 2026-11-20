@@ -294,7 +294,9 @@ def build(live: dict, history: list, links: list, now_ms: int, tz, t: dict) -> d
                     "start": _when(j["start"], now_ms, tz),
                     "dauer": ("≥ " if j["late"] else "") + dur((end - j["start"]) / 1000),
                     "ende": res,
-                }
+                },
+                # duration in hours; an end only known as "at least" is pale (Audit05 I-8)
+                "chart": {"value": round((end - j["start"]) / 3_600_000, 2), **({"faint": True} if j["late"] else {})},
             }
             if j["end_state"] in ("ERROR", "ATTENTION"):
                 row["state"] = "act"
@@ -310,6 +312,7 @@ def build(live: dict, history: list, links: list, now_ms: int, tz, t: dict) -> d
                     {"key": "ende", "label": t["col_end"], "phone": True},
                 ],
                 "rows": rows,
+                "chart": {"kind": "bar", "label": t["col_dur"], "unit": "h"},
                 "note": t["jobs_note"],
             }
         )

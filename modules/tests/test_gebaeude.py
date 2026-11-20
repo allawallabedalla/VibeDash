@@ -152,6 +152,20 @@ class TestGebaeude(unittest.TestCase):
         self.assertNotIn("state", pv["rows"][1])
         self.assertEqual(pv["note"], "Alte Tagesprognose 2026-03–2026-10; − = zu niedrig.")
 
+    def test_tables_bring_their_graphic(self):
+        # Audit05 I-8: the same value ± as the cell, not measurable = pale
+        self.write(RESULT)
+        b = self.board()
+        sun, pv = b["sections"][4], b["sections"][5]
+        self.assertEqual(sun["chart"], {"kind": "dot", "label": "K/klarer Tag", "color": "climate"})
+        for raum, row in zip(RESULT["sonne"]["raeume"], sun["rows"], strict=True):
+            self.assertAlmostEqual(row["chart"]["value"], raum["klarer_tag_k"])
+            self.assertAlmostEqual(row["chart"]["err"], 3 * raum["se"])
+            self.assertEqual(row["chart"].get("faint", False), not raum["messbar"])
+        self.assertEqual(pv["chart"]["kind"], "dot")
+        self.assertEqual(pv["chart"]["unit"], "kWh")
+        self.assertEqual(pv["rows"][0]["chart"], {"value": -20.0, "err": 2.0})
+
     def test_collecting(self):
         self.write(
             {"auskuehlen": {"status": "sammelt", "text": "erst 3 Nächte (ab 10)"}, "sonne": {"status": "fehler"}}

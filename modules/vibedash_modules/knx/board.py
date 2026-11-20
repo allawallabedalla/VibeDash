@@ -94,10 +94,12 @@ def build(data: dict, now_ms: int, tz=None) -> dict:
                             "n": str(a.get("anzahl") or 0),
                             "d": str(a.get("vorzeitraum") or 0),
                             "h": clean(a.get("haeufigste"), 160),
-                        }
+                        },
+                        "chart": {"value": number(a.get("anzahl")) or 0},
                     }
                     for a in kinds
                 ],
+                "chart": {"kind": "bar", "label": "Anzahl"},
             }
         )
 
@@ -238,10 +240,13 @@ def build(data: dict, now_ms: int, tz=None) -> dict:
                             "h": clean(r.get("an_hell_text") or "–", 30),
                             "t": clean(r.get("hand_trotz_melder_text") or "–", 30),
                             "s": clean(r.get("sofort_aus_text") or "–", 30),
-                        }
+                        },
+                        # graphic: the first column, mean ± standard error like the cell (Audit05 I-8)
+                        "chart": {"value": number(r.get("an_hell")), "err": number(r.get("an_hell_se"))},
                     }
                     for r in rooms
                 ],
+                "chart": {"kind": "dot", "label": "an bei Helligkeit, je Tag"},
                 "note": "Je Tag, Mittel ± Standardfehler.",
             }
         )

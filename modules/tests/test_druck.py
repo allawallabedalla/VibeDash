@@ -90,8 +90,12 @@ class DruckTest(unittest.TestCase):
         self.assertEqual((temp["Düse"]["value"], temp["Düse"]["sub"]), ("215,0", "Ziel 215 °C"))
         self.assertEqual(b["updated"], t0)
         self.assertEqual(set(fake.calls), {"/api/v1/status", "/api/v1/job"})  # only reads
-        jobs = next(s for s in b["sections"] if s["type"] == "table")["rows"]
+        table = next(s for s in b["sections"] if s["type"] == "table")
+        jobs = table["rows"]
         self.assertEqual(jobs[0]["cells"]["ende"], "läuft")
+        # duration as a bar in hours (Audit05 I-8)
+        self.assertEqual(table["chart"], {"kind": "bar", "label": "Dauer", "unit": "h"})
+        self.assertGreater(jobs[0]["chart"]["value"], 0)
 
     def test_long_time_left_in_hours(self):
         m, _ = self.mod(status(r=5 * 3600 + 7 * 60))
