@@ -71,11 +71,12 @@ class TestDazu(unittest.TestCase):
         cfg = os.path.join(self.base, "wartung.json")
         with open(cfg, encoding="utf-8") as f:
             c = json.load(f)
-        c["mehr"] = ["Updates"]
+        c["mehr"] = ["Update"]  # title beginning
         _write(cfg, c)
         secs = board_of(load_modules(self.base), "wartung")["sections"]
         marked = [s["title"] for s in secs if s.get("more")]
         self.assertEqual(marked, ["Updates"])
+        self.assertFalse(any(s.get("more") for s in secs if s["title"] != "Updates"))
 
 
 if __name__ == "__main__":

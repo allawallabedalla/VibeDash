@@ -20,7 +20,8 @@ def load_modules(base: str | None = None) -> dict:
     "dazu" (optional config key): modules whose sections are shown below this module's own, on the same tab, and
     whose buttons work there too – two modules on one tab (Audit05: fewer tabs). Each entry is a module name or
     {"modul": name, "nur": [section title or type, …]} to bring only some of its sections.
-    "mehr" (optional config key, list of section titles): these sections wait behind "Details" at the end of the tab
+    "mehr" (optional config key, list of section titles or title beginnings, e.g. "Aktivität je Stunde" for a title
+    that carries a changing count): these sections wait behind "Details" at the end of the tab
     (second level, nothing is lost; also for sections brought by "dazu")."""
     base = base or modules_dir()
     out, errors, dazu, mehr = {}, {}, {}, {}
@@ -90,7 +91,11 @@ def board_of(mods: dict, name: str) -> dict | None:
         b["updated"] = min(times) if times else None  # the older part decides how fresh the tab is
     more = mods.get("mehr", {}).get(name)
     if more:
-        b = {**b, "sections": [{**s, "more": True} if s.get("title") in more else s for s in b.get("sections", [])]}
+
+        def hit(t):
+            return isinstance(t, str) and any(t.startswith(m) for m in more)
+
+        b = {**b, "sections": [{**s, "more": True} if hit(s.get("title")) else s for s in b.get("sections", [])]}
     return b
 
 
