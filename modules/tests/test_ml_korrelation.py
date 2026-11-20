@@ -72,6 +72,15 @@ class TestMl(unittest.TestCase):
         self.assertNotIn("state", table["rows"][1])
         self.assertEqual(table["rows"][1]["cells"]["e"], "Feb.")
 
+    def test_progress_without_percent_says_open(self):
+        data = json.loads(json.dumps(self.data))
+        data["fortschritt"][1]["prozent"] = None
+        acc, table = self.board(lambda u, t=60: data)["sections"]
+        heiz = {x["label"]: x for x in acc["models"]}["Heizung"]
+        self.assertNotIn("Lernstand", [d["label"] for d in heiz["details"]])
+        self.assertEqual(table["rows"][1]["cells"]["p"], "offen")
+        self.assertNotIn("None", json.dumps(table))
+
     def test_house_down(self):
         b = self.board(_broken)
         self.assertEqual([s["type"] for s in b["sections"]], ["accuracy"])

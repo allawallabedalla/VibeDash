@@ -162,6 +162,28 @@ class TestGebaeude(unittest.TestCase):
         self.assertEqual(tiles[0]["sub"], "erst 3 Nächte (ab 10)")
         self.assertEqual(b["sections"][1]["items"], [])
 
+    def test_tilt_slower_is_no_loss(self):
+        self.write(
+            {
+                "kippfenster": {
+                    "status": "ok",
+                    "mehr_pct": -74.0,
+                    "mehr_se_pct": 34.0,
+                    "kwh_nacht": -1.3,
+                    "kwh_lo": 0.0,
+                    "kwh_hi": -0.1,
+                    "text": "Methode K",
+                }
+            }
+        )
+        b = self.board()
+        tile = next(t for t in b["sections"][0]["tiles"] if t["label"] == "Kippfenster")
+        self.assertEqual(tile["value"], "kein Mehrverlust")
+        self.assertNotIn("sub", tile)  # the span did not hold its own value
+        text = json.dumps(b, ensure_ascii=False)
+        self.assertIn("74 % ± 34 % langsamer", text)
+        self.assertNotIn("% schneller ab", text)
+
     def test_texts_override(self):
         self.write(RESULT)
         m = Module({"ergebnis": self.file, "texte": {"sun_note": "Eigener Hinweis."}}, lambda p: p)

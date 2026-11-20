@@ -45,6 +45,9 @@ TEXT = {
     "etwas zu lang gemessen). Nachtabsenkung bringt darum wenig.",
     "find_tilt": "Schlafzimmer (Fenster nachts gekippt) kühlt {pct} % ± {se} % schneller ab als die übrigen Räume, "
     "≈ {kwh} kWh Wärme je Nacht. Ob das am Fenster liegt, ist offen: es gibt keine Nächte mit zu.",
+    "find_tilt_slow": "Schlafzimmer (Fenster nachts gekippt) kühlt nicht schneller ab als die übrigen Räume (eher "
+    "{pct} % ± {se} % langsamer) – kein messbarer Wärmeverlust durchs gekippte Fenster.",
+    "t_tilt_none": "kein Mehrverlust",
     "find_door": "Haustür öffnen: Flur {k} ± {se} K nach 30 min (n {n}) – kein messbarer Effekt.",
     "pv_old": "Alte PV-Tagesprognose lag an klaren Tagen {bias} ± {se} kWh daneben (n {n}). Das neue Stundenmodell ",
     "pv_new_ok": "wird ausgewertet.",
@@ -196,13 +199,16 @@ def build(result: dict, stand_ms: int, t: dict) -> dict:
             }
         )
     if _ok(k) and k.get("kwh_nacht") is not None:
+        kw, lo, hi = k["kwh_nacht"], k.get("kwh_lo"), k.get("kwh_hi")
+        # a span that does not hold its own value, or a negative "loss", is no finding (Audit05 P4-11)
+        span_ok = lo is not None and hi is not None and min(lo, hi) <= kw <= max(lo, hi)
         tiles.append(
             {
                 "label": t["t_tilt"],
-                "value": f"≈ {de(k['kwh_nacht'])}",
-                "unit": "kWh",
+                "value": f"≈ {de(kw)}" if kw > 0 else t["t_tilt_none"],
+                **({"unit": "kWh"} if kw > 0 else {}),
                 "icon": "moon",
-                "sub": t["t_tilt_sub"].format(lo=de(k["kwh_lo"]), hi=de(k["kwh_hi"])),
+                **({"sub": t["t_tilt_sub"].format(lo=de(lo), hi=de(hi))} if kw > 0 and span_ok else {}),
                 "info": info(k),
             }
         )
@@ -246,8 +252,8 @@ def build(result: dict, stand_ms: int, t: dict) -> dict:
         levers.append(
             {
                 "text": clean(
-                    t["find_tilt"].format(
-                        pct=round(k.get("mehr_pct") or 0),
+                    (t["find_tilt"] if (k.get("mehr_pct") or 0) > 0 else t["find_tilt_slow"]).format(
+                        pct=abs(round(k.get("mehr_pct") or 0)),
                         se=round(k.get("mehr_se_pct") or 0),
                         kwh=de(k.get("kwh_nacht")),
                     ),

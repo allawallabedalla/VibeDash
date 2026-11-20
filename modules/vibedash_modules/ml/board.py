@@ -47,7 +47,8 @@ def build(data: dict, now_ms: int, t: dict) -> dict:
         hist = [number(v.get("treffer_pct")) for v in (m.get("verlauf") or []) if isinstance(v, dict)]
         details = []
         if f:
-            details.append({"label": t["d_learned"], "value": clean(f"{f.get('prozent')} %", 20)})
+            if number(f.get("prozent")) is not None:  # never „None %“ (Audit05 P4-06)
+                details.append({"label": t["d_learned"], "value": clean(f"{f.get('prozent')} %", 20)})
             if f.get("stand_text"):
                 details.append({"label": t["d_state"], "value": clean(f.get("stand_text"), 160)})
             if f.get("eta_text") or f.get("offen_text"):
@@ -103,7 +104,7 @@ def build(data: dict, now_ms: int, t: dict) -> dict:
             row = {
                 "cells": {
                     "m": clean(f.get("name"), 60),
-                    "p": f"{f.get('prozent')} %",
+                    "p": f"{f.get('prozent')} %" if number(f.get("prozent")) is not None else "offen",
                     "s": clean(f.get("stand_text"), 160),
                     "e": clean(f.get("eta_text") or f.get("offen_text") or "", 80),
                 }

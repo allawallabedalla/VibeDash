@@ -90,6 +90,13 @@ class TestSaugroboter(unittest.TestCase):
         self.assertEqual(t["V50 Ultra complete"]["icon"], "robot")
         self.assertNotIn("state", t["MOVA E20"])
 
+    def test_short_names_only_in_texts(self):
+        b = self.board({"influx": {"db": "haus"}, "anzeige": {"V50 Ultra complete": "Sauger EG"}})
+        labels = [t["label"] for t in b["sections"][0]["tiles"]]
+        self.assertIn("Sauger EG", labels)
+        self.assertIn("Akku Sauger EG", labels)
+        self.assertNotIn("V50 Ultra complete", json.dumps([s.get("title") for s in b["sections"]]))
+
     def test_error_offline_stale(self):
         self.last["V50 Ultra complete"]["status"] = 4
         self.last["MOVA E20"]["online"] = 0.0
