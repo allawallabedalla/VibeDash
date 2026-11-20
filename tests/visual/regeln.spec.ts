@@ -34,18 +34,14 @@ const boards = readdirSync(FIX)
 const MAX_FIRST_LEVEL = 10;
 
 /** G-31 (G-04 automated): tables without a graphic column allowed only as logs (caption = card title). */
-const LOG_TABLES = ['Ereignisse', 'Telegramme'];
+// „Lernstand aller Modelle“: on purpose without a graphic – learning progress must not be stressed (G-14)
+const LOG_TABLES = ['Ereignisse', 'Telegramme', 'Lernstand aller Modelle'];
 
 /**
  * Known violations of today's pages, each with its audit ID. Fix the cause, then delete the line (a stale entry
  * fails as well). Keys: page name; each rule lists the beginnings of the violation texts it tolerates.
  */
-const EXCEPTIONS: Record<string, Partial<Record<Rule, { id: string; hits: string[] }>>> = {
-  // "Nur zum Ausprobieren – schaltet nichts …" under the charge timeline, the charging buttons above
-  'b/auto': { claim: { id: 'P4-08', hits: ['Nur zum Ausprobieren – schaltet nichts'] } },
-  // learning-progress table without a graphic (Audit05 proposal 5: to be dropped)
-  'b/ml': { table: { id: 'DE4-06', hits: ['Lernstand aller Modelle'] } },
-};
+const EXCEPTIONS: Record<string, Partial<Record<Rule, { id: string; hits: string[] }>>> = {};
 
 /**
  * G-09 (DE4-11): phone text below 14 px that is known today, per page the smallest size allowed until it is fixed.

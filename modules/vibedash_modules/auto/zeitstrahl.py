@@ -60,7 +60,7 @@ def section(path: str, today: date, now: float | None = None, mtime: float | Non
         "carNeedKwh": need if isinstance(need, (int, float)) and need > 0 else 40,
         "powers": z.get("wallbox_kw") or [4.3, 7.1, 11.4],
         "slot": "plan",
-        "note": "Nur zum Ausprobieren – schaltet nichts und ändert den Ladeplan nicht. "
+        "note": "Nur zum Ausprobieren – startet keine Ladung und ändert den Ladeplan nicht. "
         f"Wetterfälle von {str(z.get('stand') or '')[11:16]} Uhr.",
         "info": {
             "what": "Ladefenster verschieben, länger oder kürzer ziehen, weitere hinzufügen: oben stehen sofort, "
