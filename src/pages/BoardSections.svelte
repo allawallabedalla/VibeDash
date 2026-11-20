@@ -112,6 +112,8 @@
             kind: 'spark' as const,
             values: x.spark,
             color: C[x.color ?? 'muted'],
+            // a percentage on its own scale made 4 % look half full (Audit05 G5-03)
+            ...(x.unit === '%' ? { min: 0, max: 100 } : {}),
             ...(x.sparkFrom !== undefined && x.sparkTo !== undefined
               ? { span: { from: x.sparkFrom, to: x.sparkTo } }
               : {}),

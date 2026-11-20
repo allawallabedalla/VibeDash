@@ -95,14 +95,21 @@
     return d;
   };
   const ticksY = $derived([lo, (lo + hi) / 2, hi].filter((v, i, a) => a.indexOf(v) === i));
+  /** decimals from the step between marks: 2,5 stays 2,5, never rounded to „3“ (Audit05 G5-01) */
+  const yDigits = $derived.by(() => {
+    const step = Math.abs(hi - lo) / 2;
+    let d = 0;
+    while (d < 2 && Math.abs(step * 10 ** d - Math.round(step * 10 ** d)) > 1e-6) d++;
+    return d;
+  });
   const spanDays = $derived((to - from) / 86_400_000);
   const evenTicks = $derived.by(() => {
     const n = cw < 520 ? 3 : 5;
     return Array.from({ length: n }, (_, i) => from + ((to - from) * i) / (n - 1));
   });
-  /** with "now": round marks (6 h, weekdays, every 7th day), none crowding another */
+  /** round marks (6 h, weekdays, every 7th day), none crowding another – always, not only with "now":
+   * evenly spaced marks fell on 20:37 or skipped days (Audit05 G5-02) */
   const roundTicks = $derived.by(() => {
-    if (now === undefined) return [];
     const out: { t: number; label: string }[] = [];
     for (const k of timeTicks(from, to, timeZone, {
       hour: (h) => t('axis.hour', { h: String(h) }),
@@ -150,9 +157,7 @@
 <svg bind:clientWidth={cw} viewBox="0 0 {VW} {VH}" role="img" aria-label={label}>
   {#each ticksY as v (v)}
     <line class="grid" x1={PAD.l} x2={VW - PAD.r} y1={Y(v)} y2={Y(v)} />
-    <text class="axis" x={PAD.l - 6} y={Y(v) + 4} text-anchor="end"
-      >{num(v, Math.abs(hi - lo) < 5 ? 1 : 0)}</text
-    >
+    <text class="axis" x={PAD.l - 6} y={Y(v) + 4} text-anchor="end">{num(v, yDigits)}</text>
   {/each}
   {#each ticksX as t0, i (i)}
     {#if roundTicks.length >= 2}

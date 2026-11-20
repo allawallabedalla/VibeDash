@@ -35,7 +35,9 @@ export function num(value: number, digits = 0): string {
   return new Intl.NumberFormat(current === 'de' ? 'de-DE' : 'en-GB', {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
-  }).format(value);
+  })
+    .format(value)
+    .replace('-', '−'); // a real minus, not a hyphen (Audit05 G5-14)
 }
 
 /** Local time of day, e.g. 02:10. */

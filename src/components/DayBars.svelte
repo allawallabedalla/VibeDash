@@ -24,9 +24,11 @@
       title="{labels[i]}: {v === null ? '–' : `${num(v, 1)} ${unit}`}"
     >
       <div class="col">
-        {#if v}
-          <span class="v">{num(v, Number.isInteger(v) || v >= 10 ? 0 : 1)}</span>
-          <span class="bar" style:height="{(100 * v) / max}%" style:background={color}></span>
+        {#if v !== null && v !== undefined}
+          <!-- 0 is a value, only null is a gap (Audit05 G5-04) -->
+          <span class="v">{num(v, Number.isInteger(v) || Math.abs(v) >= 10 ? 0 : 1)}</span>
+          <span class="bar" style:height="{(100 * Math.max(v, 0)) / max}%" style:background={color}
+          ></span>
         {:else}
           <span class="dash"></span>
         {/if}
