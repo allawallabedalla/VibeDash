@@ -30,7 +30,7 @@
   note={shares
     ? t('co.note', { n: shares.n, kwh: num(shares.kwh, 0) })
     : open
-      ? t('co.openOnly')
+      ? names[3]
       : t('co.none', { n: bars.length })}
 >
   {#if shares}
@@ -51,7 +51,7 @@
     unit="kWh"
     {partial}
     label={shares
-      ? t('co.aria', { sun: shares.sun, battery: shares.battery, grid: shares.grid })
+      ? `${t('co.title')}: ${shares.sun} % ${names[0]}, ${shares.battery} % ${names[1]}, ${shares.grid} % ${names[2]}`
       : t('co.title')}
   />
 </Card>

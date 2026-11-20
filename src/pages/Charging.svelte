@@ -263,7 +263,7 @@
     {#if planState.s === 'loading'}
       <p class="muted-note" role="status">{t('state.loading')}</p>
     {:else if planState.s === 'ready'}
-      <ChargePlan plan={planState.plan} {timeZone} />
+      <ChargePlan plan={planState.plan} {timeZone} now={currentData().now} />
     {:else if planState.s === 'collecting'}
       <Card title={t('plan.title')} icon="clock" color="var(--muted)">
         <p class="muted-note">
