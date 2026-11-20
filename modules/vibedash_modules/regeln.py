@@ -41,6 +41,8 @@ _EMOJI = re.compile(
     "⭕〰〽㊗㊙\U0001f000-\U0001fffd]"
 )
 # G-29: "only reads" claims are wrong next to buttons that switch (Audit05 P4-08, S4-01, DE4-04)
+# G-28: decimals only where they say something – three or more after the comma only behind ⓘ (Nutzer 20.11.2026)
+_VIELE_STELLEN = re.compile(r"(?<![\d.,])\d+,\d{3,}(?![\d.,])")
 _NUR_LESEN = re.compile(r"schaltet nichts|gesteuert wird nichts|switches nothing", re.IGNORECASE)
 # sections whose buttons switch something in the house (a choice is sent to the house's logic at once)
 SCHALT_TYPEN = ("choice",)
@@ -93,6 +95,8 @@ def pruefe(board: dict) -> list[str]:
         wo = _name(i, s)
         for pfad, text in _texte(s):
             out += [f"{wo} {pfad}: {v}" for v in pruefe_text(text)]
+            if ".info" not in f".{pfad}" and (m := _VIELE_STELLEN.search(text)):
+                out.append(f"{wo} {pfad}: „{m.group(0)}“ – mehr als 2 Nachkommastellen in der ersten Ebene (G-28)")
             # G-29: the option of a choice may describe itself ("Aus · VibeDash schaltet nichts")
             if schaltet and s.get("type") not in SCHALT_TYPEN and _NUR_LESEN.search(text):
                 out.append(
