@@ -56,6 +56,7 @@ if (existsSync(config.mappingPath)) {
     mapping: result.mapping,
     series: backends.series,
     daily: backends.daily,
+    dailyHoles: backends.dailyHoles,
     now: Date.now,
     log,
     cache: new Map(),

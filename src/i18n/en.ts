@@ -700,7 +700,7 @@ export const en: Record<MessageKey, string> = {
   'oday.readoutGap': '{time} · no readings',
   'oday.note': 'Tap to see a quarter hour. Usual = median of {n} days.',
   'oday.info.what':
-    'Consumption per quarter hour, stacked: sun directly, battery, grid. Grey strip on top: feed-in, own scale (number = kW). Faint from now: usual consumption, yellow part the sun as forecast; battery or grid for the rest is not forecast.',
+    'Consumption per quarter hour, stacked: sun directly, battery, grid. Grey strip on top: feed-in, its course only (own height, kWh in the legend). Faint from now: usual consumption, yellow part the sun as forecast; battery or grid for the rest is not forecast.',
   'oday.info.source':
     'Quarter-hour means of inverter, battery and grid power; sun first, then battery, rest grid. kWh summed from that (≈, the meter may differ). Gaps hatched, never 0. Usual: median per quarter hour, n = {n} days before today.',
   'bands.title': 'Where did the solar power go, where did the house power come from?',
@@ -718,9 +718,9 @@ export const en: Record<MessageKey, string> = {
   'cal.missingDays': '{n} days without reading',
   'cal.free': 'no grid (< 0.5 kWh)',
   'cal.missing': 'no reading',
-  'cal.dayGap': '{date} · no grid (over a reading gap)',
+  'cal.dayHole': '{date} · reading gap, unknown',
   'cal.info.what':
     'Box = day, column = week (Monday on top). Green: below 0.5 kWh from the grid. Lilac: kWh from the grid, darker = more. Grey: no value, not counted. Tap for the day.',
   'cal.info.source':
-    'Grid import meter, end of day minus the day before; implausible jumps stay grey. Over a gap of several days the meter keeps counting: below 0.5 kWh in total means all those days were without grid. The running day is missing.',
+    'Grid import meter, end of day minus the day before; implausible jumps stay grey. “No grid” only with readings at both day boundaries and no gap of 2 h or more, else grey (with a gap and 0.5 kWh or more: lilac, “≥”). The running day is missing.',
 };

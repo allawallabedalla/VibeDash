@@ -2,7 +2,9 @@
 import { haClient } from '../src/adapters/homeassistant';
 import { influxClient, type FetchLike, type InfluxResponse } from '../src/adapters/influx1';
 import { deriveCounter } from '../src/model/derive';
+import { daysWithHoles } from '../src/model/calendar';
 import { holdForward } from '../src/model/series';
+import { localDateKey } from '../src/model/time';
 import type { Series } from '../src/model/types';
 import type { ServerConfig } from './config';
 import { ENERGY_TO_KWH, POWER_TO_KW, sourcesOf, type Mapping, type SeriesMapping } from './mapping';
@@ -20,6 +22,8 @@ export function createBackends(
       ok: true;
       series: (m: SeriesMapping, from: number, to: number) => Promise<Series>;
       daily: (m: SeriesMapping, from: number, to: number) => Promise<DailyRow[]>;
+      /** local days (YYYY-MM-DD) on which the meter was silent for ≥ 2 full hours */
+      dailyHoles: (m: SeriesMapping, from: number, to: number) => Promise<string[]>;
       /** raw InfluxQL for read-only helpers (charging records); null without Influx */
       query: ((q: string) => Promise<InfluxResponse>) | null;
     }
@@ -125,11 +129,35 @@ export function createBackends(
     return out;
   };
 
+  /**
+   * Days on which the meter had no reading for at least two full hours (older
+   * days from `history`, like dailyOf): their difference is not trusted for
+   * "a day without grid" (Audit05 I-3).
+   */
+  const holesOf = async (m: SeriesMapping, from: number, to: number): Promise<string[]> => {
+    if (m.source !== 'influx' || m.entity.kind !== 'energy_counter') {
+      throw new Error('daily values only for Influx meters');
+    }
+    const tz = mapping.timeZone;
+    const main = await influx!.hourlyCount(m, from, to, tz);
+    const first = main.find((h) => h.v > 0)?.t ?? Infinity;
+    const older = m.history
+      ? (await influx!.hourlyCount(m.history, from, Math.min(to, first), tz)).filter(
+          (h) => h.t < first,
+        )
+      : [];
+    const all = [...older, ...main.filter((h) => h.t >= first)];
+    // before the first reading at all there is nothing to judge (no daily rows either)
+    const start = all.findIndex((h) => h.v > 0);
+    return start < 0 ? [] : daysWithHoles(all.slice(start), (t) => localDateKey(t, tz));
+  };
+
   return {
     ok: true,
     series: (m, from, to) =>
       m.source === 'derived' ? derived(m, from, to) : measured(m, from, to),
     daily: dailyOf,
+    dailyHoles: holesOf,
     query: influx ? influx.query : null,
   };
 }

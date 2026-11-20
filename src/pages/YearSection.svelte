@@ -9,7 +9,7 @@
   import Card from '../components/Card.svelte';
   import NoGridCalendar from '../components/NoGridCalendar.svelte';
   import YearCard from '../components/YearCard.svelte';
-  import { demoDaily, type DemoData, type YearKind } from '../demo';
+  import { demoDaily, demoHoles, type DemoData, type YearKind } from '../demo';
   import { i18n, num, t } from '../i18n/index.svelte';
   import { localDateKey, localMidnight } from '../model/time';
   import { yearLines } from '../model/year';
@@ -58,6 +58,8 @@
   /** [day end, energy or null, energy over a gap of days before it (counted by the meter)] */
   type Row = DailyRow;
   let rows = $state<Record<string, Row[]>>({});
+  /** days on which the import meter was silent for a while (unknown, not "without grid") */
+  let holes = $state<string[]>([]);
 
   onMount(async () => {
     const out: Record<string, Row[]> = {};
@@ -65,13 +67,18 @@
       const id = { pv: 'pv_energy', import: 'import_energy', feed: 'feed_in_energy' }[k];
       if (demo) {
         out[id] = demoDaily(k, house.now, tz);
+        if (k === 'import') holes = demoHoles(house.now, tz);
         continue;
       }
       try {
         const res = await fetch(`/api/daily/${id}?days=800`, {
           signal: AbortSignal.timeout(20_000),
         });
-        if (res.ok) out[id] = ((await res.json()) as { days: Row[] }).days;
+        if (res.ok) {
+          const body = (await res.json()) as { days: Row[]; holes?: string[] };
+          out[id] = body.days;
+          if (k === 'import') holes = body.holes ?? [];
+        }
       } catch {
         // no card for this one
       }
@@ -93,7 +100,9 @@
     if (!r?.length) return [];
     const yesterday = localDateKey(localMidnight(house.now, tz) - 12 * 3_600_000, tz);
     // at most the last 53 weeks: the question is about this year, not the whole history
-    return lastWeeks(calendarDays(r, (t0) => localDateKey(t0 + 12 * 3_600_000, tz), yesterday));
+    return lastWeeks(
+      calendarDays(r, (t0) => localDateKey(t0 + 12 * 3_600_000, tz), yesterday, new Set(holes)),
+    );
   });
 
   const cards = $derived(

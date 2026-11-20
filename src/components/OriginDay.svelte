@@ -23,8 +23,10 @@
   let width = $state(600);
   const L = 52;
   const R = 10;
-  const STRIP = 26;
-  const top = STRIP + 30; // feed strip, then room for "jetzt"
+  // feed-in strip with its own word above it, base line at STRIP; then room for "jetzt"
+  const STRIP_TOP = 24;
+  const STRIP = STRIP_TOP + 20;
+  const top = STRIP + 34;
   const bottom = $derived(top + height);
   const total = $derived(bottom + 26);
 
@@ -73,10 +75,11 @@
   const fcSunArea = $derived(day.forecast?.withSun ? areas(day.forecast.sun, yAt, bottom) : []);
   const fcLine = $derived(day.forecast ? lines(day.forecast.load, yAt) : []);
 
-  // feed-in strip: own scale, grows upwards from its base line
+  // feed-in strip: only its course (own height, no kW scale beside the main axis;
+  // the kWh stand in the legend), grows upwards from its base line
   const feedPeak = $derived(Math.max(0, ...day.slots.feed.map((v) => v ?? 0)));
   const feedMax = $derived(niceScale(Math.max(feedPeak, 0.5)).max);
-  const feedY = (v: number) => STRIP - (v / feedMax) * (STRIP - 2);
+  const feedY = (v: number) => STRIP - (v / feedMax) * (STRIP - STRIP_TOP);
   const feedArea = $derived(feedPeak > 0 ? areas(day.slots.feed, feedY, STRIP) : []);
 
   // past slots without values: soft hatched gaps, never bridged
@@ -215,12 +218,10 @@
         </pattern>
       </defs>
 
-      <!-- feed-in strip on top, own scale -->
+      <!-- feed-in strip on top, apart from the main axis: a word instead of a scale -->
+      <text class="axis feed-label" x={L} y={STRIP_TOP - 8}>{t('flow.feedIn')}</text>
       <line class="base" x1={L} x2={width - R} y1={STRIP} y2={STRIP} />
       {#each feedArea as d, i (i)}<path {d} class="feed" />{/each}
-      {#if feedPeak > 0}
-        <text class="axis feed-label" x={L - 6} y={STRIP} text-anchor="end">{num(feedMax)} kW</text>
-      {/if}
 
       {#each yMarks as v (v)}
         <line class="grid" x1={L} x2={width - R} y1={yAt(v)} y2={yAt(v)} />

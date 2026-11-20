@@ -70,6 +70,8 @@ export interface ApiDeps {
   board?: (b: BoardMapping) => Promise<Board | null>;
   /** Daily energy of a meter, [local day start, kWh or null]. */
   daily?: (m: SeriesMapping, fromMs: number, toMs: number) => Promise<DailyRow[]>;
+  /** Local days (YYYY-MM-DD) on which a meter was silent ≥ 2 h (unknown, not 0). */
+  dailyHoles?: (m: SeriesMapping, fromMs: number, toMs: number) => Promise<string[]>;
   now: () => number;
   log: (msg: string) => void;
   /**
@@ -814,7 +816,11 @@ export async function handleApi(
       const now = deps.now();
       try {
         const rows = await daily(m, now - days * 86_400_000, now);
-        return json(200, { name, unit: 'kWh', days: rows });
+        // days with a silent meter: optional, without them the rows still count
+        const holes = deps.dailyHoles
+          ? await deps.dailyHoles(m, now - days * 86_400_000, now).catch(() => null)
+          : null;
+        return json(200, { name, unit: 'kWh', days: rows, ...(holes ? { holes } : {}) });
       } catch (err) {
         const e = err as Error;
         if (e.name === 'TimeoutError' || e.name === 'AbortError')

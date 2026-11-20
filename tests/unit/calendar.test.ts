@@ -3,6 +3,7 @@ import {
   calendarCounts,
   calendarDays,
   calendarWeeks,
+  daysWithHoles,
   lastWeeks,
   levelOf,
   type DailyRow,
@@ -29,24 +30,44 @@ describe('calendar of days without grid (Audit05 I-3)', () => {
     expect(days.map((d) => d.level)).toEqual([0, 2, -1, -1, 4]);
   });
 
-  it('over a gap the meter total decides: below 0.5 kWh all those days were free', () => {
+  it('a gap of whole days stays unknown, even with a small meter total', () => {
     const rows: DailyRow[] = [
       [at('2026-03-02'), 1],
-      [at('2026-03-05'), null, 0.3], // three days, 0.3 kWh in total
-      [at('2026-03-08'), null, 4], // three days, 4 kWh: unknown per day
+      [at('2026-03-05'), null, 0.3], // three days without readings, 0.3 kWh in total
     ];
-    const days = calendarDays(rows, key, '2026-03-08');
-    expect(days.map((d) => d.state)).toEqual([
-      'grid',
-      'free',
-      'free',
-      'free',
-      'missing',
-      'missing',
-      'missing',
-    ]);
-    expect(days[1]!.overGap).toBe(true);
-    expect(days[1]!.kwh).toBeNull();
+    const days = calendarDays(rows, key, '2026-03-05');
+    expect(days.map((d) => d.state)).toEqual(['grid', 'missing', 'missing', 'missing']);
+    expect(calendarCounts(days)).toEqual({ free: 0, known: 1, missing: 3 });
+  });
+
+  it('a day with a silent meter is never "without grid"; with ≥ 0.5 kWh it is grid (lower bound)', () => {
+    const rows: DailyRow[] = [
+      [at('2026-03-02'), 0.1],
+      [at('2026-03-03'), 0.1], // hole that day
+      [at('2026-03-04'), 2.4], // hole too, but grid for sure
+    ];
+    const days = calendarDays(rows, key, '2026-03-04', new Set(['2026-03-03', '2026-03-04']));
+    expect(days.map((d) => d.state)).toEqual(['free', 'missing', 'grid']);
+    expect(days[1]!.hole).toBe(true);
+    expect(days[2]!.hole).toBe(true);
+    expect(calendarCounts(days)).toEqual({ free: 1, known: 2, missing: 1 });
+  });
+
+  it('hole days from readings per hour: ≥ 2 empty hours, or no reading at a day boundary', () => {
+    const H = 3_600_000;
+    const hours = (day: string, empty: number[]) =>
+      Array.from({ length: 24 }, (_, h) => ({
+        t: Date.parse(`${day}T00:00:00Z`) + h * H,
+        v: empty.includes(h) ? 0 : 60,
+      }));
+    const hourly = [
+      ...hours('2026-03-01', [3]), // one empty hour: still clean
+      ...hours('2026-03-02', [10, 11]), // two empty hours: hole
+      ...hours('2026-03-03', [23]), // no reading at the end of the day
+      ...hours('2026-03-04', []), // its start boundary is missing → hole too
+      ...hours('2026-03-05', []),
+    ];
+    expect(daysWithHoles(hourly, key)).toEqual(['2026-03-02', '2026-03-03', '2026-03-04']);
   });
 
   it('the running day is left out', () => {

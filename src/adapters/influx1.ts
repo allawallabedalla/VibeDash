@@ -104,6 +104,22 @@ export function dailyLastQuery(
   return `SELECT LAST(${ident(m.field)}) FROM ${src} WHERE ${where.join(' AND ')} GROUP BY time(1d) tz(${literal(timeZone)})`;
 }
 
+/**
+ * Readings per local hour (empty hours = 0): shows where a meter was silent
+ * inside a day (Audit05 I-3: such a day is unknown, not "without grid").
+ */
+export function hourlyCountQuery(
+  m: { measurement: string; field: string; tags?: Record<string, string>; validBelow?: number },
+  fromMs: number,
+  toMs: number,
+  timeZone: string,
+  rp?: string,
+): string {
+  return dailyLastQuery(m, fromMs, toMs, timeZone, rp)
+    .replace(/^SELECT LAST\(/, 'SELECT COUNT(')
+    .replace(/GROUP BY time\(1d\)/, 'GROUP BY time(1h) fill(0)');
+}
+
 /** Last value at or before `atMs` (for "now" tiles). */
 export function lastQuery(m: InfluxMapping, atMs: number, rp?: string): string {
   const where = [
@@ -229,6 +245,17 @@ export function influxClient(config: InfluxConfig, fetchFn: FetchLike, timeoutMs
     ) {
       const res = await query(dailyLastQuery(m, fromMs, toMs, timeZone, config.retentionPolicy));
       return parseSamples(res, m.scale);
+    },
+    /** Readings per local hour, empty hours 0 (see hourlyCountQuery). */
+    async hourlyCount(
+      m: { measurement: string; field: string; tags?: Record<string, string>; validBelow?: number },
+      fromMs: number,
+      toMs: number,
+      timeZone: string,
+    ) {
+      return parseSamples(
+        await query(hourlyCountQuery(m, fromMs, toMs, timeZone, config.retentionPolicy)),
+      );
     },
     async measurements(): Promise<string[]> {
       return parseList(await query(inventory.measurements()));

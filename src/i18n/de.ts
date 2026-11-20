@@ -709,7 +709,7 @@ export const de = {
   'oday.readoutGap': '{time} · keine Messwerte',
   'oday.note': 'Antippen zeigt eine Viertelstunde. Üblich = Median aus {n} Tagen.',
   'oday.info.what':
-    'Verbrauch je Viertelstunde, gestapelt: Sonne direkt, Akku, Netz. Grauer Streifen oben: Einspeisung, eigene Skala (Zahl = kW). Ab jetzt blass: üblicher Verbrauch, gelb davon die Sonne laut Prognose; Akku oder Netz für den Rest sagt sie nicht voraus.',
+    'Verbrauch je Viertelstunde, gestapelt: Sonne direkt, Akku, Netz. Grauer Streifen oben: Einspeisung, nur ihr Verlauf (eigene Höhe, kWh in der Legende). Ab jetzt blass: üblicher Verbrauch, gelb davon die Sonne laut Prognose; Akku oder Netz für den Rest sagt sie nicht voraus.',
   'oday.info.source':
     'Viertelstunden-Mittel der Leistung von Wechselrichter, Akku und Netz; erst Sonne, dann Akku, Rest Netz. kWh daraus summiert (≈, Zähler kann abweichen). Lücken schraffiert, nie 0. Üblich: Median je Viertelstunde, n = {n} Tage vor heute.',
   'bands.title': 'Wohin ging der Sonnenstrom, woher kam der Hausstrom?',
@@ -727,11 +727,11 @@ export const de = {
   'cal.missingDays': '{n} Tage ohne Messung',
   'cal.free': 'ohne Netz (< 0,5 kWh)',
   'cal.missing': 'keine Messung',
-  'cal.dayGap': '{date} · ohne Netz (über Messlücke)',
+  'cal.dayHole': '{date} · Messlücke, unbekannt',
   'cal.info.what':
     'Kästchen = Tag, Spalte = Woche (oben Montag). Grün: unter 0,5 kWh aus dem Netz. Lila: kWh aus dem Netz, dunkler = mehr. Grau: kein Wert, zählt nicht mit. Antippen zeigt den Tag.',
   'cal.info.source':
-    'Netzbezug-Zähler, Tagesende minus Vortag; unplausible Sprünge bleiben grau. Über eine Lücke von mehreren Tagen zählt der Zähler weiter: unter 0,5 kWh insgesamt heißt, alle diese Tage waren ohne Netz. Der laufende Tag fehlt.',
+    'Netzbezug-Zähler, Tagesende minus Vortag; unplausible Sprünge bleiben grau. „Ohne Netz“ nur mit Zählerwert an beiden Tagesgrenzen und ohne Lücke ab 2 h am Tag, sonst grau (mit Lücke und ab 0,5 kWh: lila, „≥“). Der laufende Tag fehlt.',
 } as const;
 
 export type MessageKey = keyof typeof de;

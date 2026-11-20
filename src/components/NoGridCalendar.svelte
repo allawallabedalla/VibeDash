@@ -56,7 +56,7 @@
   const fill = (d: CalendarDay) =>
     d.state === 'free' ? 'var(--good)' : d.state === 'grid' ? 'var(--import)' : `url(#${uid}-gap)`;
   const opacity = (d: CalendarDay) =>
-    d.state === 'free' ? (d.overGap ? 0.55 : 0.85) : d.state === 'grid' ? OPACITY[d.level - 1] : 1;
+    d.state === 'free' ? 0.85 : d.state === 'grid' ? OPACITY[d.level - 1] : 1;
 
   let picked = $state<CalendarDay | null>(null);
   const dateText = (key: string) =>
@@ -71,9 +71,9 @@
     const d = picked;
     if (!d) return '';
     const date = dateText(d.key);
+    if (d.hole && d.state === 'missing') return t('cal.dayHole', { date });
     if (d.state === 'missing') return `${date} · ${t('cal.missing')}`;
-    if (d.overGap) return t('cal.dayGap', { date });
-    return `${date} · ${kwh(d.kwh!)} kWh${d.state === 'free' ? ` · ${t('cal.free')}` : ''}`;
+    return `${date} · ${d.hole ? '≥ ' : ''}${kwh(d.kwh!)} kWh${d.state === 'free' ? ` · ${t('cal.free')}` : ''}`;
   });
   // "27.3.–19.11.", with the year when the days reach into another year
   const span = $derived.by(() => {

@@ -4,9 +4,10 @@
  * maxPerDay is null, a dip is dropped) laid out as a calendar, weeks × weekday.
  *
  * Days without a value stay "missing" (grey) – never 0 (ANLEITUNG section 6).
- * Over a gap of days the meter kept counting: if that whole amount is below the
- * threshold, every day in it was below it too (counted, marked "over gap");
- * otherwise those days stay missing.
+ * "Without grid" needs a clean day: meter readings at both day boundaries and
+ * no silence of 2 h or more inside the day. A day with such a hole and a small
+ * difference is unknown; with ≥ 0.5 kWh the grid was used for sure (a lower
+ * bound). A gap of whole days stays unknown, even if the meter total is small.
  */
 export type DailyRow = [number, number | null] | [number, null, number];
 
@@ -16,10 +17,10 @@ export interface CalendarDay {
   /** local date YYYY-MM-DD */
   key: string;
   state: DayState;
-  /** kWh from the grid; null if unknown (missing, or only known over a gap) */
+  /** kWh from the grid; null if unknown */
   kwh: number | null;
-  /** counted from the meter over a gap of days */
-  overGap?: boolean;
+  /** the meter was silent for a while that day: kWh is uncertain (grid: at least this much) */
+  hole?: boolean;
   /** 0 = free, 1–4 = grid steps (see GRID_STEPS) */
   level: number;
 }
@@ -48,29 +49,26 @@ export function calendarDays(
   rows: readonly DailyRow[],
   dayKey: (t: number) => string,
   lastKey: string,
+  holes: ReadonlySet<string> = new Set(),
   free = FREE_BELOW_KWH,
 ): CalendarDay[] {
   const byKey = new Map<string, CalendarDay>();
-  let prevKey: string | null = null;
   for (const r of rows) {
     const key = dayKey(r[0]);
-    if (key > lastKey) continue;
-    if (r[1] !== null) {
-      byKey.set(key, {
-        key,
-        state: r[1] < free ? 'free' : 'grid',
-        kwh: r[1],
-        level: levelOf(r[1], free),
-      });
-    } else if (r.length === 3 && prevKey && r[2] < free) {
-      // the meter counted less than the threshold over the whole gap
-      for (let t = noonOf(prevKey) + DAY; t <= noonOf(key); t += DAY) {
-        const k = keyOf(t);
-        if (!byKey.has(k))
-          byKey.set(k, { key: k, state: 'free', kwh: null, overGap: true, level: 0 });
-      }
+    if (key > lastKey || r[1] === null) continue;
+    const hole = holes.has(key);
+    // a small difference over a silent stretch proves nothing: unknown
+    if (hole && r[1] < free) {
+      byKey.set(key, { key, state: 'missing', kwh: null, hole, level: -1 });
+      continue;
     }
-    prevKey = key;
+    byKey.set(key, {
+      key,
+      state: r[1] < free ? 'free' : 'grid',
+      kwh: r[1],
+      level: levelOf(r[1], free),
+      ...(hole ? { hole } : {}),
+    });
   }
   const first = rows.length ? dayKey(rows[0]![0]) : null;
   if (!first || first > lastKey) return [];
@@ -80,6 +78,35 @@ export function calendarDays(
     out.push(byKey.get(k) ?? { key: k, state: 'missing', kwh: null, level: -1 });
   }
   return out;
+}
+
+/**
+ * Local days without clean meter readings, from readings per hour (empty hour
+ * = 0, oldest first): a silence of ≥ `minEmpty` full hours inside the day, or
+ * no reading in the last hour of the day or of the day before (a missing day
+ * boundary shifts energy between the two days).
+ */
+export function daysWithHoles(
+  hourly: readonly { t: number; v: number }[],
+  dayKey: (t: number) => string,
+  minEmpty = 2,
+): string[] {
+  const days: { key: string; run: number; lastEmpty: boolean }[] = [];
+  let run = 0;
+  for (const h of hourly) {
+    const key = dayKey(h.t);
+    if (days.at(-1)?.key !== key) {
+      days.push({ key, run: 0, lastEmpty: false });
+      run = 0;
+    }
+    const d = days.at(-1)!;
+    run = h.v > 0 ? 0 : run + 1;
+    d.run = Math.max(d.run, run);
+    d.lastEmpty = h.v <= 0;
+  }
+  return days
+    .filter((d, i) => d.run >= minEmpty || d.lastEmpty || (i > 0 && days[i - 1]!.lastEmpty))
+    .map((d) => d.key);
 }
 
 /** Days without grid, days with a known state, days without a value. */

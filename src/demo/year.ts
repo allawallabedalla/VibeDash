@@ -3,7 +3,7 @@
  * chart shows a current and an earlier year. Synthetic, not measured.
  */
 import type { DailyRow } from '../model/calendar';
-import { addDays, localMidnight } from '../model/time';
+import { addDays, localDateKey, localMidnight } from '../model/time';
 import { mulberry32 } from './random';
 
 export type YearKind = 'pv' | 'import' | 'feed';
@@ -33,4 +33,10 @@ export function demoDaily(kind: YearKind, now: number, timeZone: string, days = 
     else out.push([start, day]);
   }
   return out;
+}
+
+/** Made-up days on which the demo import meter was silent for a few hours. */
+export function demoHoles(now: number, timeZone: string): string[] {
+  const today = localMidnight(now, timeZone);
+  return [20, 33].map((k) => localDateKey(addDays(today, -k, timeZone) + 12 * 3_600_000, timeZone));
 }
