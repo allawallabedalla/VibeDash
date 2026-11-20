@@ -680,6 +680,16 @@ export function validateMapping(
       ) {
         errors.push(`${at}.plan.span: "quantiles" or "cautious-good"`);
       }
+      // origin: three daily series (sun, battery, grid) of the car's energy (Audit05 I-2)
+      const og = c.origin;
+      const ogOk =
+        isObj(og) &&
+        (['sun', 'battery', 'grid'] as const).every(
+          (k) => typeof og[k] === 'string' && Object.hasOwn(series, og[k]),
+        );
+      if (og !== undefined && !ogOk) {
+        errors.push(`${at}.origin: { sun, battery, grid } as names of series in mapping.series`);
+      }
       const opt = (k: string) => (isText(sess[k]) ? { [k]: String(sess[k]) } : {});
       charging = {
         sessions: {
@@ -695,6 +705,15 @@ export function validateMapping(
         ...(typeof c.maxKw === 'number' ? { maxKw: c.maxKw } : {}),
         ...(isObj(c.sources) ? { sources: c.sources as Record<string, Starter> } : {}),
         ...(typeof c.gridMeter === 'string' ? { gridMeter: c.gridMeter } : {}),
+        ...(ogOk
+          ? {
+              origin: {
+                sun: String(og.sun),
+                battery: String(og.battery),
+                grid: String(og.grid),
+              },
+            }
+          : {}),
         ...(isObj(plan)
           ? {
               plan: {

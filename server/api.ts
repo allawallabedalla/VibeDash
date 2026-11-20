@@ -11,7 +11,7 @@ import {
   type Location,
   type WeatherDay,
 } from '../src/adapters/openmeteo';
-import type { ChargeSession, ChargingNow, PlanSummary } from './charging';
+import type { ChargeSession, ChargingNow, OriginDay, PlanSummary } from './charging';
 import type { ResolvedLocation } from './location';
 import { thinBefore } from '../src/model/series';
 import type { Series } from '../src/model/types';
@@ -65,6 +65,8 @@ export interface ApiDeps {
     now: () => Promise<ChargingNow>;
     sessions: (days: number) => Promise<ChargeSession[]>;
     plan: () => Promise<PlanSummary | null>;
+    /** the car's energy per day by origin (mapping.charging.origin), oldest first */
+    origin?: (days: number) => Promise<OriginDay[]>;
   };
   /** A board's content from its house service, checked (src/model/board.ts). */
   board?: (b: BoardMapping) => Promise<Board | null>;
@@ -753,13 +755,20 @@ export async function handleApi(
     const days = Number(url.searchParams.get('days') ?? '31');
     if (!Number.isInteger(days) || days < 1 || days > 400) return json(400, { error: 'bad_days' });
     try {
-      const [now, sessions, plan] = await Promise.all([
+      const [now, sessions, plan, origin] = await Promise.all([
         deps.charging.now(),
         deps.charging.sessions(days),
         deps.charging.plan().catch((e: Error) => {
           deps.log(`charging plan: ${e.message}`);
           return null;
         }),
+        // without the origin the page shows one colour – a failure here never breaks the page
+        deps.charging.origin
+          ? deps.charging.origin(days).catch((e: Error) => {
+              deps.log(`charging origin: ${e.message}`);
+              return null;
+            })
+          : Promise.resolve(null),
       ]);
       const c = deps.mapping.charging;
       return json(200, {
@@ -769,6 +778,7 @@ export async function handleApi(
         maxKw: c?.maxKw ?? null,
         powerSeries: c?.power ?? null,
         span: c?.plan?.span ?? null,
+        ...(origin ? { origin } : {}),
       });
     } catch (err) {
       const e = err as Error;

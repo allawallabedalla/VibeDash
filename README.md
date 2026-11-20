@@ -265,7 +265,8 @@ Without evcc, the **Charging** tab can read the house's own charge records from 
                { "kwh": "tomorrowKwh", "low": "tomorrowLow", "high": "tomorrowHigh" }],
       "blocks": { "start": "start", "end": "end", "amps": "amps", "kwh": "kwh", "reason": "reason" }
     }
-  }
+  },
+  "origin": { "sun": "car_sun", "battery": "car_battery", "grid": "car_grid" }
 }
 ```
 
@@ -277,6 +278,10 @@ Without evcc, the **Charging** tab can read the house's own charge records from 
 - `plan.fields`: JSON keys of the planner's summary and blocks (times in ms); left out = the
   generic names above. `plan.span` says what `low`/`high` are: `"quantiles"` = a 10–90 % range,
   `"cautious-good"` = the cautious plan and what good weather allows on top.
+- `origin` (optional): three series in `series` (kind `energy`, unit kWh, one value per local day
+  stamped at the day start, best with `"helper": true`) – how much of the car's energy came from
+  the sun, the house battery and the grid that day. Then the daily bars are stacked
+  sun/battery/grid with a 30-day share line; without it they stay one colour.
 
 ## evcc (charging)
 

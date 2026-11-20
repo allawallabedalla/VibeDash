@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { chargeSessions, parsePlan } from '../../server/charging';
+import { chargeSessions, originDays, parsePlan } from '../../server/charging';
+import { validateMapping } from '../../server/mapping';
 
 const m = {
   sessions: {
@@ -104,5 +105,62 @@ describe('car charging from house records (read-only)', () => {
     expect(parsePlan('kaputt', [])).toBeNull();
     // without fields: the generic names
     expect(parsePlan({ text: 'x', todayKwh: 3 }, [])!.days[0]!.kwh).toBe(3);
+  });
+
+  it('puts the car energy by origin side by side per day; a missing day stays null (I-2)', () => {
+    const D = 86_400_000;
+    const rows = originDays(
+      [
+        { t: 0, v: 10 },
+        { t: D, v: 0 },
+      ],
+      [
+        { t: 0, v: 2.004 },
+        { t: D, v: -1 },
+      ],
+      [{ t: 0, v: 5 }],
+    );
+    expect(rows).toEqual([
+      { day: 0, sun: 10, battery: 2, grid: 5 },
+      // 0 is a value; a read error (−1) and a missing grid day are gaps
+      { day: D, sun: 0, battery: null, grid: null },
+    ]);
+  });
+
+  it('accepts the origin series only when all three are mapped (I-2)', () => {
+    const day = (field: string) => ({
+      name: field,
+      kind: 'energy',
+      unit: 'kWh',
+      measurement: 'tag',
+      field,
+      stepMs: 86_400_000,
+      helper: true,
+    });
+    const base = {
+      timeZone: 'UTC',
+      series: { car_sun: day('pv'), car_battery: day('akku'), car_grid: day('netz') },
+      charging: { sessions: { measurement: 'ladung', energy: 'kwh', running: 'laeuft' } },
+    };
+    const ok = validateMapping({
+      ...base,
+      charging: {
+        ...base.charging,
+        origin: { sun: 'car_sun', battery: 'car_battery', grid: 'car_grid' },
+      },
+    });
+    expect(ok.ok && ok.mapping.charging?.origin).toEqual({
+      sun: 'car_sun',
+      battery: 'car_battery',
+      grid: 'car_grid',
+    });
+    const bad = validateMapping({
+      ...base,
+      charging: { ...base.charging, origin: { sun: 'car_sun', battery: 'nope', grid: 'car_grid' } },
+    });
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) expect(bad.errors.join()).toContain('mapping.charging.origin');
+    const none = validateMapping(base);
+    expect(none.ok && none.mapping.charging?.origin).toBeUndefined();
   });
 });
