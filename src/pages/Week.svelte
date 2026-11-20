@@ -8,8 +8,8 @@
   import Card from '../components/Card.svelte';
   import DayBars from '../components/DayBars.svelte';
   import DayRanges from '../components/DayRanges.svelte';
-  import FlowBars from '../components/FlowBars.svelte';
   import RoomRanges from '../components/RoomRanges.svelte';
+  import ShareBands, { type Band } from '../components/ShareBands.svelte';
   import SoftTimeSeries from '../components/SoftTimeSeries.svelte';
   import Tile, { type TileProps } from '../components/Tile.svelte';
   import TileRow from '../components/TileRow.svelte';
@@ -139,48 +139,56 @@
   // Where the solar power went and where the house power came from (week sums).
   const f = $derived(w.flows);
   const est = $derived(f?.source === 'power');
-  const whereTo = $derived([
+  const bands = $derived<Band[]>([
     {
-      label: t('week.toHouse'),
-      value: f?.direct ?? null,
-      color: 'var(--sun-soft)',
-      textColor: 'var(--sun-text)',
-      approx: est,
+      label: t('bands.sun'),
+      segments: [
+        {
+          label: t('bands.toHouse'),
+          value: f?.direct ?? null,
+          color: 'var(--sun)',
+          textColor: 'var(--sun-text)',
+          approx: est,
+        },
+        {
+          label: t('bands.toBattery'),
+          value: f?.charged ?? null,
+          color: 'var(--battery)',
+          textColor: 'var(--good-text)',
+          approx: est,
+        },
+        {
+          label: t('bands.toGrid'),
+          value: f?.feed ?? null,
+          color: 'var(--feed)',
+          textColor: 'var(--feed-text)',
+        },
+      ],
     },
     {
-      label: t('week.toBattery'),
-      value: f?.charged ?? null,
-      color: 'var(--battery)',
-      textColor: 'var(--good-text)',
-      approx: est,
-    },
-    {
-      label: t('week.toGrid'),
-      value: f?.feed ?? null,
-      color: 'var(--feed)',
-      textColor: 'var(--feed-text)',
-    },
-  ]);
-  const whereFrom = $derived([
-    {
-      label: t('week.fromSun'),
-      value: f?.direct ?? null,
-      color: 'var(--sun-soft)',
-      textColor: 'var(--sun-text)',
-      approx: est,
-    },
-    {
-      label: t('week.fromBattery'),
-      value: f?.discharged ?? null,
-      color: 'var(--battery)',
-      textColor: 'var(--good-text)',
-      approx: est,
-    },
-    {
-      label: t('week.fromGrid'),
-      value: f?.imp ?? null,
-      color: 'var(--import)',
-      textColor: 'var(--import-text)',
+      label: t('bands.house'),
+      segments: [
+        {
+          label: t('oday.sun'),
+          value: f?.direct ?? null,
+          color: 'var(--sun)',
+          textColor: 'var(--sun-text)',
+          approx: est,
+        },
+        {
+          label: t('bands.fromBattery'),
+          value: f?.discharged ?? null,
+          color: 'var(--battery)',
+          textColor: 'var(--good-text)',
+          approx: est,
+        },
+        {
+          label: t('bands.fromGrid'),
+          value: f?.imp ?? null,
+          color: 'var(--import)',
+          textColor: 'var(--import-text)',
+        },
+      ],
     },
   ]);
   const flowNote = $derived(
@@ -267,27 +275,18 @@
         <RoomRanges {rooms} label={t('week.rooms')} />
       </Card>
     {/if}
-    <div class="stack">
-      <Card title={t('week.whereTo')} icon="sun" color="var(--sun)">
-        <FlowBars flows={whereTo} />
+    {#if f}
+      <Card
+        title={t('bands.title')}
+        icon="sun"
+        color="var(--sun)"
+        note={f.n < 7 ? t('week.days', { n: f.n }) : undefined}
+        info={{ what: t('bands.info'), source: flowNote }}
+      >
+        <ShareBands {bands} label={t('bands.title')} />
       </Card>
-      <Card title={t('week.whereFrom')} icon="home" color="var(--home)">
-        <FlowBars flows={whereFrom} />
-      </Card>
-    </div>
+    {:else}
+      <p class="muted-note">{flowNote}</p>
+    {/if}
   </div>
-  <p class="muted-note">{flowNote}</p>
 </div>
-
-<style>
-  .stack {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  @media (max-width: 600px) {
-    .stack {
-      gap: 10px;
-    }
-  }
-</style>
