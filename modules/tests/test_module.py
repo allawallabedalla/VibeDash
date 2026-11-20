@@ -146,7 +146,11 @@ class TestHttp(unittest.TestCase):
 
     def test_routes(self):
         st, _, body = self.get("/gesund")
-        self.assertEqual((st, json.loads(body)["modules"]), (200, ["wartung"]))
+        self.assertEqual((st, json.loads(body)["modules"], json.loads(body)["ok"]), (200, ["wartung"], True))
+        _write(os.path.join(self.base, "updates.json"), [])  # broken config: not healthy any more
+        g = json.loads(self.get("/gesund")[2])
+        self.assertEqual((g["ok"], list(g["errors"])), (False, ["updates"]))
+        os.remove(os.path.join(self.base, "updates.json"))
         st, _, body = self.get("/board/wartung")
         self.assertEqual(st, 200)
         self.assertIn("sections", json.loads(body))

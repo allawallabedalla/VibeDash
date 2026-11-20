@@ -1,6 +1,6 @@
 """HTTP service of the VibeDash modules (stdlib only). Only the VibeDash server talks to it.
 
-  GET  /gesund                        {ok, modules, errors}
+  GET  /gesund                        {ok, modules, errors}; ok only without broken configs
   GET  /board/<module>                board JSON (src/model/board.ts)
   POST /board/<module>/action         {board, item, action, text?, date?}; header X-VibeDash-Action: 1
   POST /board/<module>/calc           {board, value} (calculator section); header X-VibeDash-Action: 1
@@ -60,7 +60,8 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if path == "/gesund":
                 m = self._mods()
-                return self._send(200, {"ok": True, "modules": sorted(m["modules"]), "errors": m["errors"]})
+                # a broken module config is not healthy: release.sh must not switch to it (Audit05 B4-02)
+                return self._send(200, {"ok": not m["errors"], "modules": sorted(m["modules"]), "errors": m["errors"]})
             parts = path.strip("/").split("/")
             if len(parts) == 2 and parts[0] == "board" and NAME.match(parts[1]):
                 b = board_of(self._mods(), parts[1])
