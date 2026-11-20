@@ -27,6 +27,7 @@
         signed?: boolean;
         band?: { low: (number | null)[]; high: (number | null)[] };
         min?: number;
+        max?: number;
         /** time (ms) of the first and the last value – the enlarged view shows a time axis and "now" */
         span?: { from: number; to: number };
         /** named steps on the value axis in the enlarged view, e.g. 0 nobody / 2 someone */
@@ -180,6 +181,7 @@
             signed={graphic.signed}
             band={graphic.band}
             min={graphic.min}
+            max={graphic.max}
             height={40}
             {label}
           />

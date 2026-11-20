@@ -59,7 +59,11 @@
     const v = history.filter((x): x is number => x !== null);
     if (v.length < 2) return null;
     const d = v[v.length - 1]! - v[Math.max(0, v.length - 3)]!;
-    if (Math.abs(d) < 3) return { text: t('acc.same'), cls: '' };
+    // only a change larger than the noise of two shares from n days is a trend (≈ 2 SE of a difference;
+    // 14 points at n = 22 were noise, Audit05 G5-13)
+    const p = (given ?? 50) / 100;
+    const noise = n > 0 ? 100 * 2 * Math.sqrt((2 * p * (1 - p)) / n) : Infinity;
+    if (Math.abs(d) < Math.max(3, noise)) return { text: t('acc.same'), cls: '' };
     return d > 0
       ? { text: t('acc.better', { d: num(d) }), cls: 'up' }
       : { text: t('acc.worse', { d: num(-d) }), cls: 'down' };

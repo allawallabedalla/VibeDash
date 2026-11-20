@@ -32,12 +32,14 @@
 >
   <ul class="legend">
     <li>
-      <span class="key" style:color="var(--import)"></span>{t('spark.gridImport', {
-        v: kwh(importKwh),
-      })}
+      <span class="key" style:color="var(--import)"></span>{importKwh === null
+        ? `${t('word.import')} –`
+        : t('spark.gridImport', { v: kwh(importKwh) })}
     </li>
     <li>
-      <span class="key" style:color="var(--feed)"></span>{t('spark.gridFeed', { v: kwh(feedKwh) })}
+      <span class="key" style:color="var(--feed)"></span>{feedKwh === null
+        ? `${t('word.feed')} –`
+        : t('spark.gridFeed', { v: kwh(feedKwh) })}
     </li>
   </ul>
   <Sparkline {values} signed color="var(--feed)" {height} label={t('spark.grid')} />
