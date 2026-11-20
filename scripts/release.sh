@@ -123,6 +123,21 @@ if [ "${VIBEDASH_RELEASE_ANY:-}" != 1 ]; then
   git fetch -q "$main" main || { echo "cannot read main ($main) – VIBEDASH_RELEASE_ANY=1 to go live anyway" >&2; exit 1; }
   git merge-base --is-ancestor HEAD FETCH_HEAD || {
     echo "$(git rev-parse --short HEAD) is not on main – merge first (or VIBEDASH_RELEASE_ANY=1)" >&2; exit 1; }
+  # and its CI must be green (Audit05 B4-03: a release once went live while its CI turned red).
+  # Without the GitHub CLI this step is skipped with a note (e.g. a house without it).
+  if command -v gh >/dev/null 2>&1; then
+    slug="$(echo "$main" | sed -E 's#^https://github.com/##; s#\.git$##')"
+    runs="$(gh api "repos/$slug/commits/$(git rev-parse HEAD)/check-runs" \
+      --jq '[.check_runs[] | select(.status != "completed" or (.conclusion | IN("success","skipped","neutral") | not))] | length' \
+      2>/dev/null)" || runs=""
+    total="$(gh api "repos/$slug/commits/$(git rev-parse HEAD)/check-runs" --jq '.total_count' 2>/dev/null)" || total=""
+    if [ -z "$runs" ] || [ -z "$total" ] || [ "$total" = 0 ] || [ "$runs" != 0 ]; then
+      echo "CI for $(git rev-parse --short HEAD) is not green (yet) – wait for it (or VIBEDASH_RELEASE_ANY=1)" >&2
+      exit 1
+    fi
+  else
+    echo "note: gh not installed – CI state not checked" >&2
+  fi
 fi
 id="$(git rev-parse --short HEAD)-$(date +%Y%m%d%H%M%S)"
 tmp="$(mktemp -d "$HOME_DIR/releases/.build-XXXXXX")"
