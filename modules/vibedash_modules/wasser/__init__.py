@@ -8,6 +8,8 @@ Config (local/modules/wasser.json, template modules/templates/wasser.json):
   quelle    optional address of the radio base station (ESPHome text sensor, values JSON in "state") for the live
             state: last telegram, radio level, battery
   zeitzone  default "Europe/Berlin"
+  personen  optional number of people in the house: shows litres per person and day next to Germany, a rough world
+            middle and the basic need (only from 3 whole days of readings)
   texte     optional wording overrides (keys of board.TEXT)
 
 Mapping: { "id": "wasser", "title": "Wasser", "icon": "droplet", "module": "wasser", "home": true } – "home" puts
@@ -37,4 +39,6 @@ class Module:
         rows = source.influx_rows(self.cfg["influx"], self.fetch) or []
         q = self.cfg.get("quelle")
         live = source.live(q, self.fetch) if q else None
-        return board.build(rows, live, self.clock(), self.tz, self.t)
+        p = self.cfg.get("personen")
+        personen = p if isinstance(p, int) and 0 < p < 50 else None
+        return board.build(rows, live, self.clock(), self.tz, self.t, personen)
