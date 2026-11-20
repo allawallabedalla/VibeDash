@@ -161,7 +161,8 @@
 </script>
 
 <div class="spark" bind:clientWidth={width} style:height="{total}px">
-  <svg {width} height={total} role="img" aria-label={label}>
+  <!-- data-lo/hi: the scale, checked by tests/visual/regeln.spec.ts (G-30: percent on 0–100) -->
+  <svg {width} height={total} role="img" aria-label={label} data-lo={domain.lo} data-hi={domain.hi}>
     <defs>
       <linearGradient id="{uid}-fill" x1="0" x2="0" y1="0" y2="1">
         <stop offset="0" stop-color={color} stop-opacity="0.28" />

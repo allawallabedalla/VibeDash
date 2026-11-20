@@ -1,6 +1,7 @@
 """HTTP service of the VibeDash modules (stdlib only). Only the VibeDash server talks to it.
 
-  GET  /gesund                        {ok, modules, errors}; ok only without broken configs
+  GET  /gesund                        {ok, modules, errors, regeln}; ok only without broken configs; regeln: rule
+                                      violations (regeln.py) of the last board each module answered – a hint only
   GET  /board/<module>                board JSON (src/model/board.ts)
   POST /board/<module>/action         {board, item, action, text?, date?}; header X-VibeDash-Action: 1
   POST /board/<module>/calc           {board, value} (calculator section); header X-VibeDash-Action: 1
@@ -21,12 +22,17 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from .config import board_of, calc_owner, load_modules, modules_dir, owner_of
+from .regeln import pruefe
 
 NAME = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
 FEED = re.compile(r"^[a-z0-9_-]{1,40}\.[a-z]{2,4}$")
 MAX_BODY = 8192
 # clicks are short: one at a time, so two taps never write the same wish file over each other (Audit05 B4-06)
 WRITE_LOCK = threading.Lock()
+# rule violations of the last board answer per module (G-34): /gesund shows them, without building every board
+# again (release.sh asks /gesund with a 3 s limit)
+REGELN: dict[str, list[str]] = {}
+REGELN_LOCK = threading.Lock()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -62,13 +68,29 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if path == "/gesund":
                 m = self._mods()
+                with REGELN_LOCK:
+                    regeln = {k: v for k, v in REGELN.items() if k in m["modules"]}
                 # a broken module config is not healthy: release.sh must not switch to it (Audit05 B4-02)
-                return self._send(200, {"ok": not m["errors"], "modules": sorted(m["modules"]), "errors": m["errors"]})
+                return self._send(
+                    200,
+                    {
+                        "ok": not m["errors"],
+                        "modules": sorted(m["modules"]),
+                        "errors": m["errors"],
+                        "regeln": regeln,
+                    },
+                )
             parts = path.strip("/").split("/")
             if len(parts) == 2 and parts[0] == "board" and NAME.match(parts[1]):
                 b = board_of(self._mods(), parts[1])
                 if b is None:
                     return self._send(404, {"error": "unknown_module"})
+                try:
+                    found = pruefe(b)
+                except Exception as e:  # noqa: BLE001 – the checker never stops a board
+                    found = [f"Prüfer: {type(e).__name__}"]
+                with REGELN_LOCK:
+                    REGELN[parts[1]] = found
                 return self._send(200, b)
             if len(parts) == 3 and parts[0] == "feed" and NAME.match(parts[1]) and FEED.match(parts[2]):
                 mod = self._mods()["modules"].get(parts[1])
