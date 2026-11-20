@@ -744,11 +744,11 @@ export const en: Record<MessageKey, string> = {
   'co.sun': 'sun',
   'co.battery': 'battery',
   'co.grid': 'grid',
-  'co.open': 'still open',
+  'co.open': 'origin open',
   'co.note': 'n = {n} charging days · {kwh} kWh',
   'co.none': 'No charging in {n} days.',
   'co.info.what':
-    'One bar per day: yellow straight from the sun, green from the house battery, purple from the grid. Goal: little purple. Grey = split follows tomorrow; ring = no record (not 0).',
+    'One bar per day: yellow straight from the sun, green from the house battery, purple from the grid. Goal: little purple. Grey = charged, origin still open (today: follows tomorrow); ring = no record.',
   'co.info.source':
     'Daily evaluation of the house (meters, wallbox). Battery = power stored before, mostly sun. Whole percent.',
   'out.restToday': 'Rest of today',
@@ -764,7 +764,7 @@ export const en: Record<MessageKey, string> = {
     'Dashed yellow the expected sun, band = 8 in 10 weather cases; dotted blue the house as usual; green blocks = charge windows. Below, the house battery if it comes like this.',
   'out.info.source':
     'Sun: forecast of the house. House: median per clock hour, 14 days. Windows: charge planner. Battery: computed from these, without losses (≈).',
-  'reach.empty': 'empty ≈ {at} ({lo}–{hi}) · n = {n}',
+  'reach.empty': 'empty ≈ {at}{range} · n = {n}',
   'reach.tight': 'tight · empty from ≈ {at} possible · n = {n}',
   'reach.lasts': 'lasts until sun ≈ {at} · n = {n}',
   'reach.now': 'now',
@@ -774,7 +774,7 @@ export const en: Record<MessageKey, string> = {
   'reach.yesSub': 'sun from ≈ {at} · left ≈ {kwh} kWh ({lo}–{hi})',
   'reach.tightTitle': 'Tight',
   'reach.tightSub': 'With high use empty from ≈ {at}, then grid up to ≈ {kwh} kWh',
-  'reach.emptyTitle': 'Empty ≈ {at} ({lo}–{hi})',
+  'reach.emptyTitle': 'Empty ≈ {at}{range}',
   'reach.emptySub': 'Then grid ≈ {kwh} kWh ({lo}–{hi}) until sun ≈ {sun}',
   'reach.mark': 'empty ≈ {at}',
   'reach.basis':
@@ -784,7 +784,7 @@ export const en: Record<MessageKey, string> = {
   'reach.floor': 'discharge limit {pct} %',
   'reach.day': 'By day the sun charges; the estimate starts from ≈ {at}.',
   'reach.last': 'Last night',
-  'reach.lastEmpty': 'empty from {at}, then grid ≈ {kwh} kWh',
+  'reach.lastEmpty': 'empty from {at}, then grid (whole house) ≈ {kwh} kWh',
   'reach.lastLasted': 'lasted, lowest {min} %',
   'reach.info.what':
     'At night: does the battery last until the sun carries the house? Band = spread of the last nights (± 1 standard deviation), then grid (purple).',

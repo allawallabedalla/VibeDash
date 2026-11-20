@@ -17,7 +17,7 @@ export type StackDay = { sun: number; battery: number; grid: number; open: numbe
 /**
  * Bars for the given local day starts. A day with all three origins is stacked; a day
  * without origin but with charged kWh (e.g. today, before the house has split it up) is
- * one "open" part; a day without either stays a gap (null), never 0.
+ * one "open" part; charged 0 is a real 0; a day without any record stays a gap (null).
  */
 export function originStack(
   days: readonly number[],
@@ -31,7 +31,8 @@ export function originStack(
       return { sun: o.sun, battery: o.battery, grid: o.grid, open: 0 };
     }
     const c = charged[i];
-    return c !== null && c !== undefined && c > 0 ? { sun: 0, battery: 0, grid: 0, open: c } : null;
+    if (c === null || c === undefined) return null;
+    return { sun: 0, battery: 0, grid: 0, open: Math.max(0, c) };
   });
 }
 

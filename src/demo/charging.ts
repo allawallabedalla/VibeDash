@@ -10,8 +10,8 @@ import { mulberry32 } from './random';
 import { daily } from './views';
 
 export interface DemoChargeDay extends OriginDay {
-  /** kWh charged that day (null = no charge) */
-  kwh: number | null;
+  /** kWh charged that day (0 = no charge) */
+  kwh: number;
 }
 
 /** The last `n` local days (today last). Today's charge has no origin split yet. */
@@ -28,7 +28,7 @@ export function demoChargeDays(data: DemoData, n = 30): DemoChargeDay[] {
     const sun = Math.round(kwh * (0.15 + 0.6 * sunny) * 100) / 100;
     const battery = Math.round((kwh - sun) * (0.35 + 0.3 * rand()) * 100) / 100;
     const grid = Math.max(0, Math.round((kwh - sun - battery) * 100) / 100);
-    if (i === n - 1) return { day, kwh: kwh || null, sun: null, battery: null, grid: null };
-    return { day, kwh: kwh || null, sun, battery, grid };
+    if (i === n - 1) return { day, kwh, sun: null, battery: null, grid: null };
+    return { day, kwh, sun, battery, grid };
   });
 }

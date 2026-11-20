@@ -16,13 +16,13 @@ describe('car energy by origin (Audit05 I-2)', () => {
         // one origin missing: not stacked
         { day: 2 * D, sun: 3, battery: null, grid: 1 },
       ],
-      [12, null, null, 7.5],
+      [12, 0, null, 7.5],
     );
     expect(bars).toEqual([
       { sun: 4, battery: 2, grid: 6, open: 0 },
       // charged nothing: a real 0, not a gap
       { sun: 0, battery: 0, grid: 0, open: 0 },
-      // no full origin and no charge: a gap
+      // no full origin and no record of charges: a gap
       null,
       // charged today, split not there yet
       { sun: 0, battery: 0, grid: 0, open: 7.5 },
@@ -57,6 +57,6 @@ describe('car energy by origin (Audit05 I-2)', () => {
       const sum = (d.sun ?? 0) + (d.battery ?? 0) + (d.grid ?? 0);
       expect(Math.abs(sum - (d.kwh ?? 0))).toBeLessThan(0.05);
     }
-    expect(days.filter((d) => d.kwh).length).toBeGreaterThan(5);
+    expect(days.filter((d) => d.kwh > 0).length).toBeGreaterThan(5);
   });
 });

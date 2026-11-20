@@ -6,6 +6,7 @@
    * (measured), and when the estimate starts. Loaded with the enlarged tile only.
    */
   import { num, t, time } from '../i18n/index.svelte';
+  import { emptyRange } from '../app/tiles';
   import { socFloor, type Reach } from '../model/reach';
   import type { Sample } from '../model/types';
 
@@ -102,7 +103,8 @@
     const out: number[] = [];
     for (let tm = Math.ceil(span.from / 3_600_000) * 3_600_000; tm < span.to; tm += 3_600_000) {
       const h = Number(time(tm, tz).slice(0, 2));
-      if (h % (every / 3_600_000) === 0 && x(tm) - P.l > 34 && W - P.r - x(tm) > 34) out.push(tm);
+      // the end labels ("now", "sun 08:00") keep their room
+      if (h % (every / 3_600_000) === 0 && x(tm) - P.l > 52 && W - P.r - x(tm) > 104) out.push(tm);
     }
     return out;
   });
@@ -114,11 +116,7 @@
     {@const r = reach}
     <h3>
       {#if r.emptyAt !== null}
-        {t('reach.emptyTitle', {
-          at: time(r.emptyAt, tz),
-          lo: time(r.emptyEarly ?? r.emptyAt, tz),
-          hi: time(r.emptyLate ?? r.sunAt, tz),
-        })}
+        {t('reach.emptyTitle', { at: time(r.emptyAt, tz), range: emptyRange(r, tz) })}
       {:else if r.emptyEarly !== null}
         {t('reach.tightTitle')}
       {:else}

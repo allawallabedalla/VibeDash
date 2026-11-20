@@ -269,6 +269,13 @@ export function reachOf(data: DemoData, estimate: typeof batteryReach): Reach | 
   });
 }
 
+/** " (02:50–04:30)" around the empty time; nothing when both ends read the same */
+export function emptyRange(r: Extract<Reach, { kind: 'night' }>, tz: string): string {
+  const lo = time(r.emptyEarly ?? r.emptyAt ?? r.sunAt, tz);
+  const hi = time(r.emptyLate ?? r.sunAt, tz);
+  return lo === hi ? '' : ` (${lo}–${hi})`;
+}
+
 /**
  * `estimate`: the night estimate (model/reach), loaded after the first paint by the
  * overview – without it the tile shows the battery as it is.
@@ -294,12 +301,7 @@ export function batteryTile(
     // at night: when it is empty, with its spread and n; by day the energy in it
     sub: r
       ? r.emptyAt !== null
-        ? t('reach.empty', {
-            at: time(r.emptyAt, tz),
-            lo: time(r.emptyEarly ?? r.emptyAt, tz),
-            hi: time(r.emptyLate ?? r.sunAt, tz),
-            n: r.n,
-          })
+        ? t('reach.empty', { at: time(r.emptyAt, tz), range: emptyRange(r, tz), n: r.n })
         : r.emptyEarly !== null
           ? t('reach.tight', { at: time(r.emptyEarly, tz), n: r.n })
           : t('reach.lasts', { at: time(r.sunAt, tz), n: r.n })

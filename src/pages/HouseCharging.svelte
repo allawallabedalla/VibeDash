@@ -235,7 +235,7 @@
     });
   });
 
-  /** kWh of the finished charges started on each day (null = none) */
+  /** kWh of the finished charges started on each day (0 = none; the records cover the 31 days) */
   const chargedOn = (list: number[]) =>
     view.s === 'ready'
       ? list.map((d) => {
@@ -246,10 +246,11 @@
                   .filter((s) => localDateKey(s.start, tz) === key)
                   .reduce((a, s) => a + (s.kwh ?? 0), 0)
               : 0;
-          return v > 0 ? v : null;
+          return v;
         })
       : [];
-  const perDay = $derived(chargedOn(days));
+  // the old one-colour bars draw 0 as a dash
+  const perDay = $derived(chargedOn(days).map((v) => (v > 0 ? v : null)));
 
   // with the origin of the car's energy: 30 days stacked sun / battery / grid (Audit05 I-2)
   const days30 = Array.from({ length: 30 }, (_, i) => addDays(today, i - 29, tz));

@@ -753,11 +753,11 @@ export const de = {
   'co.sun': 'Sonne',
   'co.battery': 'Akku',
   'co.grid': 'Netz',
-  'co.open': 'noch offen',
+  'co.open': 'Herkunft offen',
   'co.note': 'n = {n} Ladetage · {kwh} kWh',
   'co.none': 'In {n} Tagen nicht geladen.',
   'co.info.what':
-    'Je Tag ein Balken: gelb direkt von der Sonne, grün aus dem Hausakku, lila aus dem Netz. Ziel: wenig Lila. Grau = Aufteilung folgt morgen; Ring = keine Aufzeichnung (nicht 0).',
+    'Je Tag ein Balken: gelb direkt von der Sonne, grün aus dem Hausakku, lila aus dem Netz. Ziel: wenig Lila. Grau = geladen, Herkunft noch offen (heute: folgt morgen); Ring = keine Aufzeichnung.',
   'co.info.source':
     'Tagesauswertung des Hauses (Zähler, Wallbox). Akku = vorher gespeicherter Strom, meist Sonne. Ganze Prozent.',
   'out.restToday': 'Rest heute',
@@ -773,7 +773,7 @@ export const de = {
     'Gelb gestrichelt die erwartete Sonne, Band = 8 von 10 Wetterfällen; blau gepunktet das Haus wie üblich; grüne Blöcke = Ladefenster. Darunter der Hausakku, wenn es so kommt.',
   'out.info.source':
     'Sonne: Prognose des Hauses. Haus: Median je Uhrzeit, 14 Tage. Ladefenster: Ladeplaner. Akku: daraus gerechnet, ohne Verluste (≈).',
-  'reach.empty': 'leer ≈ {at} ({lo}–{hi}) · n = {n}',
+  'reach.empty': 'leer ≈ {at}{range} · n = {n}',
   'reach.tight': 'knapp · leer ab ≈ {at} möglich · n = {n}',
   'reach.lasts': 'reicht bis Sonne ≈ {at} · n = {n}',
   'reach.now': 'jetzt',
@@ -783,7 +783,7 @@ export const de = {
   'reach.yesSub': 'Sonne ab ≈ {at} · Rest ≈ {kwh} kWh ({lo}–{hi})',
   'reach.tightTitle': 'Knapp',
   'reach.tightSub': 'Bei viel Verbrauch leer ab ≈ {at}, dann Netz bis ≈ {kwh} kWh',
-  'reach.emptyTitle': 'Leer ≈ {at} ({lo}–{hi})',
+  'reach.emptyTitle': 'Leer ≈ {at}{range}',
   'reach.emptySub': 'Dann Netz ≈ {kwh} kWh ({lo}–{hi}) bis Sonne ≈ {sun}',
   'reach.mark': 'leer ≈ {at}',
   'reach.basis':
@@ -793,7 +793,7 @@ export const de = {
   'reach.floor': 'Entladegrenze {pct} %',
   'reach.day': 'Tagsüber lädt die Sonne; die Rechnung startet ab ≈ {at}.',
   'reach.last': 'Letzte Nacht',
-  'reach.lastEmpty': 'leer ab {at}, dann Netz ≈ {kwh} kWh',
+  'reach.lastEmpty': 'leer ab {at}, dann Netz (ganzes Haus) ≈ {kwh} kWh',
   'reach.lastLasted': 'reichte, tiefster Stand {min} %',
   'reach.info.what':
     'Nachts: Reicht der Akku, bis die Sonne das Haus trägt? Band = Streuung der letzten Nächte (± 1 Standardabweichung), danach Netz (lila).',

@@ -136,7 +136,7 @@
 
   const days = $derived(daySums(hours, pv, car, (tm) => localMidnight(tm, timeZone)));
   const today = $derived(localMidnight(now, timeZone));
-  const kwh = (v: number) => num(v, v < 10 ? 1 : 0);
+  const kwh = (v: number) => num(v, v > 0 && v < 10 ? 1 : 0);
   const dayName = (d: number, i: number) =>
     d === today
       ? i === 0 && hours[0]! > d
@@ -181,7 +181,11 @@
   </svg>
   {#if soc}
     <div class="strip">
-      <span class="sname">{t('plan.legend.battery')}</span>
+      <span class="sname"
+        >{t('plan.legend.battery')}{#if socEnd}<span class="send"
+            >{` · ${dayName(localMidnight(socAt(socEnd.i), timeZone), 1)} ${time(socAt(socEnd.i), timeZone)} ≈ ${num(socEnd.v)} %`}</span
+          >{/if}</span
+      >
       <svg viewBox="0 0 {W} {SH}" role="img" aria-label={t('plan.legend.battery')}>
         <rect class="track" x={P.l} y="6" width={W - P.l - P.r} height={SH - 12} rx="8" />
         {#if floorPct !== undefined}
@@ -194,14 +198,6 @@
         <path class="sline" d={line(soc.p50, ys, socAt)} />
         <text class="ax" x={P.l - 6} y={ys(100) + 10} text-anchor="end">100</text>
         <text class="ax" x={P.l - 6} y={ys(0) + 2} text-anchor="end">0</text>
-        {#if socEnd}
-          <text
-            class="ax strong"
-            x={W - P.r - 8}
-            y={ys(socEnd.v) + (socEnd.v > 60 ? 18 : -6)}
-            text-anchor="end">≈ {num(socEnd.v)} %</text
-          >
-        {/if}
       </svg>
     </div>
   {/if}
@@ -259,10 +255,6 @@
     fill: var(--muted);
     font-size: 14px;
   }
-  .ax.strong {
-    fill: var(--text-2);
-    font-weight: 600;
-  }
   .day {
     fill: var(--text-2);
     font-size: 14px;
@@ -306,6 +298,10 @@
     font-weight: 600;
     color: var(--text-2);
     margin: 4px 0 0;
+  }
+  .send {
+    font-weight: 400;
+    color: var(--muted);
   }
   .track {
     fill: var(--track);

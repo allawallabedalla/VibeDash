@@ -57,8 +57,9 @@
     display: grid;
     grid-auto-flow: column;
     grid-auto-columns: minmax(0, 1fr);
-    gap: 4px;
     height: 160px;
+    /* room for the last label (today) centred under its own bar, never over the page edge */
+    padding: 0 20px;
   }
   .day {
     display: flex;
@@ -117,13 +118,6 @@
   }
   .d.show {
     visibility: visible;
-  }
-  /* the last label (today) ends at the edge instead of hanging over it */
-  .day:last-child {
-    align-items: flex-end;
-  }
-  .day:last-child .col {
-    align-items: center;
   }
   .now .d {
     color: var(--text);
