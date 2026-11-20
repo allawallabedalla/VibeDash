@@ -117,10 +117,13 @@ def build(data: dict, inventory: dict, cfg: dict, now_ms: int, tz) -> dict:
     x = [start + i * STEP_MS + STEP_MS // 2 for i in range(n)]
     groups = [(g["label"], g.get("color") or "home", tuple(g.get("prefix") or ())) for g in c["gruppen"]]
     count = {lab: [0] * n for lab, _, _ in groups}
+    heard = [0] * n  # every telegram, cyclic ones too
     n_readings = 0
     hours = [0] * 24
     for ms, ga, _, _, _ in tel:
         i = (ms - start) // STEP_MS
+        if 0 <= i < n:
+            heard[i] += 1
         h = min(23, (ms - since) // 3_600_000)
         if readings and ga.startswith(readings):
             n_readings += 1
@@ -278,7 +281,15 @@ def build(data: dict, inventory: dict, cfg: dict, now_ms: int, tz) -> dict:
             "unit": "Telegr.",
             "x": x,
             "lines": [
-                {"label": lab, "values": count[lab], "color": color, "dashed": False} for lab, color, _ in groups
+                # a quarter hour without a single telegram was not recorded (the bus is never that quiet): a gap,
+                # not 0 (Audit05 N4-04)
+                {
+                    "label": lab,
+                    "values": [v if heard[i] else None for i, v in enumerate(count[lab])],
+                    "color": color,
+                    "dashed": False,
+                }
+                for lab, color, _ in groups
             ],
             "note": f"Ohne Helligkeit und Temperatur (zyklisch, {round(n_readings / 96)} je 15 min).",
             "info": {

@@ -72,6 +72,14 @@
   const X = (t0: number) => PAD.l + ((VW - PAD.l - PAD.r) * (t0 - from)) / Math.max(1, to - from);
   const Y = (v: number) => PAD.t + (VH - PAD.t - PAD.b) * (1 - (v - lo) / Math.max(1e-9, hi - lo));
 
+  /** a step much longer than usual is a gap (e.g. the server was off): never bridge it (Audit05 N4-04) */
+  const gapMs = $derived.by(() => {
+    const d = x
+      .slice(1)
+      .map((t0, i) => t0 - x[i]!)
+      .sort((a, b) => a - b);
+    return d.length ? 3 * d[d.length >> 1]! : Infinity;
+  });
   const path = (vals: (number | null)[]) => {
     let d = '';
     let open = false;
@@ -80,6 +88,7 @@
         open = false;
         return;
       }
+      if (open && x[i]! - x[i - 1]! > gapMs) open = false;
       d += `${open ? 'L' : 'M'}${X(x[i]!).toFixed(1)},${Y(v).toFixed(1)}`;
       open = true;
     });
