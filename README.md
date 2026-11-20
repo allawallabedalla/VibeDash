@@ -216,7 +216,9 @@ contents (plan, notes) live next to it and never in the repo. **Two modules on o
 `"dazu": ["updates"]` in `wartung.json` appends the sections of `updates` below the
 maintenance plan; its buttons (item ids `updates:…`) still reach `updates`, a calculator goes to the
 first module that has one. `{"modul": "korrelation", "nur": ["pair"]}` brings only some sections
-(by title or type). Drop the second board from `mapping.boards` then – fewer tabs, nothing lost. Templates: `modules/templates/`.
+(by title or type). Drop the second board from `mapping.boards` then – fewer tabs, nothing lost.
+**Short first level:** `"mehr": ["Section title", …]` (a title or its beginning) puts those sections behind one **Details**
+button at the end of the tab (board contract: `more: true`). Templates: `modules/templates/`.
 The calendar goes out at `/feed/wartung/kalender.ics` (only for modules the mapping names).
 Details, config keys and the house extension point (`einschub_url`): [modules/README.md](modules/README.md).
 Run it with `docker compose` (service `modules` in `compose.example.yaml`, already in the

@@ -99,6 +99,8 @@ interface Base {
   info?: BoardInfo;
   link?: { label: string; url: string };
   slot?: 'top' | 'plan';
+  /** second level: shown only after "more details" at the end of the board (Audit05: short first level) */
+  more?: boolean;
 }
 export interface SeriesLine {
   label: string;
@@ -377,6 +379,7 @@ export function sanitizeBoard(raw: unknown): Board | null {
       ...(info(s.info) ? { info: info(s.info) } : {}),
       ...(link(s.link) ? { link: link(s.link)! } : {}),
       ...(s.slot === 'top' || s.slot === 'plan' ? { slot: s.slot as 'top' | 'plan' } : {}),
+      ...(s.more === true ? { more: true } : {}),
     };
     switch (s.type) {
       case 'tiles':
