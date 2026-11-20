@@ -687,7 +687,7 @@ export async function handleApi(
       plan: Boolean(deps.plan),
       timeZone: deps.mapping?.timeZone ?? null,
       boards: (deps.mapping?.boards ?? []).map(
-        ({ id, title, icon, actionUrl, module, calcUrl, onPage }) => ({
+        ({ id, title, icon, actionUrl, module, calcUrl, onPage, home }) => ({
           id,
           title,
           icon,
@@ -695,6 +695,7 @@ export async function handleApi(
           ...((actionUrl || module) && deps.boardAction ? { actions: true } : {}),
           ...(calcUrl && deps.boardCalc ? { calc: true } : {}),
           ...(onPage ? { onPage } : {}),
+          ...(home ? { home: true } : {}),
         }),
       ),
       feedback: Boolean(deps.feedback),

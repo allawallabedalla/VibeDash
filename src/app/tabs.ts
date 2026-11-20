@@ -58,4 +58,5 @@ export const MODULES: Record<string, { de: string; en: string; icon: string }> =
   druck: { de: '3D-Druck', en: '3D printing', icon: 'printer' },
   saugroboter: { de: 'Saugroboter', en: 'Robot vacuums', icon: 'robot' },
   updates: { de: 'Updates', en: 'Updates', icon: 'refresh' },
+  wasser: { de: 'Wasser', en: 'Water', icon: 'droplet' },
 };

@@ -49,6 +49,8 @@ export interface BoardTab {
   calc?: boolean;
   /** shown on that page instead of a tab of its own */
   onPage?: 'charging';
+  /** its tiles with slot "home" also stand on the start page */
+  home?: boolean;
   /** the VibeDash module behind it (modules/), if any */
   module?: string;
 }

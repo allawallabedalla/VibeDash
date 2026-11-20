@@ -137,6 +137,12 @@ def _updates():
     return _run(TestUpdates, lambda t: t.mod().board())
 
 
+def _wasser():
+    from .test_wasser import build, meter
+
+    return build(meter(night_l=4))
+
+
 BUILDERS = {
     "wartung": _wartung,
     "raeume": _raeume,
@@ -150,6 +156,7 @@ BUILDERS = {
     "druck": _druck,
     "saugroboter": _saugroboter,
     "updates": _updates,
+    "wasser": _wasser,
 }
 
 

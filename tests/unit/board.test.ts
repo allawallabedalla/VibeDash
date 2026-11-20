@@ -401,15 +401,27 @@ describe('board calculator (slider + button)', () => {
 });
 
 describe('board section slots (placement on an embedding page)', () => {
-  it('keeps top and plan, drops anything else', () => {
+  it('keeps top, plan and home, drops anything else', () => {
     const b = sanitizeBoard({
       sections: [
         { type: 'text', title: 'a', text: 'x', slot: 'top' },
         { type: 'text', title: 'b', text: 'x', slot: 'plan' },
         { type: 'text', title: 'c', text: 'x', slot: 'side' },
+        { type: 'tiles', title: 'd', tiles: [{ label: 'Wasser', value: '12' }], slot: 'home' },
       ],
     })!;
-    expect(b.sections.map((x) => x.slot ?? null)).toEqual(['top', 'plan', null]);
+    expect(b.sections.map((x) => x.slot ?? null)).toEqual(['top', 'plan', null, 'home']);
+  });
+
+  it('keeps the mean of bars only as a number from 0 on', () => {
+    const bars = (mean: unknown) =>
+      sanitizeBoard({
+        sections: [{ type: 'bars', title: 'T', unit: 'l', labels: ['a'], values: [1], mean }],
+      })!.sections[0] as { mean?: number };
+    expect(bars(120.5).mean).toBe(120.5);
+    expect(bars(-1).mean).toBeUndefined();
+    expect(bars('12').mean).toBeUndefined();
+    expect(bars(undefined).mean).toBeUndefined();
   });
 });
 

@@ -1,0 +1,6 @@
+{
+  "$comment": "Module wasser – copy to local/modules/wasser.json. The house's collector writes the water meter into InfluxDB (measurement wasser); quelle = the radio base station for the live state (optional).",
+  "influx": { "url": "http://127.0.0.1:8086", "db": "", "measurement": "wasser" },
+  "quelle": "",
+  "zeitzone": "Europe/Berlin"
+}

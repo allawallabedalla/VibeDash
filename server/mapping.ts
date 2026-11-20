@@ -115,6 +115,8 @@ export interface BoardMapping {
    * carries the board's title and icon) instead of a tab of its own.
    */
   onPage?: 'charging';
+  /** Optional: the board's tiles with slot "home" also stand on the start page (a tap opens the board). */
+  home?: boolean;
 }
 
 export interface Mapping {
@@ -748,10 +750,11 @@ export function validateMapping(
             : !url(b.url)) ||
           (b.actionUrl !== undefined && !url(b.actionUrl)) ||
           (b.calcUrl !== undefined && !url(b.calcUrl)) ||
-          (b.onPage !== undefined && b.onPage !== 'charging')
+          (b.onPage !== undefined && b.onPage !== 'charging') ||
+          (b.home !== undefined && typeof b.home !== 'boolean')
         ) {
           errors.push(
-            `${at}: { id (a-z0-9_-), title, icon?, and either url (http/https) + actionUrl? + calcUrl? (http/https) or module (a-z0-9_-), onPage? ("charging") }`,
+            `${at}: { id (a-z0-9_-), title, icon?, and either url (http/https) + actionUrl? + calcUrl? (http/https) or module (a-z0-9_-), onPage? ("charging"), home? (true/false) }`,
           );
           return;
         }
@@ -764,6 +767,7 @@ export function validateMapping(
           ...(b.actionUrl ? { actionUrl: String(b.actionUrl) } : {}),
           ...(b.onPage === 'charging' ? { onPage: 'charging' as const } : {}),
           ...(b.calcUrl ? { calcUrl: String(b.calcUrl) } : {}),
+          ...(b.home === true ? { home: true } : {}),
         });
       });
   }
