@@ -69,7 +69,7 @@ TEXT = {
     "battery_sub": "letzte 24 h beim Antippen",
     "source": "Hersteller-Cloud (MOVA/Dreame), alle 5 min gelesen und in InfluxDB gespeichert.",
     "state_what": "Was der Roboter gerade tut, wie es die Hersteller-Cloud meldet.",
-    "note": "Stand {t}. Nur lesen – gesteuert wird nichts.",
+    "note": "Stand {t}. Die Knöpfe starten den Roboter sofort.",
 }
 
 

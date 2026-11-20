@@ -359,5 +359,17 @@
     .nav {
       margin: 12px auto 4px;
     }
+    .top {
+      gap: 8px;
+    }
+    .actions {
+      gap: 6px;
+    }
+  }
+  @media (max-width: 420px) {
+    /* narrow phones: only the other language is shown, so the header never scrolls sideways (Audit05 DE4-02) */
+    .seg button[aria-pressed='true'] {
+      display: none;
+    }
   }
 </style>
