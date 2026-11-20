@@ -48,6 +48,15 @@
     }, 120_000);
     return () => clearInterval(timer);
   });
+  // "Stand 17:52" alone hid that a board was days old (Audit05 N4-05): older than today gets the date
+  const stamp = (ms: number) =>
+    (Date.now() - ms > 12 * 3600_000
+      ? new Intl.DateTimeFormat(i18n.locale === 'de' ? 'de-DE' : 'en-GB', {
+          timeZone: house.timeZone,
+          day: 'numeric',
+          month: 'numeric',
+        }).format(ms) + ' '
+      : '') + time(ms, house.timeZone);
 </script>
 
 <div class="page">
@@ -62,7 +71,7 @@
   {:else}
     {#if view.b.updated}
       <p class="muted-note">
-        {t('board.updated', { time: time(view.b.updated, house.timeZone) })}{#if staleAt}
+        {t('board.updated', { time: stamp(view.b.updated) })}{#if staleAt}
           · {t('state.refreshing')}{/if}
       </p>
     {:else if staleAt}

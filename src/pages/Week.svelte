@@ -3,8 +3,7 @@
    * "Week": now, the last seven days, weather, solar against forecast, battery
    * and consumption per day, and where the energy went.
    */
-  import { currentData, currentSource } from '../app/data.svelte';
-  import { batteryNowTile, gridNowTile, loadNowTile, sunNowTile } from '../app/tiles';
+  import { currentData } from '../app/data.svelte';
   import { roomRanges, weekNumbers } from '../app/week';
   import Card from '../components/Card.svelte';
   import DayBars from '../components/DayBars.svelte';
@@ -17,9 +16,6 @@
   import { pvTimeSeries } from '../demo';
   import { i18n, num, t, time } from '../i18n/index.svelte';
   import PageHead from './PageHead.svelte';
-  import WeatherCard from './WeatherCard.svelte';
-  import WeatherDaysCard from './WeatherDaysCard.svelte';
-  import { hasWeatherDays } from '../app/weather-days';
 
   const house = $derived(currentData());
   const tz = $derived(house.timeZone);
@@ -56,13 +52,6 @@
   });
   const until = $derived(t('week.todayUntil', { time: time(house.now, tz) }));
   const periodNote = $derived(`${period}, ${until}`);
-
-  const nowTiles = $derived([
-    sunNowTile(house),
-    loadNowTile(house),
-    batteryNowTile(house),
-    gridNowTile(house),
-  ]);
 
   const kwh = (v: number | null) => (v === null ? '–' : num(v, v < 100 ? 1 : 0));
   // "Woche davor 460 kWh", and how many days the sum covers when not all seven
@@ -204,23 +193,10 @@
   );
 
   const tsData = $derived(pvTimeSeries(house, 'week'));
-  // The made-up weather only exists for the demo household.
-  const demo = currentSource() === 'demo';
 </script>
 
 <div class="page">
   <PageHead title={t('page.week')} />
-
-  {#if demo || hasWeatherDays(house)}
-    <WeatherDaysCard {house} />
-  {:else}
-    <WeatherCard timeZone={tz} />
-  {/if}
-
-  <h2>{t('week.now')}</h2>
-  <TileRow count={4}>
-    {#each nowTiles as tile (tile.label)}<Tile {...tile} />{/each}
-  </TileRow>
 
   <h2>{t('week.last7')} · {period}</h2>
   <TileRow count={5}>

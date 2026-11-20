@@ -155,11 +155,15 @@ test('the page period switch redraws the chart and the autarky', async ({
   const after = await canvas.screenshot();
   expect(after.equals(before)).toBe(false);
   // under the curve: the autarky of the 30 days, with their dates
-  await expect(autarkyNote).toContainText('Eigenstrom im Zeitraum');
+  await expect(autarkyNote).toContainText('Ohne Netz im Zeitraum');
   await card.screenshot({ path: `screenshots/timeseries-month-${info.project.name}.png` });
 
   // ±3 days: hourly, with the days ahead
-  await tap(page, isMobile, page.locator('.period').getByRole('button', { name: '±3 Tage' }));
+  await tap(
+    page,
+    isMobile,
+    page.locator('.period').getByRole('button', { name: 'Woche um heute' }),
+  );
   await expect(canvas).toBeVisible();
 });
 

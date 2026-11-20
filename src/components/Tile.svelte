@@ -281,7 +281,7 @@
     -webkit-line-clamp: 2;
     line-clamp: 2;
     overflow: hidden;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word; /* hyphens first (lang = page language), hard break only as last resort */
     hyphens: auto;
   }
   /* ⓘ sits in the corner (44 px target) so the label keeps its width. */
