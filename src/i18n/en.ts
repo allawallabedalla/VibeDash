@@ -734,12 +734,11 @@ export const en: Record<MessageKey, string> = {
   'hits.dayForecast': 'forecast ≈ {v} kWh{span}',
   'hits.dayActual': 'actual {v} kWh, {verdict}',
   'hits.noActual': 'actual missing',
-  'hits.spanCount': 'Range 8 of 10: actual inside on {k} of {n} days (own rule)',
+  'hits.spanCount': 'Range 8 of 10: actual inside {k} of {n} days (own rule)',
   'hits.stripLabel': 'last {n} days',
   'hits.info.what':
-    'Bar = hit window ± {p} % around the forecast (tick), rule as above. Dot = actual: green hit, coral off. Thin line = range 8 of 10.',
-  'hits.info.source':
-    '{m} from the evening before, actual from the meter reading. Today no dot yet.',
+    'Bar: hit window ± {p} % around the forecast (tick). Dot: actual. Line: range 8 of 10.',
+  'hits.info.source': '{m} from the evening before, actual from the meter.',
   'review.chart': 'Consumption, purple = grid',
   'hc.chart': 'Charged, purple = house from grid',
   'charge.chart': 'Charged, of it solar',
