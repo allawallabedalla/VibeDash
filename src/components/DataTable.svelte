@@ -238,8 +238,8 @@
       font-size: 14px;
     }
     .gcol {
-      width: 28%;
-      min-width: 72px;
+      width: 26%;
+      min-width: 64px;
     }
     th.gcol {
       white-space: normal;

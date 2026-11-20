@@ -235,7 +235,7 @@
     // on the phone the starter is worth more than the duration (Audit04 EM-12)
     { key: 'dur', label: t('hc.col.duration'), align: 'right', phone: false },
     { key: 'kwh', label: 'kWh', align: 'right' },
-    { key: 'grid', label: t('hc.col.grid'), align: 'right' },
+    { key: 'grid', label: t('hc.col.grid'), align: 'right', phone: false }, // the bar's purple part on the phone
     { key: 'who', label: t('hc.col.who') },
   ]);
   // records may start later than the 31-day window – then say since when (Audit04 EM-18)
