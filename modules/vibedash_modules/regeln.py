@@ -19,6 +19,7 @@ MAX_ERSTE_EBENE = 10
 PROTOKOLL_TABELLEN = (
     "Ereignisse",  # knxlog: events of the last 24 h, one row each
     "Telegramme",  # knxlog: the latest raw bus telegrams
+    "Lernstand aller Modelle",  # ml: on purpose without a graphic – learning progress must not be stressed (G-14)
 )
 
 # G-28: placeholders of a missing value that leaked into the text (Audit05 P4-05/S4-07 "None %").

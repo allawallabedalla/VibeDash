@@ -15,12 +15,7 @@ from .helpers import cleanup, folder
 
 # Known violations of today's boards, each with its audit ID: module -> {beginning of the violation: ID}.
 # Fix the cause, then delete the line – a stale exception fails as well (G-34). Nothing new goes here without an ID.
-AUSNAHMEN = {
-    # "Nur zum Ausprobieren – schaltet nichts …" under the charge timeline, above it the charging buttons
-    "auto": {"Abschnitt 4 „Ladefenster ausprobieren“ note: „schaltet nichts“": "P4-08"},
-    # the learning-progress table is to go (Audit05 proposal 5: "Lernstand-Tabelle streichen")
-    "ml": {"Abschnitt 2 „Lernstand aller Modelle“: Tabelle ohne Grafik-Spalte": "DE4-06"},
-}
+AUSNAHMEN: dict = {}
 
 
 def _tiles(*tiles):
