@@ -1,6 +1,7 @@
 """Rule checker (regeln.py, G-27 … G-34): the boards of all modules pass it; each rule finds its counter-example."""
 
 import json
+import os
 import threading
 import unittest
 import urllib.request
@@ -9,7 +10,7 @@ from unittest import mock
 from vibedash_modules.app import serve
 from vibedash_modules.regeln import MAX_ERSTE_EBENE, pruefe, pruefe_text
 
-from .boards import all_boards
+from .boards import FIXTURES, all_boards
 from .helpers import cleanup, folder
 
 # Known violations of today's boards, each with its audit ID: module -> {beginning of the violation: ID}.
@@ -44,6 +45,12 @@ class TestBoardsOfAllModules(unittest.TestCase):
                 self.assertEqual([v for v in found if not any(v.startswith(k) for k in known)], [])
                 stale = [k for k in known if not any(v.startswith(k) for v in found)]
                 self.assertEqual(stale, [], "fixed – delete the exception")
+
+    def test_fixtures_of_the_visual_test_are_current(self):
+        for name, b in self.boards.items():
+            with self.subTest(modul=name), open(os.path.join(FIXTURES, f"{name}.json"), encoding="utf-8") as f:
+                fresh = json.loads(json.dumps(b, ensure_ascii=False, default=str))
+                self.assertEqual(json.load(f), fresh, "in modules/: python3 -m tests.boards, then commit")
 
 
 class TestRules(unittest.TestCase):

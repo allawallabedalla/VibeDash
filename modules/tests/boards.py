@@ -1,7 +1,8 @@
 """Boards of every module, built from the synthetic fixtures of the existing tests (no house data).
 
-Used by test_regeln.py (the rule checker must find nothing) and, with `python3 -m tests.boards <dir>`, to write the
-boards as JSON for the visual rule test (tests/visual/fixtures/boards/, G-34).
+Used by test_regeln.py (the rule checker must find nothing) and, with `python3 -m tests.boards` (in modules/), to
+write the boards as JSON for the visual rule test (tests/visual/fixtures/boards/, G-34). test_regeln fails when those
+files are older than the modules: then run the command again and commit the files.
 """
 
 from __future__ import annotations
@@ -66,10 +67,13 @@ def _auto():
 
 
 def _gebaeude():
+    from .helpers import at
     from .test_gebaeude import RESULT, TestGebaeude
 
     def build(t):
         t.write(RESULT)
+        stand = at(2026, 10, 19, 6)  # "updated" comes from the file time: fixed, so the board is the same every run
+        os.utime(t.file, (stand, stand))
         return t.board()
 
     return _run(TestGebaeude, build)
@@ -149,15 +153,18 @@ BUILDERS = {
 }
 
 
+FIXTURES = os.path.join(os.path.dirname(__file__), "..", "..", "tests", "visual", "fixtures", "boards")
+
+
 def all_boards() -> dict[str, dict]:
     return {name: build() for name, build in BUILDERS.items()}
 
 
 if __name__ == "__main__":
-    out = sys.argv[1] if len(sys.argv) > 1 else "../tests/visual/fixtures/boards"
+    out = sys.argv[1] if len(sys.argv) > 1 else FIXTURES
     os.makedirs(out, exist_ok=True)
     for name, b in all_boards().items():
         with open(os.path.join(out, f"{name}.json"), "w", encoding="utf-8") as f:
-            json.dump(b, f, ensure_ascii=False, indent=1, default=str)
+            json.dump(b, f, ensure_ascii=False, separators=(",", ":"), default=str)
             f.write("\n")
         print(name, len(b.get("sections", [])), "sections")
