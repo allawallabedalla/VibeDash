@@ -15,6 +15,16 @@ describe('board from a house service: checked and trimmed', () => {
     expect(lk('http://a.b/')).toBeUndefined();
   });
 
+  it('keeps up to 40 sections (two modules on one tab), drops the rest', () => {
+    const sections = Array.from({ length: 45 }, (_, i) => ({
+      type: 'text',
+      title: `T${i}`,
+      text: 'x',
+    }));
+    const b = sanitizeBoard({ updated: null, sections });
+    expect(b?.sections).toHaveLength(40);
+    expect(b?.sections[39]?.title).toBe('T39');
+  });
   it('rejects what is not a board', () => {
     expect(sanitizeBoard(null)).toBeNull();
     expect(sanitizeBoard({ sections: 'x' })).toBeNull();

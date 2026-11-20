@@ -369,7 +369,7 @@ function link(v: unknown): { label: string; url: string } | null {
 export function sanitizeBoard(raw: unknown): Board | null {
   if (!isObj(raw) || !Array.isArray(raw.sections)) return null;
   const sections: BoardSection[] = [];
-  for (const s of list(raw.sections, 30)) {
+  for (const s of list(raw.sections, 40)) {
     if (!isObj(s)) continue;
     const base = {
       title: text(s.title, 80),
