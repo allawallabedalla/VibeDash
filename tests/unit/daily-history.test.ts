@@ -65,4 +65,38 @@ describe('daily values from an older series (N-01)', () => {
       [7 * D, null], // above maxPerDay
     ]);
   });
+
+  it('hole days: readings per hour from both series, a silent stretch marks the day (Audit05 I-3)', async () => {
+    if (!mapping.ok) throw new Error(mapping.errors.join());
+    const H = 3_600_000;
+    const queries: string[] = [];
+    // old series: days 0–1 (day 1 silent 10–13 h), new series from day 2 (clean)
+    const hours = (from: number, to: number, empty: (h: number) => boolean) =>
+      Array.from({ length: (to - from) / H }, (_, i) => [
+        from + i * H,
+        empty(from + i * H) ? 0 : 60,
+      ]);
+    const fetchFn = async (url: string) => {
+      const q = new URL(url).searchParams.get('q')!;
+      queries.push(q);
+      const values = q.includes('old_m')
+        ? hours(0, 3 * D, (t) => (t >= D + 10 * H && t < D + 13 * H) || t >= 2 * D)
+        : hours(0, 3 * D, (t) => t < 2 * D);
+      return new Response(
+        JSON.stringify({
+          results: [
+            { statement_id: 0, series: [{ name: 'x', columns: ['time', 'count'], values }] },
+          ],
+        }),
+        { status: 200 },
+      );
+    };
+    const { config } = readConfig({ INFLUX_URL: 'http://influx.example', INFLUX_DB: 'x' });
+    const b = createBackends(mapping.mapping, config, fetchFn as never);
+    if (!b.ok) throw new Error(b.errors.join());
+    const holes = await b.dailyHoles(mapping.mapping.series.meter!, 0, 3 * D);
+    expect(queries[0]).toContain('SELECT COUNT("total")');
+    expect(queries[0]).toContain('GROUP BY time(1h) fill(0)');
+    expect(holes).toEqual(['1970-01-02']);
+  });
 });

@@ -83,14 +83,6 @@ export const en: Record<MessageKey, string> = {
     'House meter and grid import meter since midnight, not extrapolated from power.',
 
   'spark.sun': 'Solar, 24 h',
-  'spark.home': 'Usage today and usual',
-  'spark.homeBand': 'Band: usual (8 in 10 days, n = {n})',
-  'spark.grid': 'Grid, 24 h',
-  'spark.gridImport': 'Import {v} kWh',
-  'spark.gridFeed': 'Feed-in {v} kWh',
-  'spark.gridOpen': 'open',
-  'spark.gridInfo':
-    'Curve: up = power to the grid, down = power from the grid. Peak import {peak} kW. Totals from the grid meter, last 24 hours.',
   'spark.temp': 'Living room, 24 h',
   'spark.gap': 'Gap {from}–{to}',
 
@@ -325,7 +317,6 @@ export const en: Record<MessageKey, string> = {
     'The VibeDash server returned no data: {reason}. Check the credentials and the database, then try again.',
   'page.today': 'Today',
   'page.review': 'Looking back',
-  'page.house': 'House',
   'flow.asOf': 'as of {time}',
   'flow.next.carUntil': 'Car charges per plan until {time}',
   'flow.next.carUntilKwh': 'Car charges per plan until {time} (≈ {kwh} kWh)',
@@ -501,8 +492,6 @@ export const en: Record<MessageKey, string> = {
   'flow.feedIn': 'feed-in',
   'flow.import': 'import',
   'flow.still': 'idle',
-  'page.sources': 'Where the power comes from',
-  'page.trends': 'Last 24 hours',
   'page.models': 'How good the forecasts are',
   'page.method':
     'Both models run the evening before, using only days that were already over. Correct = actual within ±20 %, checked against the meter.',
@@ -586,14 +575,6 @@ export const en: Record<MessageKey, string> = {
   'week.batterySub': 'lowest and highest',
   'week.socRange': 'House battery from–to',
   'week.loadPerDay': 'Consumption per day',
-  'week.whereTo': 'Where did the solar power go?',
-  'week.whereFrom': 'Where did the house power come from?',
-  'week.toHouse': 'to the house',
-  'week.toBattery': 'into the battery',
-  'week.toGrid': 'to the grid',
-  'week.fromSun': 'sun directly',
-  'week.fromBattery': 'from the battery',
-  'week.fromGrid': 'from the grid',
   'week.todayUntil': 'today until {time}',
   'week.todayApart':
     'Completed days; {until} apart, not in the sums: sun {pv} · consumption {load} · grid {imp} kWh.',
@@ -622,7 +603,6 @@ export const en: Record<MessageKey, string> = {
   'page.period': 'Period',
   'year.title': 'This year',
   'year.sun': 'Solar',
-  'year.import': 'Grid import',
   'year.feed': 'Feed-in',
   'year.caption': 'Daily values, 7-day mean',
   'year.since': 'since {from}: {sum} kWh by the meter',
@@ -633,7 +613,6 @@ export const en: Record<MessageKey, string> = {
     'Reading at day end minus the day before; older days from the earlier series of the same meter.',
   'year.info.demo': 'Made-up values of the demo household.',
   'year.sun.sentence': '**solar power** produced yesterday',
-  'year.import.sentence': 'came **from the grid** yesterday',
   'year.feed.sentence': 'went **to the grid** yesterday',
   'week.house': 'House',
   'week.rooms': 'Rooms',
@@ -709,4 +688,39 @@ export const en: Record<MessageKey, string> = {
   'hc.noSessions': 'No charges in the last 31 days.',
   'hc.error': 'Charging data cannot be read right now.',
   'hc.todayRunning': 'of which {kwh} kWh running charge (summed up from power)',
+
+  // Audit05 I-1/I-3/I-7
+  'oday.title': 'Where did the power come from today?',
+  'oday.sun': 'Sun directly',
+  'oday.feed': 'Feed-in (top)',
+  'oday.ahead': 'faint: usual',
+  'oday.aheadSun': 'faint: usual, yellow = sun as forecast',
+  'oday.readout': '{time} · {load} kW: sun {sun} · battery {battery} · grid {grid}',
+  'oday.readoutFc': '{time} · usual {load} kW, sun ≈ {sun} kW',
+  'oday.readoutGap': '{time} · no readings',
+  'oday.note': 'Tap to see a quarter hour. Usual = median of {n} days.',
+  'oday.info.what':
+    'Consumption per quarter hour, stacked: sun directly, battery, grid. Grey strip on top: feed-in, its course only (own height, kWh in the legend). Faint from now: usual consumption, yellow part the sun as forecast; battery or grid for the rest is not forecast.',
+  'oday.info.source':
+    'Quarter-hour means of inverter, battery and grid power; sun first, then battery, rest grid. kWh summed from that (≈, the meter may differ). Gaps hatched, never 0. Usual: median per quarter hour, n = {n} days before today.',
+  'bands.title': 'Where did the solar power go, where did the house power come from?',
+  'bands.sun': 'Solar power',
+  'bands.house': 'House power',
+  'bands.toHouse': 'straight to the house',
+  'bands.toBattery': 'into the battery',
+  'bands.toGrid': 'to the grid',
+  'bands.fromBattery': 'from the battery',
+  'bands.fromGrid': 'from the grid',
+  'bands.info':
+    'One scale for both bands: equal kWh are equally long, the parts are shares of their band (week sums of the complete days). “≥”: a part is missing.',
+  'cal.title': 'On how many days did we need no grid?',
+  'cal.of': 'of {n} days without grid',
+  'cal.missingDays': '{n} days without reading',
+  'cal.free': 'no grid (< 0.5 kWh)',
+  'cal.missing': 'no reading',
+  'cal.dayHole': '{date} · reading gap, unknown',
+  'cal.info.what':
+    'Box = day, column = week (Monday on top). Green: below 0.5 kWh from the grid. Lilac: kWh from the grid, darker = more. Grey: no value, not counted. Tap for the day.',
+  'cal.info.source':
+    'Grid import meter, end of day minus the day before; implausible jumps stay grey. “No grid” only with readings at both day boundaries and no gap of 2 h or more, else grey (with a gap and 0.5 kWh or more: lilac, “≥”). The running day is missing.',
 };
