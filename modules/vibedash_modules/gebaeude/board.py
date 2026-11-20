@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import re
 
+from ..fmt import unsigned_zero
+
 PUA = re.compile(r"[-]")
 
 TEXT = {
@@ -92,7 +94,8 @@ def clean(x, max_len=400) -> str:
 def de(x, nd=1, plus=False) -> str:
     if x is None:
         return "–"
-    s = f"{x:+.{nd}f}" if plus else f"{x:.{nd}f}"
+    x = unsigned_zero(x, nd)
+    s = f"{x:+.{nd}f}" if plus and x else f"{x:.{nd}f}"
     return s.replace(".", ",").replace("-", "−")
 
 

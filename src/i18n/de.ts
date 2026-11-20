@@ -733,7 +733,7 @@ export const de = {
   'cal.info.source':
     'Netzbezug-Zähler, Tagesende minus Vortag; unplausible Sprünge bleiben grau. „Ohne Netz“ nur mit Zählerwert an beiden Tagesgrenzen und ohne Lücke ab 2 h am Tag, sonst grau (mit Lücke und ab 0,5 kWh: lila, „≥“). Der laufende Tag fehlt.',
   // Audit05 I-6/I-8
-  'hits.head': '{k} von {n} Tagen getroffen',
+  'hits.head': '{k} von {n} Tagen im Fenster getroffen',
   'hits.goal': '± {p} % · Ziel ≈ 8 von 10',
   'hits.window': 'getroffen, wenn hier (± {p} %)',
   'hits.span': 'Spanne 8 von 10',

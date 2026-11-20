@@ -6,7 +6,7 @@ import unittest
 from zoneinfo import ZoneInfo
 
 from vibedash_modules.config import load_modules
-from vibedash_modules.fmt import level, value_unit
+from vibedash_modules.fmt import level, unsigned_zero, value_unit
 from vibedash_modules.knx import Module as Knx
 from vibedash_modules.knxlog import Module as KnxLog
 from vibedash_modules.knxlog.board import value
@@ -261,6 +261,10 @@ class TestKnx(unittest.TestCase):
     def test_fmt(self):
         self.assertEqual(value_unit("97 ± 2 %"), ("97 ± 2 %", None))
         self.assertEqual(level("NIO"), "act")
+        # rounds to zero -> plain 0.0, so no module writes "−0,0" (Audit05)
+        self.assertEqual(f"{unsigned_zero(-0.04, 1):.1f}", "0.0")
+        self.assertEqual(unsigned_zero(-0.06, 1), -0.06)
+        self.assertEqual(f"{unsigned_zero(-0.004, 2):.2f}", "0.00")
 
 
 if __name__ == "__main__":

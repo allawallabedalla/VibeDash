@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from ..fmt import clean, number
+from ..fmt import clean, number, unsigned_zero
 
 # most interesting first; the bar chart and every list keep this order (technical ones at the end)
 GROUPS = ("unklar", "erklaert", "zeit", "technik")
@@ -61,7 +61,7 @@ TEXT = {
 
 
 def de(x, nd=2) -> str:
-    return "–" if x is None else f"{x:.{nd}f}".replace(".", ",").replace("-", "−")
+    return "–" if x is None else f"{unsigned_zero(x, nd):.{nd}f}".replace(".", ",").replace("-", "−")
 
 
 def _key(p):

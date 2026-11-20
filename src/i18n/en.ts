@@ -724,7 +724,7 @@ export const en: Record<MessageKey, string> = {
   'cal.info.source':
     'Grid import meter, end of day minus the day before; implausible jumps stay grey. “No grid” only with readings at both day boundaries and no gap of 2 h or more, else grey (with a gap and 0.5 kWh or more: lilac, “≥”). The running day is missing.',
   // Audit05 I-6/I-8
-  'hits.head': '{k} of {n} days hit',
+  'hits.head': '{k} of {n} days in view hit',
   'hits.goal': '± {p} % · goal ≈ 8 of 10',
   'hits.window': 'hit when in here (± {p} %)',
   'hits.span': 'range 8 of 10',

@@ -23,6 +23,8 @@ from datetime import date, datetime, timedelta
 from statistics import fmean, median
 from zoneinfo import ZoneInfo
 
+from ..fmt import unsigned_zero
+
 TZ = ZoneInfo("Europe/Berlin")
 WT = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 
@@ -465,4 +467,4 @@ def entscheide(soc, vh, sonne, heute, fahrten=None):
 
 
 def de(x, nd=0):
-    return "–" if x is None else f"{x:.{nd}f}".replace(".", ",")
+    return "–" if x is None else f"{unsigned_zero(x, nd):.{nd}f}".replace(".", ",").replace("-", "−")

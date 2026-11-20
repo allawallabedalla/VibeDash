@@ -1,5 +1,6 @@
 import { de, type MessageKey } from './de';
 import { en } from './en';
+import { formatNum } from './format';
 
 export type Locale = 'de' | 'en';
 const messages: Record<Locale, Record<MessageKey, string>> = { de, en };
@@ -32,12 +33,7 @@ export function t(key: MessageKey, vars: Record<string, string | number> = {}): 
 
 /** Locale-aware number with a fixed number of decimals. */
 export function num(value: number, digits = 0): string {
-  return new Intl.NumberFormat(current === 'de' ? 'de-DE' : 'en-GB', {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  })
-    .format(value)
-    .replace('-', '−'); // a real minus, not a hyphen (Audit05 G5-14)
+  return formatNum(value, digits, current === 'de' ? 'de-DE' : 'en-GB');
 }
 
 /** Local time of day, e.g. 02:10. */

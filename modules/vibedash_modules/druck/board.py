@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
+from ..fmt import unsigned_zero
+
 GAP_MS = 300_000  # readings further apart are a gap (printer off, service stopped)
 WORKING = {"PRINTING", "PAUSED"}
 
@@ -83,7 +85,7 @@ TEXT = {
 def de(x, nd=1) -> str:
     if x is None:
         return "–"
-    s = f"{x:,.{nd}f}"
+    s = f"{unsigned_zero(x, nd):,.{nd}f}".replace("-", "−")
     return s.replace(",", " ").replace(".", ",")
 
 

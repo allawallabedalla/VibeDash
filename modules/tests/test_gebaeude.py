@@ -146,7 +146,7 @@ class TestGebaeude(unittest.TestCase):
         self.assertEqual(ww["values"], [0, 0, 4, 0, 0, 0, 3, 0])
         self.assertEqual(ww["note"], "Duschen (Bad-Feuchte): sammelt (1 erkannt, Feuchte seit 3 Tagen)")
         sun = b["sections"][4]["rows"]
-        self.assertEqual(sun[1]["cells"], {"r": "Bad", "k": "−0,0 ± 0,6", "m": "nein"})
+        self.assertEqual(sun[1]["cells"], {"r": "Bad", "k": "0,0 ± 0,6", "m": "nein"})
         pv = b["sections"][5]
         self.assertEqual(pv["rows"][0]["state"], "look")
         self.assertNotIn("state", pv["rows"][1])
@@ -215,6 +215,10 @@ class TestGebaeude(unittest.TestCase):
 
     def test_helpers(self):
         self.assertEqual(de(-1.25, 1, plus=True), "−1,2")
+        # what rounds to zero has no sign: never "−0,0" or "+0,0"
+        self.assertEqual(de(-0.04, 1, plus=True), "0,0")
+        self.assertEqual(de(-0.04), "0,0")
+        self.assertEqual(de(0.06, 1, plus=True), "+0,1")
         self.assertEqual(blocks([1] * 24)[1], [3] * 8)
 
 
