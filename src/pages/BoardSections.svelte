@@ -53,13 +53,7 @@
    */
   import { SvelteMap, SvelteSet } from 'svelte/reactivity';
   import { currentData, store } from '../app/data.svelte';
-  import type {
-    BoardColor,
-    BoardSection,
-    BoardTile,
-    TableChart,
-    TableChartCell,
-  } from '../model/board';
+  import type { BoardSection, TableChart, TableChartCell } from '../model/board';
   import { t } from '../i18n/index.svelte';
   import AccuracyCard from '../components/AccuracyCard.svelte';
   import BoardPlan from '../components/BoardPlan.svelte';
@@ -72,10 +66,11 @@
   import DayBars from '../components/DayBars.svelte';
   import Segmented from '../components/Segmented.svelte';
   import ItemActions from '../components/ItemActions.svelte';
-  import Icon, { iconOf } from '../components/Icon.svelte';
+  import Icon from '../components/Icon.svelte';
   import InfoButton from '../components/InfoButton.svelte';
   import LineChart from '../components/LineChart.svelte';
-  import Tile, { type TileProps } from '../components/Tile.svelte';
+  import Tile from '../components/Tile.svelte';
+  import { BOARD_COLORS, tileOf } from '../app/board-tile';
   import TileRow from '../components/TileRow.svelte';
 
   let {
@@ -95,42 +90,7 @@
   const tab = $derived(store.boards.find((b) => b.id === id));
   const inSlot = (s: BoardSection) => !slot || (slot === 'rest' ? !s.slot : s.slot === slot);
 
-  const C: Record<BoardColor, string> = {
-    sun: 'var(--sun)',
-    battery: 'var(--battery)',
-    home: 'var(--home)',
-    grid: 'var(--feed)',
-    import: 'var(--import)',
-    feed: 'var(--feed)',
-    climate: 'var(--climate)',
-    muted: 'var(--muted)',
-  };
-  const tileOf = (x: BoardTile): TileProps => ({
-    label: x.label,
-    icon: iconOf(x.icon ?? 'info'),
-    color: C[x.color ?? 'muted'],
-    value: x.value,
-    ...(x.unit ? { unit: x.unit } : {}),
-    ...(x.sub ? { sub: x.sub } : {}),
-    ...(x.approx ? { approx: true } : {}),
-    ...(x.state === 'look' || x.state === 'act' ? { status: x.state } : {}),
-    ...(x.state === 'open' ? { pending: t('board.open') } : {}),
-    ...(x.info ? { info: x.info } : {}),
-    ...(x.spark && x.spark.some((v) => v !== null)
-      ? {
-          graphic: {
-            kind: 'spark' as const,
-            values: x.spark,
-            color: C[x.color ?? 'muted'],
-            // a percentage on its own scale made 4 % look half full (Audit05 G5-03)
-            ...(x.unit === '%' ? { min: 0, max: 100 } : {}),
-            ...(x.sparkFrom !== undefined && x.sparkTo !== undefined
-              ? { span: { from: x.sparkFrom, to: x.sparkTo } }
-              : {}),
-          },
-        }
-      : {}),
-  });
+  const C = BOARD_COLORS;
   /** Bars show bare numbers, so the unit goes into the title unless it is already there (Audit04 EM-10). */
   const unitTitle = (s: BoardSection, title: string) =>
     s.type === 'bars' && s.unit && !title.includes(s.unit) ? `${title}, ${s.unit}` : title;
@@ -332,6 +292,7 @@
           color={C[s.color]}
           unit={s.unit}
           label={s.title}
+          mean={s.mean}
         />
       {:else if s.type === 'table'}
         {#if s.rows.length}

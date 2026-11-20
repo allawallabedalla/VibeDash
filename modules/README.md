@@ -17,6 +17,7 @@ install). Only the VibeDash server talks to it; the browser never does.
 | `korrelation` | Korrelation | The weekly correlation atlas: robust pairs, what is worth a look, new / gone since last week, ranking without technically coupled pairs. Only reads.                                                                                                                                                                                                        |
 | `druck`       | 3D-Druck    | The 3D printer (Prusa with PrusaLink): state, progress, time left, nozzle and bed, the file, temperatures (6 h/24 h/7 days), print time per day, the last jobs, links to the house's own printer tools (e.g. a pen plotter). Asks the printer once a minute and keeps a history. Only reads – nothing on the printer is switched.                           |
 | `updates`     | Updates     | Software updates of the house computer: open packages (security first), restart due, last run; a choice „Jetzt“ stores a wish that a fixed service of the house picks up and installs them. VibeDash installs nothing itself.                                                                                                                               |
+| `wasser`      | Wasser      | The house's water meter: use today (also a tile on the start page), per hour (48 h), per day (30 days with the mean), since the meter's due date, night use 2–5 o'clock with a leak hint (3 nights in a row, or never a full hour still in 24 h) and the meter's state. Reads the course the house's collector writes into InfluxDB. Only reads.            |
 
 ## Switch a module on
 
@@ -91,6 +92,19 @@ atomically under a file lock (`<plan>.lock`), so a house script may share the fi
 | `tipps`    | optional tip history `[{"date": "YYYY-MM-DD", "tip": "- …\n- …"}]`, newest last – written by a tip writer (e.g. an LLM job of the house)                                                          |
 | `zeitzone` | default `Europe/Berlin`                                                                                                                                                                           |
 | `texte`    | optional wording overrides (keys in `garten/board.py`, `TEXT`)                                                                                                                                    |
+
+## Module `wasser` – config keys
+
+| Key        | Meaning                                                                                                                                                                                                                                                           |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `influx`   | `{url, db, measurement?}` – the meter's course, read only: fields `zaehlerstand_m3`, `stichtag_m3`, `batterie_jahre`, `rssi`, `ausfall`, `status` (default measurement `wasser`), written by the house's collector on every new reading and at least every 15 min |
+| `quelle`   | optional address of the radio base station (ESPHome text sensor, the values JSON as text in `state`) for the live state: last telegram, radio level, battery                                                                                                      |
+| `zeitzone` | default `Europe/Berlin`                                                                                                                                                                                                                                           |
+| `texte`    | optional wording overrides (keys in `wasser/board.py`, `TEXT`)                                                                                                                                                                                                    |
+
+Use is always a difference of meter readings, never summed up from flow. Mapping with `"home": true` puts the tile
+„Wasser“ (section with `slot: "home"`) on the start page; a tap there opens the tab:
+`{ "id": "wasser", "title": "Wasser", "icon": "droplet", "module": "wasser", "home": true }`.
 
 ## Module `auto` – config keys
 

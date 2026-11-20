@@ -359,6 +359,7 @@ export const de = {
   'board.look': 'Ansehen',
   'board.ok': 'In Ordnung',
   'board.open': 'offen',
+  'board.openTab': 'Seite {label} öffnen',
   'board.source': 'Inhalt geliefert vom Haus-Programm, alle 2 min neu.',
   'item.done': 'Erledigt',
   'item.ack': 'Gesehen',

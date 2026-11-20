@@ -28,6 +28,7 @@
   import { localMidnight } from '../model/time';
   import { i18n, t } from '../i18n/index.svelte';
   import PageHead from './PageHead.svelte';
+  import { homeTiles } from '../app/home-boards.svelte';
 
   const house = $derived(currentData());
 
@@ -171,6 +172,10 @@
       presenceTile(house),
     ].filter((x): x is NonNullable<typeof x> => x !== null),
   );
+  // tiles of boards marked "home" in the mapping (e.g. the water meter): in the second row while
+  // it has room (6), else a row of their own
+  const fromBoards = homeTiles();
+  const together = $derived(row2.length + fromBoards.tiles.length <= 6);
 
   const tsData = $derived(pvTimeSeries(house, period));
   // known events (mapping notes): named under the chart they show up in, and listed
@@ -232,9 +237,19 @@
     {#each row1 as tile (tile.label)}<Tile {...tile} />{/each}
   </TileRow>
   <div class="row-gap"></div>
-  <TileRow count={row2.length}>
-    {#each row2 as tile (tile.label)}<Tile {...tile} />{/each}
-  </TileRow>
+  {#if together}
+    <TileRow count={row2.length + fromBoards.tiles.length}>
+      {#each [...row2, ...fromBoards.tiles] as tile, k (k)}<Tile {...tile} />{/each}
+    </TileRow>
+  {:else}
+    <TileRow count={row2.length}>
+      {#each row2 as tile (tile.label)}<Tile {...tile} />{/each}
+    </TileRow>
+    <div class="row-gap"></div>
+    <TileRow count={fromBoards.tiles.length}>
+      {#each fromBoards.tiles as tile, k (k)}<Tile {...tile} />{/each}
+    </TileRow>
+  {/if}
 
   <div class="period-head">
     <h2>{period === 'day' ? t('page.today') : t('page.period')}</h2>

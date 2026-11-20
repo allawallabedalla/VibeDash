@@ -637,9 +637,19 @@ describe('clicks on board items and the feedback backlog', () => {
     };
     expect(h.boards[0]).toMatchObject({ onPage: 'charging' });
     expect(h.boards[0]!.calc).toBeUndefined();
+    const r1 = validateMapping({
+      ...example,
+      boards: [{ id: 'wasser', title: 'Wasser', icon: 'droplet', module: 'wasser', home: true }],
+    });
+    if (!r1.ok) throw new Error(r1.errors.join());
+    const h1 = (await get('/api/health', deps({ mapping: r1.mapping }))).body as {
+      boards: { home?: boolean }[];
+    };
+    expect(h1.boards[0]).toMatchObject({ home: true });
     for (const bad of [
       { id: 'a', title: 'A', module: 'auto', calcUrl: 'http://h/c' },
       { id: 'a', title: 'A', url: 'http://h/a', onPage: 'overview' },
+      { id: 'a', title: 'A', url: 'http://h/a', home: 'ja' },
     ])
       expect(validateMapping({ ...example, boards: [bad] }).ok).toBe(false);
   });

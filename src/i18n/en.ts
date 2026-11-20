@@ -355,6 +355,7 @@ export const en: Record<MessageKey, string> = {
   'board.look': 'Look',
   'board.ok': 'All right',
   'board.open': 'open',
+  'board.openTab': 'Open the page {label}',
   'board.source': 'Content supplied by the house service, new every 2 min.',
   'item.done': 'Done',
   'item.ack': 'Seen',

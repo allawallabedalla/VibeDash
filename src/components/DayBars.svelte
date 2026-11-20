@@ -10,13 +10,22 @@
     /** Index of the running day, drawn lighter. */
     partial?: number;
     label: string;
+    /** optional mean (same unit): a dashed line across the bars */
+    mean?: number;
   }
-  let { values, labels, color, unit, partial, label }: Props = $props();
+  let { values, labels, color, unit, partial, label, mean }: Props = $props();
 
-  const max = $derived(Math.max(1e-9, ...values.map((v) => v ?? 0)));
+  const max = $derived(Math.max(1e-9, mean ?? 0, ...values.map((v) => v ?? 0)));
+  const meanAt = $derived(mean === undefined ? null : Math.max(0, mean) / max);
 </script>
 
-<div class="days" class:many={values.length > 8} role="img" aria-label={label}>
+<div
+  class="days"
+  class:many={values.length > 8}
+  class:dense={values.length > 24}
+  role="img"
+  aria-label={label}
+>
   {#each values as v, i (i)}
     <div
       class="day"
@@ -24,9 +33,13 @@
       title="{labels[i]}: {v === null ? '–' : `${num(v, 1)} ${unit}`}"
     >
       <div class="col">
+        {#if meanAt !== null && v !== null && v !== undefined}<span class="mean" style:--at={meanAt}
+          ></span>{/if}
         {#if v !== null && v !== undefined}
           <!-- 0 is a value, only null is a gap (Audit05 G5-04) -->
-          <span class="v">{num(v, Number.isInteger(v) || Math.abs(v) >= 10 ? 0 : 1)}</span>
+          <span class="v" class:zero={v === 0}
+            >{num(v, Number.isInteger(v) || Math.abs(v) >= 10 ? 0 : 1)}</span
+          >
           <span class="bar" style:height="{(100 * Math.max(v, 0)) / max}%" style:background={color}
           ></span>
         {:else}
@@ -53,6 +66,7 @@
     min-width: 0;
   }
   .col {
+    position: relative;
     flex: 1;
     width: 100%;
     display: flex;
@@ -61,6 +75,18 @@
     align-items: center;
     padding-top: 18px;
     border-bottom: 1px solid var(--line);
+  }
+  /* the mean: one dash per day, the gaps between the days make the line dashed */
+  .mean {
+    position: absolute;
+    left: 0;
+    right: 0;
+    /* the tallest bar gives room to its number (about 20 px) */
+    bottom: min(calc((100% - 18px) * var(--at)), calc(100% - 38px));
+    border-top: 2px dashed var(--text-2);
+    opacity: 0.6;
+    pointer-events: none;
+    z-index: 1;
   }
   .bar {
     width: min(22px, 60%);
@@ -107,5 +133,19 @@
       max-width: none;
       overflow: visible;
     }
+    /* very many bars (48 hours, 30 days): every sixth label, numbers only in the title */
+    .dense .day:not(:nth-last-child(6n + 1)) .d {
+      visibility: hidden;
+    }
+    .dense .day:nth-last-child(6n + 1) .d {
+      visibility: visible;
+    }
+    .dense .v {
+      visibility: hidden;
+    }
+  }
+  /* very many bars on a wide screen: a 0 needs no number of its own */
+  .dense .v.zero {
+    visibility: hidden;
   }
 </style>

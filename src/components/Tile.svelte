@@ -74,6 +74,8 @@
     zoom?: TileZoomSpec;
     /** battery tile: does it last until sunrise (shown large in the enlarged view) */
     reach?: import('../model/reach').Reach;
+    /** a tap opens this page (e.g. a board's tile on the start page) instead of the enlarged view */
+    open?: { label: string; go: () => void };
   }
 
   export interface TileZoomSpec {
@@ -118,6 +120,7 @@
     loading = false,
     zoom,
     reach,
+    open: opens,
   }: TileProps = $props();
 
   const uid = $props.id();
@@ -217,13 +220,22 @@
   {/if}
   <!-- the whole tile is a tap target for the enlarged view; ⓘ sits above it (last, so ⓘ comes first) -->
   {#if !open}
-    <button
-      type="button"
-      class="hit"
-      aria-label={t('zoom.open', { label })}
-      aria-haspopup="dialog"
-      onclick={() => (zoomed = true)}
-    ></button>
+    {#if opens}
+      <button
+        type="button"
+        class="hit"
+        aria-label={t('board.openTab', { label: opens.label })}
+        onclick={opens.go}
+      ></button>
+    {:else}
+      <button
+        type="button"
+        class="hit"
+        aria-label={t('zoom.open', { label })}
+        aria-haspopup="dialog"
+        onclick={() => (zoomed = true)}
+      ></button>
+    {/if}
   {/if}
 </article>
 

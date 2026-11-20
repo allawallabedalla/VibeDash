@@ -65,6 +65,9 @@
  * ({ label, url } – a button that opens the house's own tool in a new window; http(s) only), and
  * "slot": "top" | "plan" – where a page that embeds the board (the charging page, mapping
  * boards[].onPage) puts it: above its own content, after its plan; without slot at the end.
+ * "slot": "home" on a "tiles" section (mapping boards[].home = true): the start page shows its
+ * first tile next to its own; a tap there opens the board. The board page shows it first as usual.
+ * "bars" may carry "mean" (a number ≥ 0): a dashed line across the bars, e.g. the 30-day mean.
  */
 export type BoardColor =
   'sun' | 'battery' | 'home' | 'grid' | 'import' | 'feed' | 'climate' | 'muted';
@@ -100,7 +103,8 @@ interface Base {
   note?: string;
   info?: BoardInfo;
   link?: { label: string; url: string };
-  slot?: 'top' | 'plan';
+  /** home: the start page shows the section's first tile (mapping boards[].home); a tap opens the board */
+  slot?: 'top' | 'plan' | 'home';
   /** second level: shown only after "more details" at the end of the board (Audit05: short first level) */
   more?: boolean;
 }
@@ -151,6 +155,8 @@ export type BoardSection =
         labels: string[];
         values: (number | null)[];
         color: BoardColor;
+        /** optional mean, drawn as a dashed line across the bars (same unit) */
+        mean?: number;
         ranges?: { id: string; label: string; labels: string[]; values: (number | null)[] }[];
       })
   | (Base & {
@@ -445,7 +451,9 @@ export function sanitizeBoard(raw: unknown): Board | null {
       ...(opt(s.note, 400) ? { note: opt(s.note, 400) } : {}),
       ...(info(s.info) ? { info: info(s.info) } : {}),
       ...(link(s.link) ? { link: link(s.link)! } : {}),
-      ...(s.slot === 'top' || s.slot === 'plan' ? { slot: s.slot as 'top' | 'plan' } : {}),
+      ...(s.slot === 'top' || s.slot === 'plan' || s.slot === 'home'
+        ? { slot: s.slot as 'top' | 'plan' | 'home' }
+        : {}),
       ...(s.more === true ? { more: true } : {}),
     };
     switch (s.type) {
@@ -516,6 +524,7 @@ export function sanitizeBoard(raw: unknown): Board | null {
           unit: text(s.unit, 12),
           ...one(s),
           color: color(s.color, 'home'),
+          ...(num(s.mean) !== null && num(s.mean)! >= 0 ? { mean: num(s.mean)! } : {}),
           ...(ranges.length ? { ranges } : {}),
         });
         break;
