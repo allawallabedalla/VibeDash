@@ -752,6 +752,23 @@ export const de = {
   'hc.chart': 'Geladen, lila = Haus aus Netz',
   'charge.chart': 'Geladen, davon Sonne',
   'gallery.tables': 'Tabellen mit Grafik',
+
+
+  // Audit05 I-2/I-4/I-5
+  'co.title': 'Strom fürs Auto',
+  'co.days': '{n} Tage:',
+  'co.sun': 'Sonne',
+  'co.battery': 'Akku',
+  'co.grid': 'Netz',
+  'co.open': 'noch offen',
+  'co.note': 'n = {n} Ladetage · {kwh} kWh mit bekannter Herkunft',
+  'co.openOnly': 'Geladen, die Aufteilung nach Herkunft kommt am nächsten Tag.',
+  'co.none': 'In den letzten {n} Tagen nicht geladen.',
+  'co.aria': 'Strom fürs Auto: {sun} % Sonne, {battery} % Akku, {grid} % Netz',
+  'co.info.what':
+    'Jeder Balken ist ein Tag: so viel Energie ging ins Auto – gelb direkt von der Sonne, grün aus dem Hausakku, lila aus dem Netz. Die Zeile darüber fasst die Tage zusammen. Ziel: möglichst wenig Lila. Grau = geladen, aber die Aufteilung kommt erst am nächsten Tag; ein kleiner Ring = an dem Tag keine Aufzeichnung (nicht 0).',
+  'co.info.source':
+    'Aus der Tagesauswertung des Hauses (Zähler und Wallbox, je Tag nach Herkunft aufgeteilt). „Akku“ ist Strom, den der Hausakku vorher gespeichert hat – meist Sonne, nachts geladen auch Netz. Anteile in ganzen Prozent, zusammen 100.',
 } as const;
 
 export type MessageKey = keyof typeof de;

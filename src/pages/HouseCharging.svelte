@@ -17,8 +17,11 @@
   import { i18n, num, t, time } from '../i18n/index.svelte';
   import { addDays, localDateKey, localMidnight } from '../model/time';
   import ChargeTrace from './ChargeTrace.svelte';
+  import Icon from '../components/Icon.svelte';
   import PageHead from './PageHead.svelte';
   import { carNext } from '../model/outlook';
+  import ChargeOrigin from '../components/ChargeOrigin.svelte';
+  import { originStack, type OriginDay } from '../model/charge-origin';
 
   interface Session {
     start: number;
@@ -57,6 +60,8 @@
     maxKw: number | null;
     /** what the plan's two day numbers mean (mapping.charging.plan.span) */
     span: 'quantiles' | 'cautious-good' | null;
+    /** the car's energy per day by origin (mapping.charging.origin); absent = one colour */
+    origin?: OriginDay[];
   }
 
   const house = $derived(currentData());
@@ -215,9 +220,10 @@
     });
   });
 
-  const perDay = $derived(
+  /** kWh of the finished charges started on each day (null = none) */
+  const chargedOn = (list: number[]) =>
     view.s === 'ready'
-      ? days.map((d) => {
+      ? list.map((d) => {
           const key = localDateKey(d, tz);
           const v =
             view.s === 'ready'
@@ -227,8 +233,22 @@
               : 0;
           return v > 0 ? v : null;
         })
-      : [],
+      : [];
+  const perDay = $derived(chargedOn(days));
+
+  // with the origin of the car's energy: 30 days stacked sun / battery / grid (Audit05 I-2)
+  const days30 = Array.from({ length: 30 }, (_, i) => addDays(today, i - 29, tz));
+  const originBars = $derived(
+    view.s === 'ready' && view.a.origin
+      ? originStack(days30, view.a.origin, chargedOn(days30))
+      : null,
   );
+  const shortDay = (d: number) =>
+    d === today
+      ? t('days.today')
+      : new Intl.DateTimeFormat(locale, { timeZone: tz, day: 'numeric', month: 'numeric' }).format(
+          d + 12 * 3_600_000,
+        );
 
   const columns: Column[] = $derived([
     { key: 'start', label: t('hc.col.start') },
@@ -353,40 +373,51 @@
     {/if}
 
     <h2>{t('hc.pastTitle')}</h2>
-    <Card title={t('hc.perDay')} icon="battery" color="var(--battery)">
-      <DayBars
-        values={perDay}
-        labels={days.map(dayLabel)}
-        color="var(--battery)"
-        unit="kWh"
-        partial={13}
-        label={t('hc.perDay')}
-      />
-    </Card>
-    <div class="row-gap"></div>
-    <Card
-      title={tableTitle}
-      icon="clock"
-      color="var(--muted)"
-      note={rows.length ? t('hc.gridNote') : undefined}
-    >
-      {#if rows.length}
-        <DataTable
-          {columns}
-          {rows}
-          caption={tableTitle}
-          chart={{
-            kind: 'bar',
-            label: t('hc.chart'),
-            unit: 'kWh',
-            color: 'var(--battery)',
-            partColor: 'var(--import)',
-          }}
+    {#if originBars}
+      <ChargeOrigin bars={originBars} labels={days30.map(shortDay)} partial={29} />
+    {:else}
+      <Card title={t('hc.perDay')} icon="battery" color="var(--battery)">
+        <DayBars
+          values={perDay}
+          labels={days.map(dayLabel)}
+          color="var(--battery)"
+          unit="kWh"
+          partial={13}
+          label={t('hc.perDay')}
         />
-      {:else}
-        <p class="muted-note">{t('hc.noSessions')}</p>
-      {/if}
-    </Card>
+      </Card>
+    {/if}
+    <div class="row-gap"></div>
+    <!-- the list of charges is the second level: folded below the graphic (Audit05 I-2) -->
+    <details class="more">
+      <summary
+        ><span class="chev" aria-hidden="true"><Icon name="chevron" size={18} /></span>{tableTitle}
+        · {rows.length}</summary
+      >
+      <Card
+        title={tableTitle}
+        icon="clock"
+        color="var(--muted)"
+        note={rows.length ? t('hc.gridNote') : undefined}
+      >
+        {#if rows.length}
+          <DataTable
+            {columns}
+            {rows}
+            caption={tableTitle}
+            chart={{
+              kind: 'bar',
+              label: t('hc.chart'),
+              unit: 'kWh',
+              color: 'var(--battery)',
+              partColor: 'var(--import)',
+            }}
+          />
+        {:else}
+          <p class="muted-note">{t('hc.noSessions')}</p>
+        {/if}
+      </Card>
+    </details>
   {/if}
 
   {#if cb && emb.board}
@@ -449,6 +480,34 @@
   }
   .blist .muted {
     color: var(--muted);
+  }
+  .more > summary {
+    list-style: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 22px;
+    background: var(--surface-2);
+    box-shadow: inset 0 0 0 1px var(--line);
+    color: var(--text);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .more > summary::-webkit-details-marker {
+    display: none;
+  }
+  .chev {
+    display: inline-flex;
+    transform: rotate(90deg);
+    transition: transform 0.2s;
+  }
+  .more[open] .chev {
+    transform: rotate(-90deg);
+  }
+  .more[open] > summary {
+    margin-bottom: 10px;
   }
   .axis .ticks {
     position: relative;

@@ -743,4 +743,21 @@ export const en: Record<MessageKey, string> = {
   'hc.chart': 'Charged, purple = house from grid',
   'charge.chart': 'Charged, of it solar',
   'gallery.tables': 'Tables with a graphic',
+
+
+  // Audit05 I-2/I-4/I-5
+  'co.title': 'Power for the car',
+  'co.days': '{n} days:',
+  'co.sun': 'sun',
+  'co.battery': 'battery',
+  'co.grid': 'grid',
+  'co.open': 'still open',
+  'co.note': 'n = {n} charging days · {kwh} kWh with known origin',
+  'co.openOnly': 'Charged; the split by origin follows the next day.',
+  'co.none': 'No charging in the last {n} days.',
+  'co.aria': 'Power for the car: {sun} % sun, {battery} % battery, {grid} % grid',
+  'co.info.what':
+    'Each bar is one day: this much energy went into the car – yellow straight from the sun, green from the house battery, purple from the grid. The line above sums up the days. Goal: as little purple as possible. Grey = charged, but the split comes the next day; a small ring = no record that day (not 0).',
+  'co.info.source':
+    "From the house's daily evaluation (meters and wallbox, split by origin per day). “Battery” is power the house battery stored before – mostly sun, at night also grid. Shares in whole percent, adding up to 100.",
 };
