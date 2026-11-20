@@ -67,7 +67,8 @@
   /** a week shows every weekday, a month every 7th day counted back from today */
   const xLabel = (i: number) => {
     const d = days[i]!;
-    if (days.length <= 10) return d.today ? t('days.today') : wd.format(noon(d)).replace(/\.$/, '');
+    // today is the bold one (a wider word did not fit at the right edge)
+    if (days.length <= 10) return wd.format(noon(d)).replace(/\.$/, '');
     return (days.length - 1 - i) % 7 === 0 ? dm.format(noon(d)) : '';
   };
 
@@ -314,6 +315,7 @@
   }
   .sel {
     fill: var(--accent-bg);
+    opacity: 0.7;
   }
   rect.win {
     fill: var(--faint);
