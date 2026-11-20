@@ -11,6 +11,7 @@ from __future__ import annotations
 import fcntl
 import json
 import os
+import threading
 import time
 
 ACTIONS = ("done", "ack", "comment", "delete", "undo", "snooze")
@@ -53,7 +54,7 @@ class Notes:
 
     def _write(self, d: dict) -> None:
         os.makedirs(os.path.dirname(self.path) or ".", exist_ok=True)
-        tmp = f"{self.path}.tmp{os.getpid()}"
+        tmp = f"{self.path}.tmp{os.getpid()}.{threading.get_ident()}"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(d, f, ensure_ascii=False, indent=1)
         os.replace(tmp, self.path)

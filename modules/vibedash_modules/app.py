@@ -25,6 +25,8 @@ from .config import board_of, calc_owner, load_modules, modules_dir, owner_of
 NAME = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
 FEED = re.compile(r"^[a-z0-9_-]{1,40}\.[a-z]{2,4}$")
 MAX_BODY = 8192
+# clicks are short: one at a time, so two taps never write the same wish file over each other (Audit05 B4-06)
+WRITE_LOCK = threading.Lock()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -101,7 +103,11 @@ class Handler(BaseHTTPRequestHandler):
             mod = mods["modules"].get(name)
             if not mod or not hasattr(mod, parts[2]):
                 return self._send(404, {"ok": False, "error": f"no_{parts[2]}"})
-            status, body = mod.action(d) if parts[2] == "action" else mod.calc(d)
+            if parts[2] == "action":
+                with WRITE_LOCK:
+                    status, body = mod.action(d)
+            else:
+                status, body = mod.calc(d)
             return self._send(status, body)
         except Exception as e:  # noqa: BLE001
             print(f"POST {path}: {type(e).__name__}: {e}", file=sys.stderr, flush=True)

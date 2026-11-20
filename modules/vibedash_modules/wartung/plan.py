@@ -26,6 +26,7 @@ from __future__ import annotations
 import fcntl
 import json
 import os
+import threading
 import time
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -212,7 +213,7 @@ class Plan:
                     hit = o.get("text")
             if hit is None:
                 return False, "unbekannte Aufgabe"
-            tmp = f"{self.path}.tmp{os.getpid()}"
+            tmp = f"{self.path}.tmp{os.getpid()}.{threading.get_ident()}"
             with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(plan, f, ensure_ascii=False, indent=1)
                 f.write("\n")

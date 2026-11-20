@@ -142,7 +142,7 @@ def append(p: str, line: dict, keep_ms: int) -> None:
         cut = line["t"] - keep_ms
         if isinstance(first.get("t"), (int, float)) and first["t"] < cut - 86_400_000:
             keep = read_history(p, cut)
-            tmp = p + ".neu"
+            tmp = f"{p}.neu{os.getpid()}.{threading.get_ident()}"
             with open(tmp, "w", encoding="utf-8") as f:
                 for r in keep:
                     f.write(json.dumps(r, ensure_ascii=False, separators=(",", ":")) + "\n")
