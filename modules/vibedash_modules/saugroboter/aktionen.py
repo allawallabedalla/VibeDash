@@ -27,6 +27,7 @@ import json
 import math
 import os
 import re
+import threading
 from datetime import datetime
 
 from ..raeume import board as plan_board
@@ -54,7 +55,7 @@ def _load(p: str) -> dict:
 
 
 def _write(p: str, d: dict) -> None:
-    tmp = p + ".neu"
+    tmp = f"{p}.neu{os.getpid()}.{threading.get_ident()}"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(d, f, ensure_ascii=False, indent=1)
     os.replace(tmp, p)

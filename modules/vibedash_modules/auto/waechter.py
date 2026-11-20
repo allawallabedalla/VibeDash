@@ -25,6 +25,7 @@ import http.cookiejar
 import json
 import math
 import os
+import threading
 import urllib.error
 import urllib.request
 from datetime import UTC, datetime
@@ -115,7 +116,7 @@ def _read(path: str) -> dict:
 
 def _write(path: str, d: dict) -> None:
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    tmp = f"{path}.{os.getpid()}.tmp"
+    tmp = f"{path}.{os.getpid()}.{threading.get_ident()}.tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(d, f, ensure_ascii=False, indent=1)
     os.replace(tmp, path)

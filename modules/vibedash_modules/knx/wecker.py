@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from datetime import datetime, time, timedelta
 
 ITEM = "wecker:pause"
@@ -70,7 +71,7 @@ def store(path: str, cfg: dict, value: str, tz, now: float) -> dict:
         _, bis = _limits(cfg)
         data.update({"aus_am": day.isoformat(), "bis": datetime.combine(day, bis, tz).isoformat()})
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    tmp = f"{path}.tmp{os.getpid()}"
+    tmp = f"{path}.tmp{os.getpid()}.{threading.get_ident()}"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f)
     os.chmod(tmp, 0o644)  # the house reads it

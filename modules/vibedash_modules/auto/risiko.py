@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from datetime import datetime
 
 # value, label, share of weather cases that may need grid power for the house
@@ -64,7 +65,7 @@ def store(path: str, value: str, tz, now: float, bis_kwh: float | None = None) -
     else:
         data["bis"] = d.date().isoformat()
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    tmp = f"{path}.tmp{os.getpid()}"
+    tmp = f"{path}.tmp{os.getpid()}.{threading.get_ident()}"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f)
     os.chmod(tmp, 0o644)  # the house's planner reads it

@@ -16,6 +16,7 @@ import json
 import os
 import re
 import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -39,7 +40,7 @@ def lies(p, leer=None):
 
 def schreib(p, obj, mode=0o600):
     os.makedirs(os.path.dirname(p) or ".", exist_ok=True)
-    tmp = f"{p}.neu{os.getpid()}"
+    tmp = f"{p}.neu{os.getpid()}.{threading.get_ident()}"
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False)

@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -83,7 +84,7 @@ def _ts(s) -> float | None:
 
 def _write(path: str, data: dict) -> None:
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    tmp = f"{path}.tmp{os.getpid()}"
+    tmp = f"{path}.tmp{os.getpid()}.{threading.get_ident()}"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f)
     os.chmod(tmp, 0o644)  # the house reads it

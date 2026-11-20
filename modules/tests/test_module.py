@@ -160,6 +160,22 @@ class TestHttp(unittest.TestCase):
         self.assertEqual(self.get("/feed/wartung/x.ics")[0], 404)
         self.assertEqual(self.get("/feed/wartung/../../etc")[0], 404)
 
+    def test_parallel_clicks_all_answer(self):
+        # many taps at once must not trip over each other's temporary files (Audit05 B4-06)
+        res = []
+
+        def tap(i):
+            res.append(
+                self.post("/board/wartung/action", {"item": "plan:siebe", "action": "comment", "text": f"n{i}"})[0]
+            )
+
+        ts = [threading.Thread(target=tap, args=(i,)) for i in range(20)]
+        for t in ts:
+            t.start()
+        for t in ts:
+            t.join()
+        self.assertEqual(sorted(set(res)), [200])
+
     def test_action_needs_header(self):
         self.assertEqual(self.post("/board/wartung/action", {"item": "plan:siebe", "action": "ack"}, False)[0], 403)
         self.assertEqual(self.post("/board/wartung/action", {"item": "plan:siebe", "action": "ack"})[0], 200)
