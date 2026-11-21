@@ -195,4 +195,25 @@
   .dense .v.zero {
     visibility: hidden;
   }
+  /* a day of quarter hours (more than 60 bars; the two grid lines come first): thin gaps, numbers only in the
+     title, a time every 3 hours – on the phone every 6 hours (CSS only: no script for the first-page budget) */
+  .days:has(> .day:nth-child(63)) {
+    gap: 1px;
+  }
+  .days:has(> .day:nth-child(63)) .v {
+    visibility: hidden;
+  }
+  .days:has(> .day:nth-child(63)) .day:not(:nth-child(12n + 3)) .d {
+    visibility: hidden;
+  }
+  .days:has(> .day:nth-child(63)) .day:nth-child(12n + 3) .d {
+    visibility: visible;
+    max-width: none;
+    overflow: visible;
+  }
+  @media (max-width: 600px) {
+    .days:has(> .day:nth-child(63)) .day:not(:nth-child(24n + 3)) .d {
+      visibility: hidden;
+    }
+  }
 </style>

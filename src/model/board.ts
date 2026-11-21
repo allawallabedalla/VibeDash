@@ -66,7 +66,8 @@
  * "slot": "top" | "plan" – where a page that embeds the board (the charging page, mapping
  * boards[].onPage) puts it: above its own content, after its plan; without slot at the end.
  * "slot": "home" on a "tiles" section (mapping boards[].home = true): the start page shows its
- * first tile next to its own; a tap there opens the board. The board page shows it first as usual.
+ * first tile next to its own (or the tile with "home": the word it carries there); a tap there opens
+ * the board. The board page shows it first as usual.
  * "bars" may carry "mean" (a number ≥ 0): a dashed line across the bars, e.g. the 30-day mean.
  */
 export type BoardColor =
@@ -136,6 +137,8 @@ export interface BoardTile {
   sparkTo?: number;
   color?: BoardColor;
   info?: BoardInfo;
+  /** this tile stands on the start page (slot "home"), under this word instead of its label */
+  home?: string;
 }
 export type BoardSection =
   | (Base & { type: 'tiles'; tiles: BoardTile[] })
@@ -479,6 +482,7 @@ export function sanitizeBoard(raw: unknown): Board | null {
                 : {}),
               ...(t.color ? { color: color(t.color) } : {}),
               ...(info(t.info) ? { info: info(t.info) } : {}),
+              ...(opt(t.home, 40) ? { home: opt(t.home, 40) } : {}),
             })),
         });
         break;
@@ -513,7 +517,8 @@ export function sanitizeBoard(raw: unknown): Board | null {
       }
       case 'bars': {
         const one = (raw: O) => {
-          const labels = list(raw.labels, 60).map((l) => text(l, 12));
+          // up to 100: the quarter hours of a day (92–100 on a clock change day)
+          const labels = list(raw.labels, 100).map((l) => text(l, 12));
           return { labels, values: list(raw.values, labels.length).map(num) };
         };
         const ranges = ranged(s, (r) => one(r));

@@ -65,15 +65,19 @@ def sec(b, title):
     return next(s for s in b["sections"] if s.get("title") == title)
 
 
+def tile(b, label):
+    return next(t for t in sec(b, "Jetzt")["tiles"] if t["label"] == label)
+
+
 class WasserBoard(unittest.TestCase):
     def test_today_from_meter_difference(self):
         b = build(meter())
-        tile = b["sections"][0]["tiles"][0]
+        t = tile(b, "Heute")
         self.assertEqual(b["sections"][0]["slot"], "home")
-        self.assertEqual(tile["value"], "60")  # 7:00 one 60 l step, 19:00 still to come
-        self.assertIn("gestern 120 l", tile["sub"])
-        self.assertEqual(tile["state"], "ok")
-        self.assertEqual(len(tile["spark"]), 24)
+        self.assertEqual(t["home"], "Wasser")  # the start page shows this tile under "Wasser"
+        self.assertEqual(t["value"], "60")  # 7:00 one 60 l step, 19:00 still to come
+        self.assertEqual(t["state"], "ok")
+        self.assertEqual(len(t["spark"]), 13)  # the hours of today, 0 to 12 o'clock
 
     def test_hours_and_days(self):
         b = build(meter())
@@ -88,7 +92,8 @@ class WasserBoard(unittest.TestCase):
         self.assertEqual(d["values"][-2], 120)
         self.assertIsNone(d["values"][0])  # before the data: gap, never 0
         self.assertEqual(d["mean"], 120.0)
-        self.assertIn("n 9", sec(b, "Zähler")["tiles"][2]["sub"])
+        self.assertIn("n = 9", d["note"])
+        self.assertTrue(h.get("more") and d.get("more"))  # second level
 
     def test_compare_per_person(self):
         # 120 l a day, 2 people -> 60 l each, next to Germany 121, world ≈ 95, basic need 50
@@ -110,14 +115,15 @@ class WasserBoard(unittest.TestCase):
 
     def test_since_due_date(self):
         b = build(meter())
-        t = sec(b, "Zähler")["tiles"][1]
+        t = tile(b, "Seit Stichtag")
         self.assertEqual(t["unit"], "m³")
         self.assertTrue(t["value"].startswith("61,"))  # 100 + 10 days × 120 l + 60 l − 40
 
     def test_quiet_nights_no_hint(self):
         b = build(meter())
         self.assertFalse(any(s.get("title") == "Hinweis" for s in b["sections"]))
-        self.assertEqual(sec(b, "Zähler")["tiles"][3]["value"], "kein Hinweis")
+        self.assertEqual(tile(b, "Dicht?")["value"], "dicht")
+        self.assertEqual(tile(b, "Dicht?")["state"], "ok")
         n = sec(b, "Nachtverbrauch 2–5 Uhr")
         self.assertEqual(n["values"][-1], 0)
 
@@ -126,7 +132,10 @@ class WasserBoard(unittest.TestCase):
         hint = sec(b, "Hinweis")["items"][0]
         self.assertIn("nachts", hint["text"])
         self.assertTrue(hint["text"].endswith("4 l, 4 l, 4 l."))
-        self.assertEqual(sec(b, "Zähler")["tiles"][3]["state"], "look")
+        self.assertIn("Haupthahn zu? Zähler beobachten", hint["meta"])
+        self.assertEqual(tile(b, "Dicht?")["value"], "Leck-Verdacht")
+        self.assertEqual(tile(b, "Dicht?")["state"], "look")
+        self.assertIn("Nacht 4 l", tile(b, "Dicht?")["sub"])
 
     def test_two_nights_are_not_enough(self):
         rows = meter(night_l=4)
@@ -156,27 +165,28 @@ class WasserBoard(unittest.TestCase):
 
     def test_first_day_counts_from_first_value(self):
         b = build(meter(days=0.2))
-        tile = b["sections"][0]["tiles"][0]
-        self.assertIn("seit", tile["sub"])
-        self.assertEqual(sec(b, "Zähler")["tiles"][3]["value"], "sammelt")
+        self.assertIn("seit", tile(b, "Heute")["sub"])
+        self.assertEqual(tile(b, "Dicht?")["value"], "sammelt")
+        self.assertEqual(tile(b, "Dicht?")["state"], "open")
 
     def test_outage_and_status_warn(self):
-        tile = build(meter(), {**LIVE, "ausfall": True})["sections"][0]["tiles"][0]
-        self.assertEqual(tile["state"], "act")
-        self.assertIn("sendet nicht", tile["sub"])
-        tile = build(meter(), {**LIVE, "status": "LEAK"})["sections"][0]["tiles"][0]
-        self.assertEqual(tile["state"], "act")
-        self.assertIn("Status LEAK", tile["sub"])
+        t = tile(build(meter(), {**LIVE, "ausfall": True}), "Heute")
+        self.assertEqual(t["state"], "act")
+        self.assertIn("sendet nicht", t["sub"])
+        t = tile(build(meter(), {**LIVE, "status": "LEAK"}), "Heute")
+        self.assertEqual(t["state"], "act")
+        self.assertIn("Status LEAK", t["sub"])
 
     def test_base_offline_uses_stored_values(self):
         rows = meter()
         b = board.build(rows, None, NOW + 3600, TZ, board.TEXT)
         self.assertIn("antwortet nicht", sec(b, "Zustand")["text"])
-        self.assertEqual(b["sections"][0]["tiles"][0]["state"], "act")  # data missing for an hour
+        self.assertEqual(tile(b, "Heute")["state"], "act")  # data missing for an hour
 
     def test_nothing_yet(self):
         b = board.build([], {}, NOW, TZ, board.TEXT)
-        self.assertEqual(b["sections"][0]["tiles"][0]["value"], "–")
+        self.assertEqual(tile(b, "Heute")["value"], "–")
+        self.assertEqual(sec(b, "Wasserbezüge heute")["items"][0]["text"], "noch keine Werte")
         self.assertEqual(pruefe(b), [])
 
     def test_state_line(self):
@@ -185,6 +195,218 @@ class WasserBoard(unittest.TestCase):
 
     def test_rules(self):
         for b in (build(meter()), build(meter(night_l=4)), build(meter(steady=True))):
+            self.assertEqual(pruefe(b), [])
+
+
+def minuten(flows, t0, t1, start=100.0, skip=None):
+    """Rows like the collector writes them to the minute: flows {minute time: litres}; a point on every new reading
+    (the litres of a minute read 23 s after its end, as the collector does), else every 15 min. skip = (a, b): none."""
+    rows, stand, last_w = [], start, None
+    t = t0
+    while t <= t1:
+        lit = flows.get(t, 0)
+        stand += lit / 1000
+        if not (skip and skip[0] <= t < skip[1]) and (lit or last_w is None or t - last_w >= 900):
+            rows.append({"t": t + 83, "zaehlerstand_m3": round(stand, 3), "stichtag_m3": 40.0, "status": "OK"})
+            last_w = t
+        t += 60
+    return rows
+
+
+def fluss(start, per_min):
+    """{minute time: litres} from start on, one entry per minute (0 = a minute without water)."""
+    return {start + 60 * i: v for i, v in enumerate(per_min) if v}
+
+
+def haushalt(day=None, night_l=0):
+    """A synthetic day to the minute (no house data): WC, shower, washing machine fillings, hands, hand washing."""
+    day = day or at(2026, 3, 10, 0)
+    f = {}
+    f |= fluss(day + 6 * 3600 + 45 * 60, [3, 3])  # 6:45 WC 6 l
+    f |= fluss(day + 7 * 3600, [8] * 6)  # 7:00 shower 48 l
+    f |= fluss(day + 7 * 3600 + 20 * 60, [1])  # 7:20 hands
+    for m, v in ((0, [7]), (12, [5, 3]), (20, [1]), (30, [8]), (50, [6, 2])):  # 9:00 washing machine
+        f |= fluss(day + 9 * 3600 + m * 60, v)
+    f |= fluss(day + 11 * 3600, [4, 2])  # 11:00 WC 6 l
+    if night_l:
+        f |= fluss(day + 3 * 3600, [night_l])
+    return f
+
+
+def tag(night_l=0, days=4, now=NOW):
+    """Rows of `days` synthetic days up to now, the same household every day."""
+    first = at(2026, 3, 10, 0) - days * 86400
+    f = {}
+    for k in range(days + 1):
+        f |= haushalt(first + k * 86400, night_l)
+    return minuten(f, first - 3600, now)
+
+
+def draws(f, t0=None, t1=None, **kw):
+    t0 = t0 if t0 is not None else at(2026, 3, 10, 0)
+    rows = minuten(f, t0, t1 if t1 is not None else t0 + 86399, **kw)
+    return board.bezuege(board.readings(rows), t0, t0 + 86400)
+
+
+D0 = at(2026, 3, 10, 0)
+
+
+class WasserBezuege(unittest.TestCase):
+    def test_wc(self):
+        (d,) = draws(fluss(D0 + 3600, [3, 3]))
+        self.assertEqual((d["liter"], d["art"]), (6, "wc"))
+        self.assertEqual(d["text"], "vermutlich WC")
+        self.assertAlmostEqual(d["ende"] - d["start"], 120, delta=1)
+
+    def test_short(self):
+        (d,) = draws(fluss(D0 + 3600, [2]))
+        self.assertEqual(d["art"], "kurz")
+
+    def test_shower(self):
+        (d,) = draws(fluss(D0 + 7 * 3600, [8] * 6))
+        self.assertEqual((d["liter"], d["art"]), (48, "dusche"))
+
+    def test_garden(self):
+        (d,) = draws(fluss(D0 + 18 * 3600, [10] * 30))
+        self.assertEqual((d["liter"], d["art"]), (300, "garten"))
+
+    def test_machine_pushes_are_one_draw(self):
+        f = {}
+        for m, v in ((0, [7]), (12, [5, 3]), (20, [1]), (30, [8]), (50, [6, 2])):
+            f |= fluss(D0 + 9 * 3600 + m * 60, v)
+        f |= fluss(D0 + 10 * 3600 + 30 * 60, [1])  # hands 40 min later: not part of the machine
+        ds = draws(f)
+        self.assertEqual([d["art"] for d in ds], ["maschine", "kurz"])
+        self.assertEqual((ds[0]["liter"], ds[0]["schuebe"]), (32, 4))  # the 1 l in between belongs to it
+        self.assertEqual(ds[0]["text"], "vermutlich Wasch- oder Spülmaschine")
+
+    def test_two_pushes_are_no_machine(self):
+        ds = draws(fluss(D0 + 9 * 3600, [7]) | fluss(D0 + 9 * 3600 + 20 * 60, [8]))
+        self.assertEqual([d["art"] for d in ds], ["wc", "wc"])  # 7 l and 8 l in a minute: two flushes, no machine
+
+    def test_trickling_tap_is_no_machine(self):
+        # hand washing: 2–3 l a minute, three times within half an hour – no minute with 4 l
+        f = {}
+        for m in (0, 10, 20):
+            f |= fluss(D0 + 12 * 3600 + m * 60, [2, 3])
+        ds = draws(f)
+        self.assertNotIn("maschine", [d["art"] for d in ds])
+
+    def test_pauses_up_to_4_min_belong_together(self):
+        (d,) = draws(fluss(D0 + 3600, [2, 0, 0, 0, 0, 2]))  # 4 minutes without water in between
+        self.assertEqual(d["liter"], 4)
+        ds = draws(fluss(D0 + 3600, [2, 0, 0, 0, 0, 0, 2]))  # 5 minutes: two draws
+        self.assertEqual([d["liter"] for d in ds], [2, 2])
+
+    def test_data_gap_is_no_draw_time(self):
+        f = fluss(D0 + 14 * 3600, [5])
+        ds = draws(f, skip=(D0 + 13 * 3600, D0 + 14 * 3600))
+        self.assertEqual([d["art"] for d in ds], ["unklar"])
+        self.assertLess(ds[0]["start"], D0 + 13 * 3600 + 1)  # from the last point before the gap
+
+    def test_window(self):
+        rows = minuten(haushalt(), D0, D0 + 86399)
+        rd = board.readings(rows)
+        self.assertEqual([d["art"] for d in board.bezuege(rd, D0 + 8 * 3600, D0 + 12 * 3600)], ["maschine", "wc"])
+
+
+class WasserAnsicht(unittest.TestCase):
+    def test_list_today_newest_first(self):
+        b = build(tag())
+        items = sec(b, "Wasserbezüge heute")["items"]
+        self.assertTrue(items[0]["text"].startswith("11:00–11:02 · 6 l · vermutlich WC"))
+        texts = [i["text"] for i in items]
+        self.assertEqual(len(texts), 5)
+        self.assertTrue(any("48 l · vermutlich Dusche oder Bad" in x for x in texts))
+        self.assertTrue(any("vermutlich Wasch- oder Spülmaschine" in x for x in texts))
+        self.assertIn("4 Schübe", next(i["meta"] for i in items if "Spülmaschine" in i["text"]))
+        self.assertTrue(sec(b, "Wasserbezüge gestern").get("more"))
+        self.assertFalse(sec(b, "Wasserbezüge heute").get("more"))
+
+    def test_list_at_most_15(self):
+        f = {}
+        for k in range(20):
+            f |= fluss(D0 + 3600 + k * 600, [2])
+        b = build(minuten(f, D0 - 7200, NOW))
+        items = sec(b, "Wasserbezüge heute")["items"]
+        self.assertEqual(len(items), 16)
+        self.assertEqual(items[-1]["text"], "… und 5 weitere")
+        self.assertTrue(items[0]["text"].startswith("04:10–04:11"))  # newest first
+
+    def test_quarter_hours_with_gaps(self):
+        rows = [r for r in tag() if not (at(2026, 3, 10, 4) <= r["t"] < at(2026, 3, 10, 5))]
+        w = sec(build(rows), "Wann lief Wasser?")
+        self.assertEqual(len(w["values"]), 96)
+        self.assertEqual(w["labels"][28], "07:00")
+        self.assertEqual(w["values"][28], 48)  # the shower
+        self.assertEqual(w["values"][26:28], [0, 6])  # 6:30 nothing, 6:45 the WC
+        self.assertIsNone(w["values"][17])  # 4:15: no data – a gap, never 0
+        self.assertIsNone(w["values"][60])  # 15:00 is still to come
+        self.assertEqual([r["id"] for r in w["ranges"]], ["heute", "gestern"])
+        self.assertEqual(w["ranges"][1]["values"][28], 48)
+        self.assertEqual(w["group"], "tag")
+
+    def test_tight(self):
+        t = tile(build(tag()), "Dicht?")
+        self.assertEqual((t["value"], t["state"]), ("dicht", "ok"))
+        self.assertTrue(t["sub"].startswith("Nacht 0 l · längste Pause"))
+
+    def test_leak_suspicion_with_action(self):
+        b = build(tag(night_l=3))
+        t = tile(b, "Dicht?")
+        self.assertEqual((t["value"], t["state"]), ("Leck-Verdacht", "look"))
+        self.assertIn("Nacht 3 l", t["sub"])
+        self.assertEqual(tile(b, "Heute")["state"], "look")
+        self.assertIn("Haupthahn zu? Zähler beobachten", sec(b, "Hinweis")["items"][0]["meta"])
+
+    def test_today_vs_usual(self):
+        t = tile(build(tag(days=4)), "Heute")
+        self.assertEqual(t["value"], "93")  # 6 + 48 + 1 + 32 + 6 l up to noon
+        self.assertIn("üblich ≈ 93 l bis jetzt (93–93 l, n = 4 Tage)", t["sub"])
+
+    def test_usual_only_from_3_days(self):
+        t = tile(build(tag(days=2)), "Heute")
+        self.assertIn("üblich: sammelt (2 von 3 Tagen)", t["sub"])
+        self.assertNotIn("≈", t["sub"])
+
+    def test_usual_is_the_median_with_range(self):
+        rows = tag(days=4)
+        extra = at(2026, 3, 8, 8)  # two days ago 20 l more in the morning
+        for r in rows:
+            if r["t"] >= extra:
+                r["zaehlerstand_m3"] = round(r["zaehlerstand_m3"] + 0.02, 3)
+        rows.append({"t": extra, "zaehlerstand_m3": rows[0]["zaehlerstand_m3"], "status": "OK"})
+        self.assertIn("(93–113 l, n = 4 Tage)", tile(build(rows), "Heute")["sub"])
+
+    def test_first_level_is_short(self):
+        b = board.build(tag(night_l=3), dict(LIVE), NOW, TZ, board.TEXT, personen=2)
+        first = [s["title"] for s in b["sections"] if not s.get("more")]
+        self.assertEqual(
+            first,
+            ["Jetzt", "Hinweis", "Wann lief Wasser?", "Wasserbezüge heute", "Je Person und Tag im Vergleich"],
+        )
+        more = [s["title"] for s in b["sections"] if s.get("more")]
+        self.assertEqual(
+            more,
+            [
+                "Wasserbezüge gestern",
+                "Verbrauch je Stunde",
+                "Verbrauch je Tag",
+                "Nachtverbrauch 2–5 Uhr",
+                "Zustand",
+                "Zählerstand",
+            ],
+        )
+        self.assertEqual(pruefe(b), [])
+
+    def test_meter_reading_without_long_decimals(self):
+        b = build(meter())
+        st = sec(b, "Zählerstand")
+        self.assertTrue(st["text"].startswith("101 m³ und 200 l"))
+        self.assertIn("101,200", st["info"]["what"])
+
+    def test_rules_minute_data(self):
+        for b in (build(tag()), build(tag(night_l=3)), build(tag(days=1))):
             self.assertEqual(pruefe(b), [])
 
 
@@ -226,7 +448,7 @@ class WasserModule(unittest.TestCase):
         fetch, calls = self.fake(meter())
         m = Module({"influx": {"db": "haus"}, "quelle": QUELLE}, lambda p: p, fetch, lambda: NOW)
         b = m.board()
-        self.assertEqual(b["sections"][0]["tiles"][0]["value"], "60")
+        self.assertEqual(tile(b, "Heute")["value"], "60")
         self.assertIn("vor 12 s", sec(b, "Zustand")["text"])
         self.assertEqual(len(calls), 2)
 

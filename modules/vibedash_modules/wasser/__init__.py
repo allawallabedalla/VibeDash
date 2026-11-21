@@ -1,6 +1,7 @@
-"""Module "wasser": the house's water meter – use today (also a tile on the start page), per hour (48 h), per day
-(30 days with the mean), since the meter's due date, night use 2–5 o'clock with a leak hint, and the meter's state.
-Only reads.
+"""Module "wasser": the house's water meter as answers – tight (no leak)? today compared with a usual day up to now
+(also a tile on the start page), since the meter's due date, when water ran (quarter hours, today/yesterday) and the
+draws of water with a careful guess what they were (board.bezuege, also for the weekly report); behind "Details" per
+hour (48 h), per day (30 days), night use 2–5 o'clock, the meter's state and its reading. Only reads.
 
 Config (local/modules/wasser.json, template modules/templates/wasser.json):
   influx    {url, db, measurement?} – the course the house's collector writes (default measurement "wasser", fields
