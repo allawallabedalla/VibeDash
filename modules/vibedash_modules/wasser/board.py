@@ -613,6 +613,8 @@ def build(rows: list, live: dict | None, now: float, tz, t: dict, personen: int 
     # ── Wann lief Wasser? (quarter hours, switch today / yesterday) ──
     ql, qv = quarters(rd, times, today, now, tz)
     yl, yv = quarters(rd, times, yday, now, tz)
+    # the running quarter (fixed 15-min steps from midnight, also on a clock change day): lighter, "bis jetzt"
+    qp = min(len(ql) - 1, max(0, int((now - midnight) // QUARTER)))
     sections.append(
         {
             "type": "bars",
@@ -620,10 +622,11 @@ def build(rows: list, live: dict | None, now: float, tz, t: dict, personen: int 
             "unit": "l",
             "labels": ql,
             "values": qv,
+            "partial": qp,
             "color": "climate",
             "group": "tag",
             "ranges": [
-                {"id": "heute", "label": t["when_today"], "labels": ql, "values": qv},
+                {"id": "heute", "label": t["when_today"], "labels": ql, "values": qv, "partial": qp},
                 {"id": "gestern", "label": t["when_yday"], "labels": yl, "values": yv},
             ],
             "note": t["when_note"],
@@ -682,6 +685,7 @@ def build(rows: list, live: dict | None, now: float, tz, t: dict, personen: int 
             "unit": "l",
             "labels": hl,
             "values": hv,
+            "partial": len(hv) - 1,
             "color": "climate",
             "note": t["hours_note"],
             "more": True,
@@ -693,6 +697,7 @@ def build(rows: list, live: dict | None, now: float, tz, t: dict, personen: int 
         "unit": "l",
         "labels": dl,
         "values": dv,
+        "partial": len(dv) - 1,
         "color": "climate",
         "note": t["days_note"].format(mean=_de(mean), n=len(full)) if mean is not None else t["days_note_nomean"],
         "more": True,
