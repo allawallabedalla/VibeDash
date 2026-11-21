@@ -15,44 +15,91 @@
   }
   let { values, labels, color, unit, partial, label, mean }: Props = $props();
 
-  const max = $derived(Math.max(1e-9, mean ?? 0, ...values.map((v) => v ?? 0)));
+  const top = $derived(Math.max(1e-9, mean ?? 0, ...values.map((v) => v ?? 0)));
+  /** many bars carry no numbers of their own: a y-axis with round marks (1-2-5) instead (Nutzer 21.11.2026) */
+  const dense = $derived(values.length > 24);
+  const max = $derived.by(() => {
+    if (!dense) return top;
+    const p = 10 ** Math.floor(Math.log10(top));
+    return ([1, 2, 2.5, 5, 10].find((k) => k * p >= top) ?? 10) * p;
+  });
   const meanAt = $derived(mean === undefined ? null : Math.max(0, mean) / max);
 </script>
 
-<div
-  class="days"
-  class:many={values.length > 8}
-  class:dense={values.length > 24}
-  role="img"
-  aria-label={label}
->
-  {#each values as v, i (i)}
-    <div
-      class="day"
-      class:now={i === partial}
-      title="{labels[i]}: {v === null ? '–' : `${num(v, 1)} ${unit}`}"
-    >
-      <div class="col">
-        {#if meanAt !== null && v !== null && v !== undefined}<span class="mean" style:--at={meanAt}
-          ></span>{/if}
-        {#if v !== null && v !== undefined}
-          <!-- 0 is a value, only null is a gap (Audit05 G5-04) -->
-          <span class="v" class:zero={v === 0}
-            >{num(v, Number.isInteger(v) || Math.abs(v) >= 10 ? 0 : 1)}</span
-          >
-          <span class="bar" style:height="{(100 * Math.max(v, 0)) / max}%" style:background={color}
-          ></span>
-        {:else}
-          <span class="dash"></span>
-        {/if}
-      </div>
-      <span class="d">{labels[i]}</span>
+<div class="wrap" class:axis={dense}>
+  {#if dense}
+    <div class="ticks" aria-hidden="true">
+      {#each [max, max / 2, 0] as m (m)}<span style:--at={m / max}>{num(m, m % 1 ? 1 : 0)}</span
+        >{/each}
     </div>
-  {/each}
+  {/if}
+  <div class="days" class:many={values.length > 8} class:dense role="img" aria-label={label}>
+    {#if dense}{#each [1, 0.5] as g (g)}<span class="grid" style:--at={g} aria-hidden="true"
+        ></span>{/each}{/if}
+    {#each values as v, i (i)}
+      <div
+        class="day"
+        class:now={i === partial}
+        title="{labels[i]}: {v === null ? '–' : `${num(v, 1)} ${unit}`}"
+      >
+        <div class="col">
+          {#if meanAt !== null && v !== null && v !== undefined}<span
+              class="mean"
+              style:--at={meanAt}
+            ></span>{/if}
+          {#if v !== null && v !== undefined}
+            <!-- 0 is a value, only null is a gap (Audit05 G5-04) -->
+            <span class="v" class:zero={v === 0}
+              >{num(v, Number.isInteger(v) || Math.abs(v) >= 10 ? 0 : 1)}</span
+            >
+            <span
+              class="bar"
+              style:height="{(100 * Math.max(v, 0)) / max}%"
+              style:background={color}
+            ></span>
+          {:else}
+            <span class="dash"></span>
+          {/if}
+        </div>
+        <span class="d">{labels[i]}</span>
+      </div>
+    {/each}
+  </div>
 </div>
 
 <style>
+  .wrap.axis {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px;
+  }
+  /* y-axis of dense bars: marks at 0, half and the round top; the plot is the 150 px minus the label row */
+  .ticks {
+    position: relative;
+    height: calc(150px - 5px - 1.4em);
+    margin-top: 0;
+    min-width: 2ch;
+  }
+  .ticks span {
+    position: absolute;
+    right: 0;
+    bottom: calc(var(--at) * (100% - 18px));
+    transform: translateY(50%);
+    font-size: var(--small);
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .grid {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(5px + 1.4em + var(--at) * (150px - 5px - 1.4em - 18px));
+    border-top: 1px solid var(--line);
+    opacity: 0.6;
+    pointer-events: none;
+  }
   .days {
+    position: relative;
     display: grid;
     grid-auto-flow: column;
     grid-auto-columns: minmax(0, 1fr);
