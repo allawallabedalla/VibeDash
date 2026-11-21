@@ -1,6 +1,10 @@
 <script lang="ts">
-  /** One soft bar per day with its value on top; the running day lighter, a gap a grey dash. */
+  /**
+   * One soft bar per day with its value on top; the running day lighter, a gap a grey dash.
+   * Hover, a finger or the arrow keys show the bar's label and value (lens, BarPlot).
+   */
   import { num } from '../i18n/index.svelte';
+  import BarPlot from './BarPlot.svelte';
 
   interface Props {
     values: (number | null)[];
@@ -8,10 +12,10 @@
     color: string;
     unit: string;
     /** Index of the running day, drawn lighter. */
-    partial?: number;
+    partial?: number | undefined;
     label: string;
     /** optional mean (same unit): a dashed line across the bars */
-    mean?: number;
+    mean?: number | undefined;
   }
   let { values, labels, color, unit, partial, label, mean }: Props = $props();
 
@@ -33,38 +37,36 @@
         >{/each}
     </div>
   {/if}
-  <div class="days" class:many={values.length > 8} class:dense role="img" aria-label={label}>
-    {#if dense}{#each [1, 0.5] as g (g)}<span class="grid" style:--at={g} aria-hidden="true"
-        ></span>{/each}{/if}
-    {#each values as v, i (i)}
-      <div
-        class="day"
-        class:now={i === partial}
-        title="{labels[i]}: {v === null ? '–' : `${num(v, 1)} ${unit}`}"
-      >
-        <div class="col">
-          {#if meanAt !== null && v !== null && v !== undefined}<span
-              class="mean"
-              style:--at={meanAt}
-            ></span>{/if}
-          {#if v !== null && v !== undefined}
-            <!-- 0 is a value, only null is a gap (Audit05 G5-04) -->
-            <span class="v" class:zero={v === 0}
-              >{num(v, Number.isInteger(v) || Math.abs(v) >= 10 ? 0 : 1)}</span
-            >
-            <span
-              class="bar"
-              style:height="{(100 * Math.max(v, 0)) / max}%"
-              style:background={color}
-            ></span>
-          {:else}
-            <span class="dash"></span>
-          {/if}
+  <BarPlot {label} data={{ labels, values, unit, color, partial, mean }}>
+    <div class="days" class:many={values.length > 8} class:dense role="img" aria-label={label}>
+      {#if dense}{#each [1, 0.5] as g (g)}<span class="grid" style:--at={g} aria-hidden="true"
+          ></span>{/each}{/if}
+      {#each values as v, i (i)}
+        <div class="day" class:now={i === partial}>
+          <div class="col">
+            {#if meanAt !== null && v !== null && v !== undefined}<span
+                class="mean"
+                style:--at={meanAt}
+              ></span>{/if}
+            {#if v !== null && v !== undefined}
+              <!-- 0 is a value, only null is a gap (Audit05 G5-04) -->
+              <span class="v" class:zero={v === 0}
+                >{num(v, Number.isInteger(v) || Math.abs(v) >= 10 ? 0 : 1)}</span
+              >
+              <span
+                class="bar"
+                style:height="{(100 * Math.max(v, 0)) / max}%"
+                style:background={color}
+              ></span>
+            {:else}
+              <span class="dash"></span>
+            {/if}
+          </div>
+          <span class="d">{labels[i]}</span>
         </div>
-        <span class="d">{labels[i]}</span>
-      </div>
-    {/each}
-  </div>
+      {/each}
+    </div>
+  </BarPlot>
 </div>
 
 <style>
@@ -180,7 +182,7 @@
       max-width: none;
       overflow: visible;
     }
-    /* very many bars (48 hours, 30 days): every sixth label, numbers only in the title */
+    /* very many bars (48 hours, 30 days): every sixth label, numbers only in the lens */
     .dense .day:not(:nth-last-child(6n + 1)) .d {
       visibility: hidden;
     }
@@ -196,7 +198,7 @@
     visibility: hidden;
   }
   /* a day of quarter hours (more than 60 bars; the two grid lines come first): thin gaps, numbers only in the
-     title, a time every 3 hours – on the phone every 6 hours (CSS only: no script for the first-page budget) */
+     lens, a time every 3 hours – on the phone every 6 hours (CSS only: no script for the first-page budget) */
   .days:has(> .day:nth-child(63)) {
     gap: 1px;
   }

@@ -1,6 +1,7 @@
 <script lang="ts">
   /** From–to per day as a rounded capsule (e.g. battery charge lowest–highest). */
   import { num } from '../i18n/index.svelte';
+  import BarPlot from './BarPlot.svelte';
 
   interface Props {
     ranges: ({ low: number; high: number } | null)[];
@@ -17,29 +18,27 @@
   const p = (v: number) => Math.max(0, Math.min(100, ((v - min) / (max - min)) * 100));
 </script>
 
-<div class="days" role="img" aria-label={label}>
-  {#each ranges as r, i (i)}
-    <div
-      class="day"
-      class:now={i === partial}
-      title="{labels[i]}: {r ? `${num(r.low)}–${num(r.high)} ${unit}` : '–'}"
-    >
-      <div class="col">
-        {#if r}
-          <span class="hi" style:bottom="calc({p(r.high)}% + 4px)">{num(r.high)}</span>
-          <span
-            class="cap"
-            style:bottom="{p(r.low)}%"
-            style:height="max(10px, {p(r.high) - p(r.low)}%)"
-            style:background={color}
-          ></span>
-          <span class="lo" style:top="calc({100 - p(r.low)}% + 4px)">{num(r.low)}</span>
-        {/if}
+<BarPlot {label} data={{ labels, ranges, unit, color, partial }}>
+  <div class="days" role="img" aria-label={label}>
+    {#each ranges as r, i (i)}
+      <div class="day" class:now={i === partial}>
+        <div class="col">
+          {#if r}
+            <span class="hi" style:bottom="calc({p(r.high)}% + 4px)">{num(r.high)}</span>
+            <span
+              class="cap"
+              style:bottom="{p(r.low)}%"
+              style:height="max(10px, {p(r.high) - p(r.low)}%)"
+              style:background={color}
+            ></span>
+            <span class="lo" style:top="calc({100 - p(r.low)}% + 4px)">{num(r.low)}</span>
+          {/if}
+        </div>
+        <span class="d">{labels[i]}</span>
       </div>
-      <span class="d">{labels[i]}</span>
-    </div>
-  {/each}
-</div>
+    {/each}
+  </div>
+</BarPlot>
 
 <style>
   .days {

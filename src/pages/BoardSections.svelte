@@ -293,6 +293,7 @@
           unit={s.unit}
           label={s.title}
           mean={s.mean}
+          partial={v.partial}
         />
       {:else if s.type === 'table'}
         {#if s.rows.length}

@@ -68,7 +68,9 @@
  * "slot": "home" on a "tiles" section (mapping boards[].home = true): the start page shows its
  * first tile next to its own (or the tile with "home": the word it carries there); a tap there opens
  * the board. The board page shows it first as usual.
- * "bars" may carry "mean" (a number ≥ 0): a dashed line across the bars, e.g. the 30-day mean.
+ * "bars" may carry "mean" (a number ≥ 0): a dashed line across the bars, e.g. the 30-day mean, and
+ * "partial" (an index, also per range): the running day / hour / quarter, drawn lighter, "bis jetzt"
+ * in the lens; empty bars after it read "noch nicht".
  */
 export type BoardColor =
   'sun' | 'battery' | 'home' | 'grid' | 'import' | 'feed' | 'climate' | 'muted';
@@ -160,7 +162,15 @@ export type BoardSection =
         color: BoardColor;
         /** optional mean, drawn as a dashed line across the bars (same unit) */
         mean?: number;
-        ranges?: { id: string; label: string; labels: string[]; values: (number | null)[] }[];
+        /** index of the running day (hour, quarter): drawn lighter, the lens says "bis jetzt" */
+        partial?: number | undefined;
+        ranges?: {
+          id: string;
+          label: string;
+          labels: string[];
+          values: (number | null)[];
+          partial?: number | undefined;
+        }[];
       })
   | (Base & {
       type: 'table';
@@ -519,7 +529,12 @@ export function sanitizeBoard(raw: unknown): Board | null {
         const one = (raw: O) => {
           // up to 100: the quarter hours of a day (92–100 on a clock change day)
           const labels = list(raw.labels, 100).map((l) => text(l, 12));
-          return { labels, values: list(raw.values, labels.length).map(num) };
+          const values = list(raw.values, labels.length).map(num);
+          const p = raw.partial as number;
+          // the running day / hour / quarter: a whole index into the bars, else none
+          // (always as a key, so a range without one replaces the section's)
+          const partial = Number.isInteger(p) && p >= 0 && p < values.length ? p : undefined;
+          return { labels, values, partial };
         };
         const ranges = ranged(s, (r) => one(r));
         sections.push({

@@ -92,6 +92,8 @@ class WasserBoard(unittest.TestCase):
         self.assertEqual(d["values"][-2], 120)
         self.assertIsNone(d["values"][0])  # before the data: gap, never 0
         self.assertEqual(d["mean"], 120.0)
+        self.assertEqual(d["partial"], 29)  # today runs
+        self.assertEqual(h["partial"], 47)  # the running hour
         self.assertIn("n = 9", d["note"])
         self.assertTrue(h.get("more") and d.get("more"))  # second level
 
@@ -345,6 +347,12 @@ class WasserAnsicht(unittest.TestCase):
         self.assertEqual([r["id"] for r in w["ranges"]], ["heute", "gestern"])
         self.assertEqual(w["ranges"][1]["values"][28], 48)
         self.assertEqual(w["group"], "tag")
+        # the running quarter (lighter, "bis jetzt" in the lens): the one NOW lies in; yesterday has none
+        q = w["partial"]
+        self.assertEqual((q, w["labels"][q]), (48, "12:00"))  # NOW is noon
+        self.assertIsNone(w["values"][q + 1])
+        self.assertEqual(w["ranges"][0]["partial"], q)
+        self.assertNotIn("partial", w["ranges"][1])
 
     def test_tight(self):
         t = tile(build(tag()), "Dicht?")

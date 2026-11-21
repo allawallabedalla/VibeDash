@@ -9,6 +9,10 @@ export const tl = localTexts({
     forecast: 'Prognose',
     usual: 'üblich',
     diff: 'Ist − Prognose',
+    notYet: 'noch nicht',
+    soFar: 'bis jetzt',
+    mean: 'Mittel',
+    total: 'zusammen',
   },
   en: {
     hint: '{label}. Arrow keys show the values, Esc closes.',
@@ -17,5 +21,9 @@ export const tl = localTexts({
     forecast: 'forecast',
     usual: 'usual',
     diff: 'actual − forecast',
+    notYet: 'not yet',
+    soFar: 'so far',
+    mean: 'mean',
+    total: 'total',
   },
 });

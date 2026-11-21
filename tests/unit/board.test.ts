@@ -450,6 +450,39 @@ describe('board section slots (placement on an embedding page)', () => {
     expect(bars('12').mean).toBeUndefined();
     expect(bars(undefined).mean).toBeUndefined();
   });
+
+  it('keeps the running bar (partial) only as an index into the bars, per range too', () => {
+    const bars = (partial: unknown, ranges?: unknown) =>
+      sanitizeBoard({
+        sections: [
+          {
+            type: 'bars',
+            title: 'T',
+            unit: 'l',
+            labels: ['a', 'b'],
+            values: [1, 2],
+            partial,
+            ranges,
+          },
+        ],
+      })!.sections[0] as {
+        partial?: number;
+        ranges?: { partial?: number }[];
+      };
+    expect(bars(1).partial).toBe(1);
+    expect(bars(2).partial).toBeUndefined();
+    expect(bars(-1).partial).toBeUndefined();
+    expect(bars(0.5).partial).toBeUndefined();
+    expect(bars('1').partial).toBeUndefined();
+    const r = bars(1, [
+      { id: 'h', label: 'Heute', labels: ['a', 'b'], values: [1, null], partial: 1 },
+      { id: 'g', label: 'Gestern', labels: ['a', 'b'], values: [3, 4] },
+    ]).ranges!;
+    expect(r[0]!.partial).toBe(1);
+    // yesterday has none: the key is there, so it replaces the section's when picked
+    expect('partial' in r[1]!).toBe(true);
+    expect(r[1]!.partial).toBeUndefined();
+  });
 });
 
 describe('choice sections', () => {

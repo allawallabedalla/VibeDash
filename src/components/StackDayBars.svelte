@@ -5,6 +5,7 @@
    * hollow ring (a gap, never 0); the running day lighter. Labels: every 7th day from today.
    */
   import { num } from '../i18n/index.svelte';
+  import BarPlot from './BarPlot.svelte';
 
   interface Props {
     /** per day the parts in the order of `colors`; null = no record */
@@ -15,7 +16,7 @@
     /** index of the running day, drawn lighter */
     partial?: number;
     label: string;
-    /** text for each part in the hover title */
+    /** text for each part in the lens's box */
     names: string[];
   }
   let { values, colors, labels, unit, partial, label, names }: Props = $props();
@@ -23,34 +24,29 @@
   const total = (p: number[] | null) => (p ? p.reduce((a, v) => a + Math.max(0, v), 0) : 0);
   const max = $derived(Math.max(1e-9, ...values.map(total)));
   const fmt = (v: number) => num(v, v >= 10 ? 0 : 1);
-  const title = (i: number) => {
-    const p = values[i];
-    if (!p) return `${labels[i]}: –`;
-    return `${labels[i]}: ${fmt(total(p))} ${unit}${p
-      .map((v, k) => (v > 0 ? ` · ${names[k]} ${fmt(v)}` : ''))
-      .join('')}`;
-  };
 </script>
 
-<div class="days" role="img" aria-label={label}>
-  {#each values as p, i (i)}
-    <div class="day" class:now={i === partial} title={title(i)}>
-      <div class="col">
-        {#if p}
-          {#if total(p) > 0}<span class="v">{fmt(total(p))}</span>{/if}
-          <span class="stack" style:height="{(100 * total(p)) / max}%">
-            {#each p as v, k (k)}
-              {#if v > 0}<span style:flex-grow={v} style:background={colors[k]}></span>{/if}
-            {/each}
-          </span>
-        {:else}
-          <span class="gap" aria-hidden="true"></span>
-        {/if}
+<BarPlot {label} data={{ labels, parts: values, names, colors, unit, partial }}>
+  <div class="days" role="img" aria-label={label}>
+    {#each values as p, i (i)}
+      <div class="day" class:now={i === partial}>
+        <div class="col">
+          {#if p}
+            {#if total(p) > 0}<span class="v">{fmt(total(p))}</span>{/if}
+            <span class="stack" style:height="{(100 * total(p)) / max}%">
+              {#each p as v, k (k)}
+                {#if v > 0}<span style:flex-grow={v} style:background={colors[k]}></span>{/if}
+              {/each}
+            </span>
+          {:else}
+            <span class="gap" aria-hidden="true"></span>
+          {/if}
+        </div>
+        <span class="d" class:show={(values.length - 1 - i) % 7 === 0}>{labels[i]}</span>
       </div>
-      <span class="d" class:show={(values.length - 1 - i) % 7 === 0}>{labels[i]}</span>
-    </div>
-  {/each}
-</div>
+    {/each}
+  </div>
+</BarPlot>
 
 <style>
   .days {
