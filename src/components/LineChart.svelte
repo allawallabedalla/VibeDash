@@ -6,6 +6,8 @@
    */
   import { num, t, time } from '../i18n/index.svelte';
   import { timeTicks } from './timeaxis';
+  import { lensHost } from './lens-host.svelte';
+  import { tl } from './lens-text';
 
   interface Line {
     label: string;
@@ -139,6 +141,30 @@
             t0,
           )
         : time(t0, timeZone);
+  /** the lens (hover, finger, arrow keys): loaded on first use */
+  const lens = lensHost();
+  let host = $state<HTMLElement>();
+  const hasForecast = $derived(lines.some((l) => l.dashed && /prognose|forecast/i.test(l.label)));
+  const lensSeries = $derived.by(() => {
+    let actual = false;
+    return lines.map((l) => {
+      const fc = l.dashed && /prognose|forecast/i.test(l.label);
+      const kind = fc ? 'forecast' : hasForecast && !l.dashed && !actual ? 'actual' : undefined;
+      if (kind === 'actual') actual = true;
+      return { label: l.label, color: l.color, values: l.values, dashed: l.dashed, kind } as const;
+    });
+  });
+  const lensGeom = () => {
+    const k = (host?.clientWidth ?? VW) / VW;
+    return {
+      xAt: (i: number) => X(x[i]!) * k,
+      yAt: (v: number) => Y(v) * k,
+      left: PAD.l * k,
+      right: (VW - PAD.r) * k,
+      top: PAD.t * k,
+      bottom: (VH - PAD.b) * k,
+    };
+  };
   const last = (vals: (number | null)[]) => {
     for (let i = vals.length - 1; i >= 0; i--) if (vals[i] !== null) return vals[i]!;
     return null;
@@ -154,51 +180,77 @@
     </li>
   {/each}
 </ul>
-<svg bind:clientWidth={cw} viewBox="0 0 {VW} {VH}" role="img" aria-label={label}>
-  {#each ticksY as v (v)}
-    <line class="grid" x1={PAD.l} x2={VW - PAD.r} y1={Y(v)} y2={Y(v)} />
-    <text class="axis" x={PAD.l - 6} y={Y(v) + 4} text-anchor="end">{num(v, yDigits)}</text>
-  {/each}
-  {#each ticksX as t0, i (i)}
-    {#if roundTicks.length >= 2}
-      <line class="grid soft" x1={X(t0)} x2={X(t0)} y1={PAD.t} y2={VH - PAD.b} />
-    {/if}
-    <text
-      class="axis"
-      x={X(t0)}
-      y={VH - 4}
-      text-anchor={X(t0) < PAD.l + 18
-        ? 'start'
-        : X(t0) > VW - PAD.r - 18
-          ? 'end'
-          : roundTicks.length >= 2
-            ? 'middle'
-            : i === 0
-              ? 'start'
-              : i === ticksX.length - 1
-                ? 'end'
-                : 'middle'}>{fmtX(t0)}</text
-    >
-  {/each}
-  {#if nowX !== null}
-    <line class="now" x1={nowX} x2={nowX} y1={PAD.t - 6} y2={VH - PAD.b} />
-    <text
-      class="axis now-text"
-      x={nowX}
-      y={PAD.t - 10}
-      text-anchor={nowX > VW - PAD.r - 24 ? 'end' : 'middle'}>{t('sub.now')}</text
-    >
-  {/if}
-  {#each lines as l (l.label)}
-    <path class="ln" class:dashed={l.dashed} d={path(l.values)} style:stroke={l.color} />
-  {/each}
-  {#if nowX !== null}
-    {#each lines as l (l.label)}
-      {@const p = lastPoint(l.values)}
-      {#if p && !l.dashed}<circle class="dot" cx={p.x} cy={p.y} r="4" fill={l.color} />{/if}
+<!-- focusable for the lens: arrow keys step through the values (role application passes the keys on) -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div
+  class="plot"
+  bind:this={host}
+  role="application"
+  tabindex="0"
+  aria-label={tl('hint', { label })}
+  onpointerenter={lens.wake}
+  onpointerdown={lens.wake}
+  onfocus={lens.wake}
+>
+  <svg bind:clientWidth={cw} viewBox="0 0 {VW} {VH}" role="img" aria-label={label}>
+    {#each ticksY as v (v)}
+      <line class="grid" x1={PAD.l} x2={VW - PAD.r} y1={Y(v)} y2={Y(v)} />
+      <text class="axis" x={PAD.l - 6} y={Y(v) + 4} text-anchor="end">{num(v, yDigits)}</text>
     {/each}
+    {#each ticksX as t0, i (i)}
+      {#if roundTicks.length >= 2}
+        <line class="grid soft" x1={X(t0)} x2={X(t0)} y1={PAD.t} y2={VH - PAD.b} />
+      {/if}
+      <text
+        class="axis"
+        x={X(t0)}
+        y={VH - 4}
+        text-anchor={X(t0) < PAD.l + 18
+          ? 'start'
+          : X(t0) > VW - PAD.r - 18
+            ? 'end'
+            : roundTicks.length >= 2
+              ? 'middle'
+              : i === 0
+                ? 'start'
+                : i === ticksX.length - 1
+                  ? 'end'
+                  : 'middle'}>{fmtX(t0)}</text
+      >
+    {/each}
+    {#if nowX !== null}
+      <line class="now" x1={nowX} x2={nowX} y1={PAD.t - 6} y2={VH - PAD.b} />
+      <text
+        class="axis now-text"
+        x={nowX}
+        y={PAD.t - 10}
+        text-anchor={nowX > VW - PAD.r - 24 ? 'end' : 'middle'}>{t('sub.now')}</text
+      >
+    {/if}
+    {#each lines as l (l.label)}
+      <path class="ln" class:dashed={l.dashed} d={path(l.values)} style:stroke={l.color} />
+    {/each}
+    {#if nowX !== null}
+      {#each lines as l (l.label)}
+        {@const p = lastPoint(l.values)}
+        {#if p && !l.dashed}<circle class="dot" cx={p.x} cy={p.y} r="4" fill={l.color} />{/if}
+      {/each}
+    {/if}
+  </svg>
+  {#if lens.Lens && host}
+    <lens.Lens
+      {host}
+      first={lens.first}
+      times={x}
+      series={lensSeries}
+      {unit}
+      axisDigits={yDigits}
+      {timeZone}
+      geom={lensGeom}
+      {now}
+    />
   {/if}
-</svg>
+</div>
 
 <style>
   .legend {
@@ -225,6 +277,19 @@
   }
   .key.dashed {
     background: repeating-linear-gradient(90deg, currentColor 0 5px, transparent 5px 9px);
+  }
+  .plot {
+    position: relative;
+    touch-action: pan-y;
+    cursor: crosshair;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    border-radius: 8px;
+  }
+  .plot:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
   svg {
     width: 100%;

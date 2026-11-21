@@ -32,6 +32,8 @@
         span?: { from: number; to: number };
         /** named steps on the value axis in the enlarged view, e.g. 0 nobody / 2 someone */
         levels?: { value: number; label: string }[];
+        /** unit of the curve where it differs from the tile's value (the lens box), e.g. kW under kWh */
+        unit?: string;
       }
     /** Sun now as a half arc, share 0–1 of the plant's peak. */
     | { kind: 'arc'; share: number; off?: boolean }
