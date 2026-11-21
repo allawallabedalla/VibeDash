@@ -1,7 +1,8 @@
 /**
  * Tiles of boards on the start page (mapping boards[].home): each such board is loaded when the
  * page opens and every two minutes while it is visible; the first tile of its section with slot
- * "home" stands next to the start page's own, a tap opens the board. The last answer on this device shows at once.
+ * "home" (or the tile marked "home", under that word) stands next to the start page's own, a tap
+ * opens the board. The last answer on this device shows at once.
  */
 import { onMount } from 'svelte';
 import type { Board } from '../model/board';
@@ -49,10 +50,13 @@ export function homeTiles() {
     tabs.flatMap((tab) =>
       (boards[tab.id]?.sections ?? []).flatMap((s): TileProps[] =>
         s.type === 'tiles' && s.slot === 'home'
-          ? s.tiles.slice(0, 1).map((x) => ({
-              ...tileOf(x),
-              open: { label: tab.title, go: () => router.go(`b/${tab.id}`) },
-            }))
+          ? (s.tiles.some((x) => x.home) ? s.tiles.filter((x) => x.home) : s.tiles)
+              .slice(0, 1)
+              .map((x) => ({
+                ...tileOf(x),
+                ...(x.home ? { label: x.home } : {}),
+                open: { label: tab.title, go: () => router.go(`b/${tab.id}`) },
+              }))
           : [],
       ),
     ),

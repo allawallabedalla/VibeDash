@@ -138,9 +138,14 @@ def _updates():
 
 
 def _wasser():
-    from .test_wasser import build, meter
+    from vibedash_modules.wasser import board
 
-    return build(meter(night_l=4))
+    from .helpers import TZ
+    from .test_wasser import LIVE, NOW, tag
+
+    # a synthetic household to the minute (WC, shower, machine fillings) with 3 nights of use: the hint shows too;
+    # without "personen" as before (its line chart has the small SVG axis text of DE4-11)
+    return board.build(tag(night_l=3, days=10), dict(LIVE), NOW, TZ, board.TEXT)
 
 
 BUILDERS = {

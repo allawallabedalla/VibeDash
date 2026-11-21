@@ -413,6 +413,33 @@ describe('board section slots (placement on an embedding page)', () => {
     expect(b.sections.map((x) => x.slot ?? null)).toEqual(['top', 'plan', null, 'home']);
   });
 
+  it('keeps the start-page word of a tile ("home"), an empty one is none', () => {
+    const b = sanitizeBoard({
+      sections: [
+        {
+          type: 'tiles',
+          title: 'Jetzt',
+          slot: 'home',
+          tiles: [
+            { label: 'Dicht?', value: 'dicht' },
+            { label: 'Heute', value: '88', home: 'Wasser' },
+            { label: 'x', value: '1', home: '' },
+          ],
+        },
+      ],
+    })!;
+    const tiles = (b.sections[0] as { tiles: { home?: string }[] }).tiles;
+    expect(tiles.map((x) => x.home ?? null)).toEqual([null, 'Wasser', null]);
+  });
+
+  it('keeps up to 100 bars: the quarter hours of a day', () => {
+    const labels = Array.from({ length: 120 }, (_, i) => String(i));
+    const s = sanitizeBoard({
+      sections: [{ type: 'bars', title: 'T', unit: 'l', labels, values: labels.map(() => 1) }],
+    })!.sections[0] as { labels: string[]; values: number[] };
+    expect([s.labels.length, s.values.length]).toEqual([100, 100]);
+  });
+
   it('keeps the mean of bars only as a number from 0 on', () => {
     const bars = (mean: unknown) =>
       sanitizeBoard({
