@@ -77,6 +77,7 @@
       graphic: {
         kind: 'spark',
         values: plan.carKw,
+        unit: 'kW',
         color: 'var(--battery)',
         min: 0,
         // hourly slots, each at its middle

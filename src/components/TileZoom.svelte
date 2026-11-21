@@ -157,6 +157,7 @@
           {now}
           timeZone={data?.timeZone ?? 'Europe/Berlin'}
           levels={g.levels}
+          unit={g.unit ?? tile.unit ?? ''}
         />
       {:else}
         <Sparkline
