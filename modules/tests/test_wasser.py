@@ -172,12 +172,18 @@ class WasserBoard(unittest.TestCase):
         self.assertEqual(tile(b, "Dicht?")["state"], "open")
 
     def test_outage_and_status_warn(self):
-        t = tile(build(meter(), {**LIVE, "ausfall": True}), "Heute")
+        t = tile(build(meter(), {**LIVE, "alter_s": 3 * 3600, "ausfall": True}), "Heute")
         self.assertEqual(t["state"], "act")
         self.assertIn("sendet nicht", t["sub"])
         t = tile(build(meter(), {**LIVE, "status": "LEAK"}), "Heute")
         self.assertEqual(t["state"], "act")
         self.assertIn("Status LEAK", t["sub"])
+
+    def test_base_flag_with_short_gap_is_no_outage(self):
+        # the base flags "ausfall" after ~5 min, but the meter sends only every ~6 min: 35 min old is still fine
+        b = build(meter(), {**LIVE, "alter_s": 35 * 60, "ausfall": True})
+        self.assertNotIn("sendet nicht", tile(b, "Heute")["sub"])
+        self.assertNotIn("kein Funktelegramm", sec(b, "Zustand")["text"])
 
     def test_base_offline_uses_stored_values(self):
         rows = meter()

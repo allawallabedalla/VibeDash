@@ -29,6 +29,10 @@ HOUR = 3600
 QUARTER = 900
 STILL_S = 3600  # a full hour without a new reading = the water stood still
 STALE_S = 20 * 60  # no point for 20 min (collector writes at least every 15 min): data missing
+# The base station flags "ausfall" after ~5 min without a radio telegram, but the meter sends only about every 6 min
+# and weak reception (RSSI around −87) loses many (24.11.2026: 37 % of 3 days flagged, gaps of 35 min seen).
+# So the module judges the age of the last telegram itself: only 2 h without one means the meter does not send.
+AUSFALL_S = 2 * HOUR
 NIGHT = (2, 5)  # night use from 2 to 5 o'clock
 NIGHTS_IN_ROW = 3
 
@@ -134,7 +138,7 @@ TEXT = {
     "state_line": "Funk {rssi} dBm · Batterie {bat} Jahre · Status {status} · letztes Telegramm vor {ago}",
     "state_offline": "Basis-Station antwortet nicht – letzter gespeicherter Wert vor {ago}.",
     "state_none": "Basis-Station und Datenbank haben noch keine Werte.",
-    "state_outage": " · seit über 5 min kein Telegramm vom Zähler",
+    "state_outage": " · seit über 2 h kein Funktelegramm vom Zähler",
     "stand_title": "Zählerstand",
     "stand_line": "{m3} m³ und {l} l · Stichtagswert {due}",
     "stand_what": "Genau wie auf dem Display: {stand} m³; Stichtagswert {due_exact} m³.",
@@ -492,7 +496,9 @@ def build(rows: list, live: dict | None, now: float, tz, t: dict, personen: int 
     mean = sum(full) / len(full) if full else None
 
     # warnings of the meter itself
-    ausfall, status = val("ausfall") is True, val("status")
+    alter = number(z.get("alter_s"))
+    ausfall = alter > AUSFALL_S if alter is not None else bool(z) and z.get("ausfall") is True
+    status = val("status")
     warn = None
     if ausfall:
         warn = t["warn_outage"]
@@ -722,7 +728,6 @@ def build(rows: list, live: dict | None, now: float, tz, t: dict, personen: int 
     if live is None:
         text = t["state_offline"].format(ago=_ago(now - times[-1])) if times else t["state_none"]
     else:
-        alter = number(z.get("alter_s"))
         text = t["state_line"].format(
             rssi=_de(number(val("rssi"))),
             bat=_de(number(val("batterie_jahre")), 1),
