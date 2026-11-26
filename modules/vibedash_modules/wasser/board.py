@@ -165,6 +165,30 @@ def _ago(s) -> str:
     return f"{round(s / 86400)} Tagen"
 
 
+def blind(rows: list[dict]) -> list[tuple[float, float]]:
+    """Spans (start, end) in which the base flagged "ausfall" without a break for at least AUSFALL_S: the meter was not
+    heard, the stored reading is the frozen old one (Audit06 D6-01: 40 h on 24.–26.11.2026, then +332 l at once).
+    end = first point without the flag (the new telegram), or the last point when it still lasts."""
+    out, start, last = [], None, None
+    for r in rows:
+        if r.get("ausfall") is True:
+            start = r["t"] if start is None else start
+            last = r["t"]
+        elif start is not None:
+            if r["t"] - start >= AUSFALL_S:
+                out.append((float(start), float(r["t"])))
+            start = None
+    if start is not None and last - start >= AUSFALL_S:
+        out.append((float(start), float(last) + 1))
+    return out
+
+
+def heard(rows: list[dict]) -> list[dict]:
+    """The rows without the frozen points inside blind spans (the point that ends a span stays: it is new)."""
+    sp = blind(rows)
+    return [r for r in rows if not any(a <= r["t"] < b for a, b in sp)]
+
+
 def readings(rows: list[dict]) -> list[tuple[float, float]]:
     """(time, reading m³) of the rows that have one, oldest first."""
     out = []
@@ -181,10 +205,17 @@ def stand_at(rd: list, t: float) -> float | None:
     return rd[i - 1][1] if i else None
 
 
+def fresh(times: list, x: float) -> bool:
+    """A point at most STALE_S before x (the reading at x is known, not an old one from before a pause)."""
+    i = bisect_right(times, x) - 1
+    return i >= 0 and x - times[i] <= STALE_S
+
+
 def use_l(rd: list, times: list, a: float, b: float) -> float | None:
-    """Litres between a and b; None when no point lies in [a, b) or nothing is known before a."""
+    """Litres between a and b; None when no point lies in [a, b) or the reading at a or b is not known (a pause in
+    the data or the meter not heard: never 0 for "not measured", never the whole pause in one hour)."""
     i = bisect_right(times, a - 1e-9)
-    if i >= len(times) or times[i] >= b:
+    if i >= len(times) or times[i] >= b or not fresh(times, a) or not fresh(times, b):
         return None
     s0, s1 = stand_at(rd, a), stand_at(rd, b)
     if s0 is None or s1 is None or s1 < s0:
@@ -471,6 +502,7 @@ def whole_days(rd, now, tz, n=30) -> list:
 def build(rows: list, live: dict | None, now: float, tz, t: dict, personen: int | None = None) -> dict:
     rows = [r for r in rows or [] if isinstance(r, dict) and isinstance(r.get("t"), (int, float))]
     rows.sort(key=lambda r: r["t"])
+    rows = heard(rows)
     rd = readings(rows)
     times = [float(r["t"]) for r in rows]
     last = rows[-1] if rows else {}
@@ -486,7 +518,7 @@ def build(rows: list, live: dict | None, now: float, tz, t: dict, personen: int 
     today = datetime.fromtimestamp(now, tz).date()
     yday = today - timedelta(days=1)
     midnight = _midnight(today, tz)
-    base, since = stand_at(rd, midnight), None
+    base, since = (stand_at(rd, midnight) if fresh(times, midnight) else None), None
     if base is None:
         first = next(((ti, s) for ti, s in rd if ti >= midnight), None)
         base, since = (first[1], first[0]) if first else (None, None)

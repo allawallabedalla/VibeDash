@@ -165,6 +165,44 @@ class WasserBoard(unittest.TestCase):
         self.assertIsNone(h[-5])  # 8 o'clock: no point, the hole stays empty
         self.assertIsNone(h[-6])
 
+    def test_meter_not_heard_is_a_gap_not_zero(self):
+        # Audit06 D6-01: 40 h without radio, the base writes the frozen reading with "ausfall", then the jump
+        rows = meter(night_l=4)
+        a, b = at(2026, 3, 8, 20), at(2026, 3, 10, 6)
+        frozen = next(r["zaehlerstand_m3"] for r in reversed(rows) if r["t"] < a)
+        for r in rows:
+            if a <= r["t"] < b:
+                r["zaehlerstand_m3"], r["ausfall"] = frozen, True
+        rd = board.readings(board.heard(rows))
+        times = [r["t"] for r in board.heard(rows)]
+        ns = dict(board.nights(rd, times, NOW, TZ))
+        self.assertIsNone(ns[board.datetime.fromtimestamp(at(2026, 3, 9, 3), TZ).date()])
+        self.assertIsNone(ns[board.datetime.fromtimestamp(at(2026, 3, 10, 3), TZ).date()])
+        self.assertIsNone(board.night_hint(board.nights(rd, times, NOW, TZ)))  # unknown nights give no hint
+        h = sec(build(rows), "Verbrauch je Stunde")["values"]
+        self.assertIsNone(h[-8])  # 5 o'clock: the jump lands before the first new telegram, in no hour
+        self.assertEqual(h[-7], 0)  # 6 o'clock: heard again
+        self.assertEqual(set(h[-16:-7]), {None})  # not heard = gap, never 0
+        b_ = build(rows)
+        d = sec(b_, "Verbrauch je Tag")["values"]
+        self.assertIsNone(d[-2])  # 9.3.: midnight on both ends not heard
+        self.assertEqual(d[-4], 124)  # 7.3. untouched (120 l + 4 l at night)
+
+    def test_outage_inside_a_day_keeps_the_day(self):
+        rows = meter()
+        a, b = at(2026, 3, 8, 9), at(2026, 3, 8, 15)
+        frozen = next(r["zaehlerstand_m3"] for r in reversed(rows) if r["t"] < a)
+        for r in rows:
+            if a <= r["t"] < b:
+                r["zaehlerstand_m3"], r["ausfall"] = frozen, True
+        self.assertEqual(sec(build(rows), "Verbrauch je Tag")["values"][-3], 120)
+
+    def test_short_flags_are_no_outage(self):
+        rows = meter()
+        for r in rows[::3]:
+            r["ausfall"] = True  # the base flags after ~5 min although the meter is heard
+        self.assertEqual(board.blind(rows), [])
+
     def test_first_day_counts_from_first_value(self):
         b = build(meter(days=0.2))
         self.assertIn("seit", tile(b, "Heute")["sub"])
