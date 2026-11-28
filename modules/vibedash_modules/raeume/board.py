@@ -51,6 +51,8 @@ TEXT = {
     "motion_d": "Letzte Bewegung",
     "motion_ago": "vor {m} min",
     "area": "Fläche",
+    "plan_value": "Wert im Plan",
+    "mean_of": "Mittel aus {n} Fühlern",
     "note": "Temperatur und Feuchte vom Raumsensor (sonst Heizungsregler), Licht aus der Rückmeldung der "
     "Aktoren, Bewegung von den Präsenzmeldern. Raum antippen für alle Werte.",
     "what": "Grundriss mit Live-Werten je Raum; Licht und Bewegung lassen sich für heute abspielen.",
@@ -213,9 +215,29 @@ def build(
     for typ, raum, v in readings.get("klima") or []:
         for rid in to_room.get(norm(raum), []):
             values.setdefault(rid, {}).setdefault(typ, []).append(v)
+    # extra sensors replace the climate readings of their rooms (config zusatzfuehler)
+    extra_d: dict = {}
+    zusatz = readings.get("zusatz") or {}
+    zf_rooms = (cfg.get("zusatzfuehler") or {}).get("raeume") or {}
+    for rid, sensors in zf_rooms.items():
+        values.pop(rid, None)
+        got = [(s, zusatz[str(s.get("id"))]) for s in sensors if str(s.get("id")) in zusatz]
+        if not got:
+            continue
+        ts = [v[0] for _, v in got if v[0] is not None]
+        hs = [v[1] for _, v in got if v[1] is not None]
+        values[rid] = {
+            **({"aussen_temp": [sum(ts) / len(ts)]} if ts else {}),
+            **({"aussen_feuchte": [sum(hs) / len(hs)]} if hs else {}),
+        }
+        d = [{"label": t["plan_value"], "value": t["mean_of"].format(n=len(got))}] if len(got) > 1 else []
+        for s, (tv, hv) in got:
+            parts = ([f"{de1(tv)} °C"] if tv is not None else []) + ([f"{round(hv)} %"] if hv is not None else [])
+            d.append({"label": str(s.get("name") or s.get("id"))[:40], "value": " · ".join(parts)})
+        extra_d[rid] = d
     # rooms that share one climate (e.g. an open kitchen/dining area heated with the living room)
     for target, src in (cfg.get("gleicher_raum") or {}).items():
-        if values.get(src) and not values.get(target):
+        if values.get(src) and not values.get(target) and target not in zf_rooms:
             values[target] = values[src]
     lux: dict = {}
     for raum, v in readings.get("lux") or []:
@@ -298,6 +320,7 @@ def build(
             d.append({"label": t["light_d"], "value": t["on"] if light_now[i] else t["off"]})
         if i in pj:
             d.append({"label": t["motion_d"], "value": "–" if pj[i] is None else t["motion_ago"].format(m=pj[i])})
+        d += extra_d.get(i, [])
         if r.get("flaeche_m2"):
             d.append({"label": t["area"], "value": f"{str(r['flaeche_m2']).replace('.', ',')} m²"})
         details[i] = d
