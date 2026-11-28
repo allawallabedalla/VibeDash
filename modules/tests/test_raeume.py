@@ -138,7 +138,11 @@ class TestRaeume(unittest.TestCase):
         self.fetch = fetch
         cfg = dict(self.cfg)
         cfg["zusatzfuehler"] = {
-            "measurement": "bus_klima", "tag": "nr", "temp": "t_c", "feuchte": "rf", "alter": "1h; drop",
+            "measurement": "bus_klima",
+            "tag": "nr",
+            "temp": "t_c",
+            "feuchte": "rf",
+            "alter": "1h; drop",
             "raeume": {
                 "terrasse": [{"id": "6", "name": "Ecke Nord"}, {"id": 8, "name": "Ecke Süd"}, {"id": "9"}],
                 "kueche": [{"id": "7", "name": "stumm"}],
