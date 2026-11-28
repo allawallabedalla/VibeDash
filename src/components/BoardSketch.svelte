@@ -152,8 +152,10 @@
               style:left={`${px}%`}
               style:top={`${py}%`}
             >
-              <b>{q.value}</b>
-              <span>{q.label}{q.sub ? ` · ${q.sub}` : ''}</span>
+              <b
+                >{q.value}{#if q.sub}<small>{q.sub}</small>{/if}</b
+              >
+              <span>{q.label}</span>
             </div>
           {/each}
         </div>
@@ -247,9 +249,16 @@
     .pin b {
       font-size: 16px;
     }
-    .pin span {
+    .pin span,
+    .pin small {
       font-size: 14px;
     }
+  }
+  .pin small {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-2);
+    margin-left: 5px;
   }
   .pin.silent b {
     color: var(--muted);
