@@ -39,6 +39,48 @@ def _by_sensor(series: list[dict]):
             yield nr, [dict(zip(cols, v, strict=False)) for v in s.get("values") or []]
 
 
+def _lit(x) -> str:
+    return "'" + str(x).replace("\\", "").replace("'", "") + "'"
+
+
+def read_outdoor(cfg: dict, a: dict, fetch=fetch_json) -> dict | None:
+    """Outdoor sensor (config aussen): {"last": {t, temp, feuchte}, "course": {span id: {bucket ms: (temp, feuchte)}}}
+    from two series picked by tags; None when the database does not answer or the sensor has no reading."""
+    m, f = _ident(a.get("measurement") or ""), _ident(a.get("feld") or "wert")
+
+    def where(tags: dict) -> str:
+        return " AND ".join(f"{_ident(k)} = {_lit(v)}" for k, v in (tags or {}).items()) or "time > 0"
+
+    try:
+        last, course = {}, {}
+        for key, tags in (("temp", a.get("temp")), ("feuchte", a.get("feuchte"))):
+            q = f"SELECT last({f}) FROM {m} WHERE {where(tags)} AND time > now() - 3h"
+            for s in _series(cfg, fetch, q):
+                v = (s.get("values") or [[None, None]])[0]
+                if v[1] is not None:
+                    last[key] = float(v[1])
+                    last["t"] = min(last.get("t", v[0] / 1000), v[0] / 1000)
+            for sid, (span, step) in SPANS.items():
+                q = (
+                    f"SELECT mean({f}) FROM {m} WHERE {where(tags)} AND time > now() - {span}s "
+                    f"GROUP BY time({step}s) fill(none)"
+                )
+                c = course.setdefault(sid, {})
+                for s in _series(cfg, fetch, q):
+                    for x, v in s.get("values") or []:
+                        if v is not None:
+                            c.setdefault(int(x), {})[key] = float(v)
+        course = {
+            sid: {x: (v["temp"], v["feuchte"]) for x, v in c.items() if "temp" in v and "feuchte" in v}
+            for sid, c in course.items()
+        }
+    except Exception:  # noqa: BLE001
+        return None
+    if "temp" not in last or "feuchte" not in last:
+        return {"last": None, "course": course}
+    return {"last": last, "course": course}
+
+
 def read(cfg: dict, fetch=fetch_json) -> dict | None:
     """-> {"last": {nr: {t, temp, feuchte}}, "stats": {nr: {tmin, tmax, tmean, hmin, hmax, hmean, n}} (24 h),
     "course": {span id: {nr: {bucket start ms: (temp, feuchte)}}}}; None when the database does not answer."""

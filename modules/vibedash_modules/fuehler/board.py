@@ -11,26 +11,39 @@ config list [{"nr", "name"}] or None (then every sensor in data, by number). A b
 
 from __future__ import annotations
 
+import math
 from datetime import datetime
 
 from ..fmt import number, unsigned_zero
 from .source import SPANS
 
 STALE_S = 10 * 60  # the collector asks every minute: 10 min without a reading = the sensor does not answer
+CONDENSE_K = 1.0  # air at most 1 K above its dew point (≈ 93 % rF): water may settle on anything a bit colder
+AIR_DIFF = 0.5  # g/m³: smaller differences between inside and outside do not count for airing
 COLORS = ("climate", "sun", "battery", "home", "feed", "grid", "import", "muted")  # one per sensor, then again
 
 TEXT = {
     "tiles_title": "Jetzt",
     "name": "Fühler {nr}",
-    "sub": "{h} % rF · {ago}",
+    "sub": "{h} % rF · Taupunkt {td} °C",
     "sub_silent": "keine Antwort seit {when}",
     "sub_never": "noch keine Messung",
     "sub_nodata": "keine Daten (Datenbank antwortet nicht)",
-    "now": "gerade eben",
-    "ago_min": "vor {m} min",
     "tile_what": "Temperatur und relative Luftfeuchte von Fühler {nr} (Busadresse), zuletzt gemessen {when}. Die Linie "
     "zeigt die letzten 24 Stunden (Viertelstunden-Mittel). Genauigkeit laut Datenblatt typisch ± 0,5 °C und ± 3 % rF "
-    "(nicht nachgeprüft); die Werte haben eine Nachkommastelle.",
+    "(nicht nachgeprüft); die Werte haben eine Nachkommastelle. Taupunkt = Temperatur, ab der sich Wasser "
+    "niederschlägt (Magnus-Formel über Wasser, ± 0,5 K bei ± 3 % rF); absolute Feuchte {ah} g/m³.",
+    "outdoor": "Außen",
+    "hint_condense": "{name}: Luft nur {k} K über dem Taupunkt – an kälteren Stellen (Blech, Balken) kann Wasser "
+    "kondensieren.",
+    "hint_condense_info": "Erscheint, wenn die Lufttemperatur höchstens 1 K über dem Taupunkt liegt (etwa ab 93 % rF). "
+    "Dann reicht eine leicht kältere Fläche für Kondenswasser. Hilft: lüften, wenn außen die absolute Feuchte "
+    "niedriger ist (Tabelle unten, Spalte „Lüften“).",
+    "abs_title": "Absolute Feuchte",
+    "abs_note": "Gramm Wasser je Kubikmeter Luft, aus Temperatur und relativer Feuchte gerechnet. Liegt die Außenlinie "
+    "darunter, trocknet Lüften.",
+    "abs_what": "Absolute Feuchte je Fühler (Mittel je Zeitschritt). Anders als die relative Feuchte hängt sie "
+    "nicht von der Temperatur ab – deshalb lässt sie sich mit außen vergleichen.",
     "source": "Fühler am RS485-Bus, jede Minute abgefragt vom Haus-Sammler, gespeichert in InfluxDB.",
     "hint_title": "Hinweise",
     "hint_silent": "{name} antwortet seit {when} nicht – Kabel, Stromversorgung oder Gateway?",
@@ -51,10 +64,18 @@ TEXT = {
     "col_max": "höchste",
     "col_hum": "Feuchte Ø",
     "col_n": "Messungen",
+    "col_dew": "Taupunkt",
+    "col_abs": "g/m³",
+    "col_air": "Lüften",
+    "air_dry": "trocknet",
+    "air_wet": "feuchtet",
+    "air_same": "egal",
     "chart_label": "Temperatur 24 h",
     "table_note": "Punkt = Mittel, Strich = halbe Spanne zwischen tiefster und höchster Temperatur.",
     "table_what": "Tiefste, höchste und mittlere Temperatur der letzten 24 Stunden aus allen Minutenwerten; "
-    "Feuchte als Mittel. „Messungen“: Zahl der Minutenwerte (voll = 1440).",
+    "Feuchte als Mittel. „Messungen“: Zahl der Minutenwerte (voll = 1440). Taupunkt und g/m³ aus dem letzten Wert. "
+    "„Lüften“ vergleicht die absolute Feuchte mit außen: trocknet = außen mindestens 0,5 g/m³ trockener, feuchtet = "
+    "außen mindestens 0,5 g/m³ feuchter, sonst egal; ohne Außenfühler „–“.",
     "empty": "Noch kein Fühler hat geantwortet.",
 }
 
@@ -67,8 +88,26 @@ def _de(x, nd=1) -> str:
     return f"{v:.{nd}f}".replace(".", ",").replace("-", "−")
 
 
-def _ago(s: float, t: dict) -> str:
-    return t["now"] if s < 90 else t["ago_min"].format(m=round(s / 60))
+def _svp(temp: float) -> float:
+    """Saturation vapour pressure over water in hPa (Magnus, WMO coefficients)."""
+    return 6.112 * math.exp(17.62 * temp / (243.12 + temp))
+
+
+def dew_point(temp, rh):
+    """Dew point in °C from °C and % rF (Magnus over water); None for missing or impossible values."""
+    temp, rh = number(temp), number(rh)
+    if temp is None or rh is None or not 0 < rh <= 100:
+        return None
+    g = math.log(rh / 100) + 17.62 * temp / (243.12 + temp)
+    return 243.12 * g / (17.62 - g)
+
+
+def abs_humidity(temp, rh):
+    """Absolute humidity in g/m³ from °C and % rF; None for missing or impossible values."""
+    temp, rh = number(temp), number(rh)
+    if temp is None or rh is None or not 0 <= rh <= 100:
+        return None
+    return 216.7 * (rh / 100 * _svp(temp)) / (273.15 + temp)
 
 
 def _when(ts: float, now: float, tz) -> str:
@@ -103,6 +142,15 @@ def _grid(now: float, sid: str) -> list[int]:
     return [int((end - (n - 1 - i) * step) * 1000) for i in range(n)]
 
 
+def _abs_values(c: dict, grid: list[int]) -> list:
+    out = []
+    for x in grid:
+        v = c.get(x)
+        a = abs_humidity(v[0], v[1]) if v else None
+        out.append(round(a, 1) if a is not None else None)
+    return out
+
+
 def _values(course: dict, nr: str, grid: list[int], k: int) -> list:
     c = course.get(nr) or {}
     out = []
@@ -110,6 +158,17 @@ def _values(course: dict, nr: str, grid: list[int], k: int) -> list:
         v = c.get(x)
         out.append(round(v[k], 1) if v and number(v[k]) is not None else None)
     return out
+
+
+def _air(inside, outside, t: dict) -> str:
+    """Does airing dry the room? Compares absolute humidity inside/outside; "–" without both."""
+    if inside is None or outside is None:
+        return "–"
+    if outside <= inside - AIR_DIFF:
+        return t["air_dry"]
+    if outside >= inside + AIR_DIFF:
+        return t["air_wet"]
+    return t["air_same"]
 
 
 def build(data: dict | None, fuehler, now: float, tz, t: dict) -> dict:
@@ -135,7 +194,11 @@ def build(data: dict | None, fuehler, now: float, tz, t: dict) -> dict:
             "color": COLORS[i % len(COLORS)],
             "state": "ok",
             "info": {
-                "what": t["tile_what"].format(nr=nr, when=_when(ts, now, tz) if ts else "–"),
+                "what": t["tile_what"].format(
+                    nr=nr,
+                    when=_when(ts, now, tz) if ts else "–",
+                    ah=_de(abs_humidity(lv.get("temp"), lv.get("feuchte"))),
+                ),
                 "source": t["source"],
             },
         }
@@ -154,7 +217,18 @@ def build(data: dict | None, fuehler, now: float, tz, t: dict) -> dict:
                 }
             )
         else:
-            tile["sub"] = t["sub"].format(h=_de(lv.get("feuchte"), 0), ago=_ago(now - ts, t))
+            td = dew_point(lv.get("temp"), lv.get("feuchte"))
+            tile["sub"] = t["sub"].format(h=_de(lv.get("feuchte"), 0), td=_de(td))
+            tv = number(lv.get("temp"))
+            if td is not None and tv is not None and tv - td <= CONDENSE_K:
+                tile["state"] = "look"
+                hints.append(
+                    {
+                        "text": t["hint_condense"].format(name=name(nr, nm), k=_de(max(tv - td, 0))),
+                        "info": t["hint_condense_info"],
+                        "state": "look",
+                    }
+                )
         spark = _values(course.get("tag") or {}, nr, day_grid, 0)
         if sum(v is not None for v in spark) >= 2:
             tile["spark"], tile["sparkFrom"], tile["sparkTo"] = spark, day_grid[0], day_grid[-1]
@@ -199,9 +273,43 @@ def build(data: dict | None, fuehler, now: float, tz, t: dict) -> dict:
             }
         )
 
+    outdoor = (data or {}).get("aussen") or {}
+    o_name = (data or {}).get("aussen_name") or t["outdoor"]
+    ranges = []
+    for sid in SPANS:
+        grid = _grid(now, sid)
+        lines = [
+            {
+                "label": name(nr, nm) if len(sensors) > 1 else (nm or t["name"].format(nr=nr)),
+                "values": _abs_values((course.get(sid) or {}).get(nr) or {}, grid),
+                "color": COLORS[i % len(COLORS)],
+            }
+            for i, (nr, nm) in enumerate(sensors)
+        ]
+        o_vals = _abs_values((outdoor.get("course") or {}).get(sid) or {}, grid)
+        if sum(v is not None for v in o_vals) >= 2:
+            lines.append({"label": o_name, "values": o_vals, "color": "muted"})
+        ranges.append({"id": sid, "label": t[f"range_{sid}"], "x": grid, "lines": lines})
+    sections.append(
+        {
+            "type": "series",
+            "title": t["abs_title"],
+            "unit": "g/m³",
+            "x": ranges[0]["x"],
+            "lines": ranges[0]["lines"],
+            "group": "zeit",
+            "ranges": ranges,
+            "note": t["abs_note"],
+            "info": {"what": t["abs_what"], "source": t["source"]},
+        }
+    )
+    o_last = outdoor.get("last") or {}
+    o_abs = abs_humidity(o_last.get("temp"), o_last.get("feuchte")) if o_last else None
+
     rows, lo, hi = [], None, None
     for nr, nm in sensors:
         s = stats.get(nr) or {}
+        lv = last.get(nr) or {}
         tmin, tmax, tmean = number(s.get("tmin")), number(s.get("tmax")), number(s.get("tmean"))
         row = {
             "cells": {
@@ -211,6 +319,9 @@ def build(data: dict | None, fuehler, now: float, tz, t: dict) -> dict:
                 "max": f"{_de(tmax)} °C" if tmax is not None else "–",
                 "hum": f"{_de(s.get('hmean'), 0)} %" if number(s.get("hmean")) is not None else "–",
                 "n": str(int(s["n"])) if number(s.get("n")) is not None else "0",
+                "dew": f"{_de(td)} °C" if (td := dew_point(lv.get("temp"), lv.get("feuchte"))) is not None else "–",
+                "abs": _de(ah) if (ah := abs_humidity(lv.get("temp"), lv.get("feuchte"))) is not None else "–",
+                "air": _air(ah, o_abs, t),
             },
             "chart": {"value": None},
         }
@@ -232,6 +343,9 @@ def build(data: dict | None, fuehler, now: float, tz, t: dict) -> dict:
                 {"key": "min", "label": t["col_min"], "align": "right", "phone": True},
                 {"key": "max", "label": t["col_max"], "align": "right", "phone": True},
                 {"key": "hum", "label": t["col_hum"], "align": "right"},
+                {"key": "dew", "label": t["col_dew"], "align": "right"},
+                {"key": "abs", "label": t["col_abs"], "align": "right"},
+                {"key": "air", "label": t["col_air"], "align": "right", "phone": True},
                 {"key": "n", "label": t["col_n"], "align": "right"},
             ],
             "rows": rows,

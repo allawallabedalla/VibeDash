@@ -41,12 +41,59 @@ def sec(b, title):
     return next(s for s in b["sections"] if s.get("title") == title)
 
 
+class Feuchte(unittest.TestCase):
+    def test_dew_point_and_absolute_humidity(self):
+        # reference values (Magnus over water): 20 °C / 50 % -> 9,3 °C, 8,6 g/m³; 0 °C / 100 % -> 0 °C, 4,8 g/m³
+        self.assertAlmostEqual(board.dew_point(20, 50), 9.26, places=1)
+        self.assertAlmostEqual(board.abs_humidity(20, 50), 8.63, places=1)
+        self.assertAlmostEqual(board.dew_point(0, 100), 0.0, places=6)
+        self.assertAlmostEqual(board.abs_humidity(0, 100), 4.85, places=1)
+        self.assertIsNone(board.dew_point(5, 0))
+        self.assertIsNone(board.abs_humidity(None, 50))
+
+    def test_airing(self):
+        t = board.TEXT
+        self.assertEqual(board._air(5.0, 4.4, t), "trocknet")
+        self.assertEqual(board._air(5.0, 5.6, t), "feuchtet")
+        self.assertEqual(board._air(5.0, 5.3, t), "egal")
+        self.assertEqual(board._air(5.0, None, t), "–")
+
+
 class FuehlerBoard(unittest.TestCase):
+    def test_condensation_hint(self):
+        d = data()
+        d["last"]["1"].update(temp=2.0, feuchte=95.0)
+        b = build(d)
+        t1 = sec(b, "Jetzt")["tiles"][0]
+        self.assertEqual(t1["state"], "look")
+        self.assertIn("Keller: Luft nur 0,7 K über dem Taupunkt", sec(b, "Hinweise")["items"][0]["text"])
+        self.assertEqual(pruefe(b), [])
+
+    def test_absolute_humidity_with_outdoor(self):
+        d = data()
+        o_course = {sid: {x: (-3.0, 90.0) for x in board._grid(NOW, sid)} for sid in source.SPANS}
+        d["aussen"] = {"last": {"t": NOW - 60, "temp": -8.0, "feuchte": 60.0}, "course": o_course}  # 1,5 g/m³
+        d["aussen_name"] = "Hof"
+        b = build(d)
+        s = sec(b, "Absolute Feuchte")
+        self.assertEqual([ln["label"] for ln in s["lines"]], ["Fühler 1 · Keller", "Fühler 2", "Hof"])
+        self.assertEqual(s["lines"][2]["values"][0], 3.5)
+        rows = sec(b, "Letzte 24 Stunden")["rows"]
+        self.assertEqual(rows[0]["cells"]["abs"], "3,4")  # −1,5 °C / 76,8 %
+        self.assertEqual(rows[0]["cells"]["air"], "trocknet")
+        self.assertEqual(pruefe(b), [])
+
+    def test_absolute_humidity_without_outdoor(self):
+        b = build(data())
+        s = sec(b, "Absolute Feuchte")
+        self.assertEqual(len(s["lines"]), 2)
+        self.assertEqual(sec(b, "Letzte 24 Stunden")["rows"][0]["cells"]["air"], "–")
+
     def test_tiles_now(self):
         b = build(data())
         t1, t2 = sec(b, "Jetzt")["tiles"]
         self.assertEqual((t1["label"], t1["value"], t1["unit"]), ("Keller", "−1,5", "°C"))
-        self.assertEqual(t1["sub"], "77 % rF · gerade eben")
+        self.assertEqual(t1["sub"], "77 % rF · Taupunkt −5,0 °C")
         self.assertEqual(t2["label"], "Fühler 2")
         self.assertEqual(len(t1["spark"]), 96)
         self.assertEqual(pruefe(b), [])
