@@ -34,6 +34,9 @@ TEXT = {
     "(nicht nachgeprüft); die Werte haben eine Nachkommastelle. Taupunkt = Temperatur, ab der sich Wasser "
     "niederschlägt (Magnus-Formel über Wasser, ± 0,5 K bei ± 3 % rF); absolute Feuchte {ah} g/m³.",
     "outdoor": "Außen",
+    "sketch_title": "Wo die Fühler sitzen",
+    "sketch_note": "Skizze, nicht maßstäblich genau. Wert = Temperatur · relative Feuchte; hohl = antwortet nicht.",
+    "sketch_what": "Seitenansicht der Gebäude mit der Lage jedes Fühlers und seinem letzten Wert (jede Minute neu).",
     "hint_condense": "{name}: Luft nur {k} K über dem Taupunkt – an kälteren Stellen (Blech, Balken) kann Wasser "
     "kondensieren.",
     "hint_condense_info": "Erscheint, wenn die Lufttemperatur höchstens 1 K über dem Taupunkt liegt (etwa ab 93 % rF). "
@@ -171,7 +174,104 @@ def _air(inside, outside, t: dict) -> str:
     return t["air_same"]
 
 
-def build(data: dict | None, fuehler, now: float, tz, t: dict) -> dict:
+def _f(x, lo=-100.0, hi=1000.0):
+    v = number(x)
+    return v if v is not None and lo <= v <= hi else None
+
+
+def _building(g: dict):
+    """-> (lines, labels, box) of one building as a side view: ground, walls, (pitched) roof, floors, rooms."""
+    b, eave = _f(g.get("breite"), 0.5, 200), _f(g.get("traufe"), 0.5, 100)
+    if b is None or eave is None:
+        return None
+    ridge = _f(g.get("first"), eave, 100)
+    over = _f(g.get("ueberstand"), 0, 3) or 0.0
+    top = ridge if ridge is not None else eave
+    lines = [{"kind": "ground", "points": [[-1.0, 0.0], [b + 1.0, 0.0]]}]
+    if ridge is not None and ridge > eave:
+        slope = (ridge - eave) / (b / 2)
+        lines.append({"kind": "wall", "points": [[0.0, 0.0], [0.0, eave], [b, eave], [b, 0.0]]})
+        lines.append(
+            {
+                "kind": "wall",
+                "points": [[-over, eave - over * slope], [b / 2, ridge], [b + over, eave - over * slope]],
+            }
+        )
+    else:
+        slope = None
+        lines.append({"kind": "wall", "points": [[0.0, 0.0], [0.0, eave], [b, eave], [b, 0.0]]})
+    labels = []
+    for fl in g.get("boeden") or []:
+        h = _f((fl or {}).get("h"), 0.1, top - 0.1) if isinstance(fl, dict) else None
+        if h is None:
+            continue
+        dx = 0.0 if slope is None or h <= eave else (h - eave) / slope
+        if dx < b / 2 - 0.2:
+            lines.append({"kind": "floor", "points": [[dx, h], [b - dx, h]]})
+            if fl.get("name"):
+                labels.append({"x": b / 2, "y": h + 0.45, "text": str(fl["name"])[:30]})
+    for r in g.get("raeume") or []:
+        if not isinstance(r, dict):
+            continue
+        x, y, w, h = (_f(r.get(k)) for k in ("x", "y", "b", "h"))
+        if None in (x, y, w, h) or w <= 0 or h <= 0:
+            continue
+        lines.append({"kind": "room", "points": [[x, y], [x, y + h], [x + w, y + h], [x + w, y], [x, y]]})
+        if r.get("name"):
+            labels.append({"x": x + w / 2, "y": y + h - 0.45, "text": str(r["name"])[:30]})
+    return lines, labels, [-1.5, -0.8, b + 1.5, top + 0.8]
+
+
+def sketch(skizze, sensors, last, data, now, t: dict) -> dict | None:
+    """Section "sketch": per building a hand-drawn side view, each placed sensor as a pin with its reading."""
+    if not isinstance(skizze, dict):
+        return None
+    names = dict(sensors)
+    colors = {nr: COLORS[i % len(COLORS)] for i, (nr, _) in enumerate(sensors)}
+    panels = []
+    for g in skizze.get("gebaeude") or []:
+        if not isinstance(g, dict) or not (made := _building(g)):
+            continue
+        lines, labels, box = made
+        pins = []
+        for o in skizze.get("orte") or []:
+            if not isinstance(o, dict) or o.get("gebaeude") != g.get("name"):
+                continue
+            nr = str(o.get("nr"))
+            x, y = _f(o.get("x")), _f(o.get("y"))
+            if x is None or y is None:
+                continue
+            lv = last.get(nr) or {}
+            ts = number(lv.get("t"))
+            fresh = data is not None and ts is not None and now - ts <= STALE_S
+            pin = {
+                "x": x,
+                "y": y,
+                "label": names.get(nr) or t["name"].format(nr=nr),
+                "value": f"{_de(lv.get('temp'))} °C · {_de(lv.get('feuchte'), 0)} %" if fresh else "–",
+                "color": colors.get(nr, "muted"),
+                "side": "l" if o.get("seite") == "l" else "r",
+            }
+            if not fresh:
+                pin["state"] = "look"
+            pins.append(pin)
+        panels.append(
+            {"name": str(g.get("name") or "")[:30], "box": box, "lines": lines, "labels": labels, "pins": pins}
+        )
+    if not panels:
+        return None
+    return {
+        "type": "sketch",
+        "title": str(skizze.get("titel") or t["sketch_title"])[:60],
+        "panels": panels,
+        **({"left": str(skizze["links"])[:16]} if skizze.get("links") else {}),
+        **({"right": str(skizze["rechts"])[:16]} if skizze.get("rechts") else {}),
+        "note": t["sketch_note"],
+        "info": {"what": t["sketch_what"], "source": t["source"]},
+    }
+
+
+def build(data: dict | None, fuehler, now: float, tz, t: dict, skizze=None) -> dict:
     sensors = _sensors(data, fuehler)
     last = (data or {}).get("last") or {}
     stats = (data or {}).get("stats") or {}
@@ -245,6 +345,9 @@ def build(data: dict | None, fuehler, now: float, tz, t: dict) -> dict:
     sections: list[dict] = [{"type": "tiles", "title": t["tiles_title"], "tiles": tiles}]
     if hints:
         sections.append({"type": "list", "title": t["hint_title"], "items": hints})
+    sk = sketch(skizze, sensors, last, data, now, t)
+    if sk:
+        sections.append(sk)
 
     for k, title, unit in ((0, "temp_title", "°C"), (1, "hum_title", "%")):
         ranges = []

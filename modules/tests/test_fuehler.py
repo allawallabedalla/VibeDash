@@ -33,8 +33,31 @@ def data(silent_since=None, gap=None):
     return {"last": last, "stats": stats, "course": course}
 
 
-def build(d, fuehler=CFG["fuehler"], now=NOW):
-    return board.build(d, fuehler, now, TZ, board.TEXT)
+# synthetic demo: a shed 8 m wide with a pitched roof and a loft, sensor 1 below, sensor 2 under the ridge
+SKIZZE = {
+    "links": "Ost",
+    "rechts": "West",
+    "gebaeude": [
+        {
+            "name": "Schuppen",
+            "breite": 8,
+            "traufe": 3,
+            "first": 6,
+            "ueberstand": 0.4,
+            "boeden": [{"h": 3.2, "name": "Boden"}],
+            "raeume": [{"name": "Werkstatt", "x": 5, "y": 0, "b": 3, "h": 2.4}],
+        }
+    ],
+    "orte": [
+        {"nr": 1, "gebaeude": "Schuppen", "x": 6.5, "y": 1.2, "seite": "l"},
+        {"nr": 2, "gebaeude": "Schuppen", "x": 4, "y": 5.2},
+        {"nr": 3, "gebaeude": "fehlt", "x": 1, "y": 1},
+    ],
+}
+
+
+def build(d, fuehler=CFG["fuehler"], now=NOW, skizze=None):
+    return board.build(d, fuehler, now, TZ, board.TEXT, skizze)
 
 
 def sec(b, title):
@@ -60,6 +83,32 @@ class Feuchte(unittest.TestCase):
 
 
 class FuehlerBoard(unittest.TestCase):
+    def test_sketch(self):
+        b = build(data(silent_since=NOW - 3600), skizze=SKIZZE)
+        s = sec(b, "Wo die Fühler sitzen")
+        self.assertEqual(s["type"], "sketch")
+        self.assertEqual((s["left"], s["right"]), ("Ost", "West"))
+        (p,) = s["panels"]
+        self.assertEqual(p["box"], [-1.5, -0.8, 9.5, 6.8])
+        kinds = [ln["kind"] for ln in p["lines"]]
+        self.assertEqual(kinds, ["ground", "wall", "wall", "floor", "room"])
+        roof = p["lines"][2]["points"]
+        self.assertEqual(roof[1], [4.0, 6.0])
+        floor = p["lines"][3]["points"]  # 0,2 m above the eaves: 0,27 m in from each wall
+        self.assertAlmostEqual(floor[0][0], 0.2667, places=3)
+        self.assertEqual([lb["text"] for lb in p["labels"]], ["Boden", "Werkstatt"])
+        p1, p2 = p["pins"]
+        self.assertEqual((p1["label"], p1["value"], p1["side"]), ("Keller", "−1,5 °C · 77 %", "l"))
+        self.assertEqual((p2["value"], p2["state"]), ("–", "look"))  # silent sensor: hollow, no value
+        self.assertEqual(pruefe(b), [])
+
+    def test_sketch_ignores_broken_config(self):
+        bad = {"gebaeude": [{"name": "x"}, "kaputt", {"name": "y", "breite": 5, "traufe": 3}], "orte": [{"nr": 1}]}
+        s = sec(build(data(), skizze=bad), "Wo die Fühler sitzen")
+        self.assertEqual(len(s["panels"]), 1)  # flat roof, no pins
+        self.assertEqual(s["panels"][0]["pins"], [])
+        self.assertFalse(any(x["type"] == "sketch" for x in build(data(), skizze={"gebaeude": []})["sections"]))
+
     def test_condensation_hint(self):
         d = data()
         d["last"]["1"].update(temp=2.0, feuchte=95.0)

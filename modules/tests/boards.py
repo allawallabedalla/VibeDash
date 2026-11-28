@@ -149,9 +149,9 @@ def _wasser():
 
 
 def _fuehler():
-    from .test_fuehler import build, data
+    from .test_fuehler import SKIZZE, build, data
 
-    return build(data(silent_since=data()["last"]["1"]["t"] - 3 * 3600))
+    return build(data(silent_since=data()["last"]["1"]["t"] - 3 * 3600), skizze=SKIZZE)
 
 
 BUILDERS = {
