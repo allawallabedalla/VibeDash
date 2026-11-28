@@ -35,7 +35,8 @@ TEXT = {
     "niederschlägt (Magnus-Formel über Wasser, ± 0,5 K bei ± 3 % rF); absolute Feuchte {ah} g/m³.",
     "outdoor": "Außen",
     "sketch_title": "Wo die Fühler sitzen",
-    "sketch_note": "Skizze, nicht maßstäblich genau. Wert = Temperatur · relative Feuchte; hohl = antwortet nicht.",
+    "sketch_note": "Skizze, nicht maßstäblich genau. Oben Temperatur und relative Feuchte, darunter der Fühler; "
+    "hohl = antwortet nicht.",
     "sketch_what": "Seitenansicht der Gebäude mit der Lage jedes Fühlers und seinem letzten Wert (jede Minute neu).",
     "hint_condense": "{name}: Luft nur {k} K über dem Taupunkt – an kälteren Stellen (Blech, Balken) kann Wasser "
     "kondensieren.",
@@ -247,11 +248,13 @@ def sketch(skizze, sensors, last, data, now, t: dict) -> dict | None:
             pin = {
                 "x": x,
                 "y": y,
-                "label": names.get(nr) or t["name"].format(nr=nr),
-                "value": f"{_de(lv.get('temp'))} °C · {_de(lv.get('feuchte'), 0)} %" if fresh else "–",
+                "label": str(o.get("name") or names.get(nr) or t["name"].format(nr=nr))[:30],
+                "value": f"{_de(lv.get('temp'))} °C" if fresh else "–",
                 "color": colors.get(nr, "muted"),
                 "side": "l" if o.get("seite") == "l" else "r",
             }
+            if fresh and number(lv.get("feuchte")) is not None:
+                pin["sub"] = f"{_de(lv.get('feuchte'), 0)} %"
             if not fresh:
                 pin["state"] = "look"
             pins.append(pin)

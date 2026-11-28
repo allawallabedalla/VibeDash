@@ -12,8 +12,9 @@ Config (local/modules/fuehler.json, template modules/templates/fuehler.json):
             does airing dry or wet the room? Without it, no comparison.
   skizze    optional hand-drawn side view with the sensors at their places (section "sketch"):
             {links?, rechts?, titel?, gebaeude: [{name, breite, traufe, first?, ueberstand?, boeden?: [{h, name?}],
-             raeume?: [{name, x, y, b, h}]}], orte: [{nr, gebaeude, x, y, seite?: "l"|"r"}]} – metres, x from the
-            left wall, y from the ground; first = ridge height (pitched roof), without it a flat roof at traufe
+             raeume?: [{name, x, y, b, h}]}], orte: [{nr, gebaeude, x, y, seite?: "l"|"r", name?}]}
+            – name: short label; metres, x from the left wall, y from the ground; first = ridge height (pitched
+            roof), without it a flat roof at traufe
   zeitzone  default "Europe/Berlin"
   texte     optional wording overrides (keys of board.TEXT)
 

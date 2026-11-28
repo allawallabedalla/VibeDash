@@ -50,7 +50,7 @@ SKIZZE = {
     ],
     "orte": [
         {"nr": 1, "gebaeude": "Schuppen", "x": 6.5, "y": 1.2, "seite": "l"},
-        {"nr": 2, "gebaeude": "Schuppen", "x": 4, "y": 5.2},
+        {"nr": 2, "gebaeude": "Schuppen", "x": 4, "y": 5.2, "name": "First"},
         {"nr": 3, "gebaeude": "fehlt", "x": 1, "y": 1},
     ],
 }
@@ -98,8 +98,9 @@ class FuehlerBoard(unittest.TestCase):
         self.assertAlmostEqual(floor[0][0], 0.2667, places=3)
         self.assertEqual([lb["text"] for lb in p["labels"]], ["Boden", "Werkstatt"])
         p1, p2 = p["pins"]
-        self.assertEqual((p1["label"], p1["value"], p1["side"]), ("Keller", "−1,5 °C · 77 %", "l"))
-        self.assertEqual((p2["value"], p2["state"]), ("–", "look"))  # silent sensor: hollow, no value
+        self.assertEqual((p1["label"], p1["value"], p1["sub"], p1["side"]), ("Keller", "−1,5 °C", "77 %", "l"))
+        self.assertEqual((p2["label"], p2["value"], p2["state"]), ("First", "–", "look"))
+        self.assertNotIn("sub", p2)  # silent sensor: hollow, no value
         self.assertEqual(pruefe(b), [])
 
     def test_sketch_ignores_broken_config(self):
