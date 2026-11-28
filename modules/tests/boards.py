@@ -148,6 +148,12 @@ def _wasser():
     return board.build(tag(night_l=3, days=10), dict(LIVE), NOW, TZ, board.TEXT)
 
 
+def _fuehler():
+    from .test_fuehler import build, data
+
+    return build(data(silent_since=data()["last"]["1"]["t"] - 3 * 3600))
+
+
 BUILDERS = {
     "wartung": _wartung,
     "raeume": _raeume,
@@ -162,6 +168,7 @@ BUILDERS = {
     "saugroboter": _saugroboter,
     "updates": _updates,
     "wasser": _wasser,
+    "fuehler": _fuehler,
 }
 
 

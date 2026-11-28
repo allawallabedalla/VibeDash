@@ -19,4 +19,5 @@ KNOWN = (
     "saugroboter",
     "updates",
     "wasser",
+    "fuehler",
 )

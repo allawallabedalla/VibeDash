@@ -59,4 +59,5 @@ export const MODULES: Record<string, { de: string; en: string; icon: string }> =
   saugroboter: { de: 'Saugroboter', en: 'Robot vacuums', icon: 'robot' },
   updates: { de: 'Updates', en: 'Updates', icon: 'refresh' },
   wasser: { de: 'Wasser', en: 'Water', icon: 'droplet' },
+  fuehler: { de: 'Fühler', en: 'Sensors', icon: 'thermometer' },
 };
