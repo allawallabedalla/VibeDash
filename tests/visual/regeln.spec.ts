@@ -51,6 +51,7 @@ const SMALL_TEXT: Record<string, { svg?: number; html?: number; id: string }> = 
   // board charts: axis text scaled with the SVG (11.9 px); charge timeline: 11 px; choice sub-line 13.6 px
   'b/auto': { html: 11, svg: 11.9, id: 'DE4-11' },
   'b/druck': { svg: 11.9, id: 'DE4-11' },
+  'b/fuehler': { svg: 11.9, id: 'DE4-11' },
   'b/garten': { svg: 11.9, id: 'DE4-11' },
   'b/knx': { svg: 11.9, id: 'DE4-11' },
   'b/knxlog': { svg: 11.9, id: 'DE4-11' },

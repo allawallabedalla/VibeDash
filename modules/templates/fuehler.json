@@ -1,0 +1,6 @@
+{
+  "$comment": "Module fuehler – copy to local/modules/fuehler.json. The house's collector asks the temperature/humidity sensors on the bus once a minute and writes InfluxDB (measurement rs485_klima, tag fuehler = bus address). fuehler: which to show, with names (optional).",
+  "influx": { "url": "http://127.0.0.1:8086", "db": "", "measurement": "rs485_klima" },
+  "fuehler": [{ "nr": 1, "name": "" }],
+  "zeitzone": "Europe/Berlin"
+}

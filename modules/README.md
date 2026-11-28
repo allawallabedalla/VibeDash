@@ -18,6 +18,7 @@ install). Only the VibeDash server talks to it; the browser never does.
 | `druck`       | 3D-Druck    | The 3D printer (Prusa with PrusaLink): state, progress, time left, nozzle and bed, the file, temperatures (6 h/24 h/7 days), print time per day, the last jobs, links to the house's own printer tools (e.g. a pen plotter). Asks the printer once a minute and keeps a history. Only reads – nothing on the printer is switched.                                                                      |
 | `updates`     | Updates     | Software updates of the house computer: open packages (security first), restart due, last run; a choice „Jetzt“ stores a wish that a fixed service of the house picks up and installs them. VibeDash installs nothing itself.                                                                                                                                                                          |
 | `wasser`      | Wasser      | The house's water meter as answers: tight? (leak hint: 3 nights in a row, or never a full hour still in 24 h), today vs. a usual day up to now (tile also on the start page), since the due date, when water ran (quarter hours, today/yesterday), the draws of water with a careful guess (WC, shower, machine …; `board.bezuege()`); details: per hour, per day, nights, state, reading. Only reads. |
+| `fuehler`     | Fühler      | Temperature and humidity sensors on a bus (e.g. XY-MD02 on RS485 behind a Modbus TCP gateway): a tile per sensor with its last 24 h, a hint when one stops answering, temperature and humidity over 24 h / 7 / 30 days, lowest/highest/mean of 24 h. Only reads.                                                                                                                                       |
 
 ## Switch a module on
 
@@ -105,6 +106,19 @@ atomically under a file lock (`<plan>.lock`), so a house script may share the fi
 Use is always a difference of meter readings, never summed up from flow. Mapping with `"home": true` puts the tile
 „Wasser“ (section with `slot: "home"`) on the start page; a tap there opens the tab:
 `{ "id": "wasser", "title": "Wasser", "icon": "droplet", "module": "wasser", "home": true }`.
+
+## Module `fuehler` – config keys
+
+| Key        | Meaning                                                                                                                                            |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `influx`   | `{url, db, measurement?}` – the course, read only: tag `fuehler` (bus address), fields `temp_c`, `feuchte_pct` (default measurement `rs485_klima`) |
+| `fuehler`  | optional `[{"nr": 6, "name": "…"}]` – which sensors, in this order, with names; without it every sensor seen in 30 days as „Fühler <nr>“           |
+| `zeitzone` | default `Europe/Berlin`                                                                                                                            |
+| `texte`    | optional wording overrides (keys in `fuehler/board.py`, `TEXT`)                                                                                    |
+
+The house's collector asks each sensor once a minute, one after another (one shared bus), and writes nothing for a
+sensor that does not answer – 10 min without a reading shows the hint. Mapping:
+`{ "id": "fuehler", "title": "Fühler", "icon": "thermometer", "module": "fuehler" }`.
 
 ## Module `auto` – config keys
 
