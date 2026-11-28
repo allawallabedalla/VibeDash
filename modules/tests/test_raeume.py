@@ -122,6 +122,42 @@ class TestRaeume(unittest.TestCase):
         )
         self.assertIn({"label": "Helligkeit", "value": "5000 lx"}, d["terrasse"])
 
+    def test_extra_sensors_replace_room_climate(self):
+        zf_rows = {"6": [0, 3.84, 63.2], "8": [0, 3.66, 60.4], "9": [0, None, None]}
+        old = self.fetch
+
+        def fetch(url, timeout=20):
+            q = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query).get("q", [""])[0]
+            if '"bus_klima"' in q:
+                self.assertIn('GROUP BY "nr"', q)
+                self.assertIn("now() - 1h", q)  # invalid alter falls back to 1h
+                ser = [{"tags": {"nr": k}, "values": [v]} for k, v in zf_rows.items()]
+                return {"results": [{"series": ser}]}
+            return old(url, timeout)
+
+        self.fetch = fetch
+        cfg = dict(self.cfg)
+        cfg["zusatzfuehler"] = {
+            "measurement": "bus_klima",
+            "tag": "nr",
+            "temp": "t_c",
+            "feuchte": "rf",
+            "alter": "1h; drop",
+            "raeume": {
+                "terrasse": [{"id": "6", "name": "Ecke Nord"}, {"id": 8, "name": "Ecke Süd"}, {"id": "9"}],
+                "kueche": [{"id": "7", "name": "stumm"}],
+            },
+        }
+        s = self.mod(cfg).board()["sections"][0]
+        v = {x["id"]: x for x in s["views"]}
+        self.assertEqual(v["temp"]["texts"]["terrasse"], "3,8°")  # mean 3.75 replaces the old 9.25
+        self.assertEqual(v["feuchte"]["texts"]["terrasse"], "62 %")
+        self.assertNotIn("kueche", v["temp"]["texts"])  # listed room, silent sensor: old values gone, not shared
+        d = s["details"]["terrasse"]
+        self.assertIn({"label": "Wert im Plan", "value": "Mittel aus 2 Fühlern"}, d)
+        self.assertIn({"label": "Ecke Nord", "value": "3,8 °C · 63 %"}, d)
+        self.assertIn({"label": "Ecke Süd", "value": "3,7 °C · 60 %"}, d)
+
     def test_no_sources(self):
         cfg = {"grundriss": {"haus": "raeume_haus.json"}}
         s = self.mod(cfg).board()["sections"][0]

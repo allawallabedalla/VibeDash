@@ -65,6 +65,31 @@ class Influx:
         except Exception:  # noqa: BLE001
             return []
 
+    def sensors(self, zf: dict) -> dict:
+        """Extra sensors (config zusatzfuehler): {sensor_id: (temp or None, humidity or None)}, last value within
+        alter. Errors give no values."""
+        age = str(zf.get("alter") or "1h")
+        if not age[:-1].isdigit() or age[-1] not in "smhd":
+            age = "1h"
+        tf, hf = zf.get("temp") or "temp", zf.get("feuchte") or "feuchte"
+        q = (
+            f"SELECT last({_ident(tf)}) AS t, last({_ident(hf)}) AS f FROM {_ident(zf.get('measurement') or '')} "
+            f"WHERE time > now() - {age} GROUP BY {_ident(zf.get('tag') or 'id')}"
+        )
+        u = f"{self.url}/query?" + urllib.parse.urlencode({"db": self.db, "q": q, "epoch": "ms"})
+        try:
+            res = (self.fetch(u, 15) or {}).get("results") or [{}]
+            out = {}
+            for ser in res[0].get("series") or []:
+                row = (ser.get("values") or [[None, None, None]])[0]
+                sid = str((ser.get("tags") or {}).get(zf.get("tag") or "id"))
+                t, h = (row + [None, None])[1:3]
+                if t is not None or h is not None:
+                    out[sid] = (None if t is None else float(t), None if h is None else float(h))
+            return out
+        except Exception:  # noqa: BLE001
+            return {}
+
     def readings(self) -> dict:
         klima = []
         for typ, age in KLIMA:

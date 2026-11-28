@@ -8,6 +8,10 @@ Config (local/modules/raeume.json, template modules/templates/raeume.json):
                   readings are (InfluxDB 1.x, read only); empty db = no readings
   namen           {room_id: [series names]} – extra names a room has in the series (besides "knx" in the plan)
   gleicher_raum   {room_id: room_id} – rooms without own readings that share another room's climate
+  zusatzfuehler   optional {measurement, tag, temp, feuchte, alter?, raeume: {room_id: [{"id": "…", "name": "…"}]}}
+                  – extra climate sensors in their own measurement (one series per sensor, tag = sensor id, fields
+                  temp/feuchte). They REPLACE the climate readings of the listed rooms (e.g. old sensors there):
+                  the plan shows the mean of the answering sensors, the details list each one. alter default 1h.
   zeitzone        day start of the timeline, default "Europe/Berlin"
   einschub_url    optional house service with light/motion events of today (format in board.py)
   texte           optional wording overrides (keys of board.TEXT; floor names as floor_<id>)
@@ -52,6 +56,9 @@ class Module:
         start_ms, now_ms = int(start * 1000), int(now * 1000)
         ic = self.cfg.get("influx") or {}
         readings = source.Influx(ic, self.fetch).readings() if ic.get("db") else {}
+        zf = self.cfg.get("zusatzfuehler") or {}
+        if ic.get("db") and zf.get("raeume"):
+            readings["zusatz"] = source.Influx(ic, self.fetch).sensors(zf)
         events = {}
         if self.cfg.get("einschub_url"):
             u = self.cfg["einschub_url"]
