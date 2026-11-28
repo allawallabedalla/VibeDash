@@ -7,6 +7,9 @@ Config (local/modules/fuehler.json, template modules/templates/fuehler.json):
             tag fuehler = bus address, fields temp_c, feuchte_pct; see source.py)
   fuehler   optional [{"nr": 6, "name": "…"}] – the sensors to show, in this order, with their names; without it
             every sensor seen in the last 30 days, as "Fühler <nr>"
+  aussen    optional {measurement, feld?, temp: {tag: value}, feuchte: {tag: value}, name?} – an outdoor sensor
+            (one series for temperature, one for humidity, picked by tags) to compare the absolute humidity with:
+            does airing dry or wet the room? Without it, no comparison.
   zeitzone  default "Europe/Berlin"
   texte     optional wording overrides (keys of board.TEXT)
 
@@ -40,4 +43,8 @@ class Module:
 
     def board(self) -> dict:
         data = source.read(self.cfg["influx"], self.fetch)
+        a = self.cfg.get("aussen") or {}
+        if data is not None and a.get("measurement") and a.get("temp") and a.get("feuchte"):
+            data["aussen"] = source.read_outdoor(self.cfg["influx"], a, self.fetch)
+            data["aussen_name"] = a.get("name") or self.t["outdoor"]
         return board.build(data, self.cfg.get("fuehler"), self.clock(), self.tz, self.t)
