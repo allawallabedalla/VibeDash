@@ -86,6 +86,14 @@ RESULT = {
         "text": "Methode K",
     },
     "haustuer": {"status": "ok", "effekt_k": -0.05, "se_k": 0.04, "n": 70, "text": "Methode T"},
+    "dachboden": {
+        "status": "ok",
+        "anteil": 0.236,
+        "anteil_se": 0.012,
+        "n_naechte": 12,
+        "feucht_pct": 30.0,
+        "text": "Methode D",
+    },
 }
 
 
@@ -101,6 +109,10 @@ class TestGebaeude(unittest.TestCase):
     def write(self, result):
         with open(self.file, "w", encoding="utf-8") as f:
             json.dump(result, f)
+
+    def board_with(self, result):
+        self.write(result)
+        return self.board()
 
     def board(self):
         m = load_modules(self.base)
@@ -197,6 +209,17 @@ class TestGebaeude(unittest.TestCase):
         text = json.dumps(b, ensure_ascii=False)
         self.assertIn("74 % ± 34 % langsamer", text)
         self.assertNotIn("% schneller ab", text)
+
+    def test_attic(self):
+        tiles = {x["label"]: x for x in self.board_with(RESULT)["sections"][0]["tiles"]}
+        d = tiles["Dachboden"]
+        self.assertEqual((d["value"], d["unit"], d["state"]), ("24", "%", "look"))  # 30 % of the hours wet
+        self.assertIn("(± 1 %, n 12 Nächte) · 30 % der Stunden über 80 % rF", d["sub"])
+        r = dict(RESULT, dachboden={"status": "sammelt", "text": "erst 2 auswertbare Nächte (ab 7)", "n_naechte": 2})
+        d = {x["label"]: x for x in self.board_with(r)["sections"][0]["tiles"]}["Dachboden"]
+        self.assertEqual((d["value"], d["sub"]), ("–", "erst 2 auswertbare Nächte (ab 7)"))
+        r = {k: v for k, v in RESULT.items() if k != "dachboden"}
+        self.assertNotIn("Dachboden", {x["label"] for x in self.board_with(r)["sections"][0]["tiles"]})
 
     def test_texts_override(self):
         self.write(RESULT)

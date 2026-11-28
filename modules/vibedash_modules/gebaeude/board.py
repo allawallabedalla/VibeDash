@@ -50,6 +50,9 @@ TEXT = {
     "find_tilt_slow": "Schlafzimmer (Fenster nachts gekippt) kühlt nicht schneller ab als die übrigen Räume (eher "
     "{pct} % ± {se} % langsamer) – kein messbarer Wärmeverlust durchs gekippte Fenster.",
     "t_tilt_none": "kein Mehrverlust",
+    "t_attic": "Dachboden",
+    "t_attic_sub": "vom Unterschied innen–außen kommt oben an (± {se} %, n {n} Nächte)",
+    "t_attic_wet": " · {pct} % der Stunden über 80 % rF",
     "find_door": "Haustür öffnen: Flur {k} ± {se} K nach 30 min (n {n}) – kein messbarer Effekt.",
     "pv_old": "Alte PV-Tagesprognose lag an klaren Tagen {bias} ± {se} kWh daneben (n {n}). Das neue Stundenmodell ",
     "pv_new_ok": "wird ausgewertet.",
@@ -131,9 +134,18 @@ def empty(t: dict, now_ms: int) -> dict:
 
 
 def build(result: dict, stand_ms: int, t: dict) -> dict:
-    a, s, w, ww, pv, k, door = (
+    a, s, w, ww, pv, k, door, att = (
         result.get(x) or {}
-        for x in ("auskuehlen", "sonne", "wp_tageszeit", "warmwasser", "pv_prognose", "kippfenster", "haustuer")
+        for x in (
+            "auskuehlen",
+            "sonne",
+            "wp_tageszeit",
+            "warmwasser",
+            "pv_prognose",
+            "kippfenster",
+            "haustuer",
+            "dachboden",
+        )
     )
 
     def info(b, part=None):
@@ -224,6 +236,23 @@ def build(result: dict, stand_ms: int, t: dict) -> dict:
                 "info": info(k),
             }
         )
+    if _ok(att) and _num(att.get("anteil")) is not None:
+        wet = _num(att.get("feucht_pct"))
+        tiles.append(
+            {
+                "label": t["t_attic"],
+                "value": f"{round(100 * att['anteil'])}",
+                "unit": "%",
+                "icon": "home",
+                "color": "climate",
+                "state": "look" if wet is not None and wet >= 25 else "ok",
+                "sub": t["t_attic_sub"].format(se=round(100 * (att.get("anteil_se") or 0)), n=att["n_naechte"])
+                + (t["t_attic_wet"].format(pct=round(wet)) if wet else ""),
+                "info": info(att),
+            }
+        )
+    elif att:
+        tiles.append({"label": t["t_attic"], "value": "–", "icon": "home", "sub": collecting(att), "info": info(att)})
     sections = [{"type": "tiles", "title": t["tiles_title"], "tiles": tiles[:8]}]
 
     levers = []
