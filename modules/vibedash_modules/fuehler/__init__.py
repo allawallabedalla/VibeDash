@@ -10,6 +10,10 @@ Config (local/modules/fuehler.json, template modules/templates/fuehler.json):
   aussen    optional {measurement, feld?, temp: {tag: value}, feuchte: {tag: value}, name?} – an outdoor sensor
             (one series for temperature, one for humidity, picked by tags) to compare the absolute humidity with:
             does airing dry or wet the room? Without it, no comparison.
+  skizze    optional hand-drawn side view with the sensors at their places (section "sketch"):
+            {links?, rechts?, titel?, gebaeude: [{name, breite, traufe, first?, ueberstand?, boeden?: [{h, name?}],
+             raeume?: [{name, x, y, b, h}]}], orte: [{nr, gebaeude, x, y, seite?: "l"|"r"}]} – metres, x from the
+            left wall, y from the ground; first = ridge height (pitched roof), without it a flat roof at traufe
   zeitzone  default "Europe/Berlin"
   texte     optional wording overrides (keys of board.TEXT)
 
@@ -47,4 +51,4 @@ class Module:
         if data is not None and a.get("measurement") and a.get("temp") and a.get("feuchte"):
             data["aussen"] = source.read_outdoor(self.cfg["influx"], a, self.fetch)
             data["aussen_name"] = a.get("name") or self.t["outdoor"]
-        return board.build(data, self.cfg.get("fuehler"), self.clock(), self.tz, self.t)
+        return board.build(data, self.cfg.get("fuehler"), self.clock(), self.tz, self.t, self.cfg.get("skizze"))

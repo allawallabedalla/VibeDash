@@ -203,7 +203,35 @@ export type BoardSection =
   | (Base & BoardZones)
   | (Base & BoardPair)
   | (Base & BoardChargeTimeline)
-  | (Base & BoardPlan);
+  | (Base & BoardPlan)
+  | (Base & BoardSketch);
+
+/**
+ * A hand-drawn looking sketch (section "sketch"): one or more panels, each a side
+ * view in metres (y up) with lines (walls, roof, floors, rooms) and short labels;
+ * pins with a value at a position. Geometry comes from the house's config.
+ */
+export interface BoardSketch {
+  type: 'sketch';
+  panels: {
+    name: string;
+    box: [number, number, number, number];
+    lines: { points: [number, number][]; kind: 'wall' | 'floor' | 'ground' | 'room' }[];
+    labels: { x: number; y: number; text: string }[];
+    pins: {
+      x: number;
+      y: number;
+      label: string;
+      value: string;
+      sub?: string;
+      color: BoardColor;
+      side: 'l' | 'r';
+      state?: BoardState;
+    }[];
+  }[];
+  left?: string;
+  right?: string;
+}
 
 export interface BoardChargeTimeline {
   type: 'chargetimeline';
@@ -661,6 +689,11 @@ export function sanitizeBoard(raw: unknown): Board | null {
         if (plan) sections.push({ ...base, ...plan });
         break;
       }
+      case 'sketch': {
+        const k = sanitizeSketch(s);
+        if (k) sections.push({ ...base, ...k });
+        break;
+      }
       case 'text':
         sections.push({ ...base, type: 'text', text: text(s.text, 3000) });
         break;
@@ -883,6 +916,62 @@ const points = (v: unknown, max: number): [number, number][] =>
   list(v, max)
     .map(point)
     .filter((p): p is [number, number] => p !== null);
+const KINDS = ['wall', 'floor', 'ground', 'room'] as const;
+function sanitizeSketch(s: O): BoardSketch | null {
+  const panels = list(s.panels, 4)
+    .filter(isObj)
+    .map((p) => {
+      const b = list(p.box, 4).map(coord);
+      const [x0, y0, x1, y1] = b;
+      if (b.length < 4 || x0 == null || y0 == null || x1 == null || y1 == null) return null;
+      if (x1 <= x0 || y1 <= y0) return null;
+      return {
+        name: text(p.name, 30),
+        box: [x0, y0, x1, y1] as [number, number, number, number],
+        lines: list(p.lines, 60)
+          .filter(isObj)
+          .map((l) => ({
+            points: points(l.points, 60),
+            kind: KINDS.includes(l.kind as (typeof KINDS)[number])
+              ? (l.kind as (typeof KINDS)[number])
+              : 'wall',
+          }))
+          .filter((l) => l.points.length >= 2),
+        labels: list(p.labels, 20)
+          .filter(isObj)
+          .map((l) => ({ x: coord(l.x), y: coord(l.y), text: text(l.text, 30) }))
+          .filter(
+            (l): l is { x: number; y: number; text: string } =>
+              l.x !== null && l.y !== null && !!l.text,
+          ),
+        pins: list(p.pins, 24)
+          .filter(isObj)
+          .map((q) => {
+            const x = coord(q.x);
+            const y = coord(q.y);
+            if (x === null || y === null) return null;
+            const st = state(q.state);
+            const sub = opt(q.sub, 40);
+            return {
+              x,
+              y,
+              label: text(q.label, 30),
+              value: text(q.value, 16),
+              ...(sub ? { sub } : {}),
+              color: color(q.color, 'climate'),
+              side: q.side === 'l' ? ('l' as const) : ('r' as const),
+              ...(st ? { state: st } : {}),
+            };
+          })
+          .filter((q) => q !== null),
+      };
+    })
+    .filter((p) => p !== null);
+  if (!panels.length) return null;
+  const left = opt(s.left, 16);
+  const right = opt(s.right, 16);
+  return { type: 'sketch', panels, ...(left ? { left } : {}), ...(right ? { right } : {}) };
+}
 const roomMap = <T>(v: unknown, ids: Set<string>, f: (x: unknown) => T): Record<string, T> => {
   if (!isObj(v)) return {};
   const out: Record<string, T> = {};

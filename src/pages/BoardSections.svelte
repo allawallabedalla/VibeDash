@@ -250,6 +250,15 @@
         <BoardZones board={id} zones={s} onchanged={() => onchanged?.()} />
       {/await}
     </Card>
+  {:else if s.type === 'sketch'}
+    <Card title={s.title || ''} icon="home" color="var(--climate)" note={s.note} info={s.info}>
+      <!-- loaded only where a board has a sketch (first-page budget) -->
+      {#await import('../components/BoardSketch.svelte')}
+        <p class="muted-note" role="status">{t('state.loading')}</p>
+      {:then { default: BoardSketch }}
+        <BoardSketch sketch={s} />
+      {/await}
+    </Card>
   {:else if s.type === 'plan'}
     <Card
       title={s.title || tab?.title || ''}

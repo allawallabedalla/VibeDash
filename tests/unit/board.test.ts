@@ -737,3 +737,80 @@ describe('area picker sections (zones)', () => {
     ).toEqual([]);
   });
 });
+
+describe('sketch section', () => {
+  const panel = {
+    name: 'Schuppen',
+    box: [-1, -1, 9, 7],
+    lines: [
+      {
+        kind: 'wall',
+        points: [
+          [0, 0],
+          [0, 3],
+          [8, 3],
+        ],
+      },
+      {
+        kind: 'bogus',
+        points: [
+          [0, 0],
+          [1, 1],
+        ],
+      },
+      { kind: 'floor', points: [[0, 0]] },
+    ],
+    labels: [
+      { x: 4, y: 3.5, text: 'Boden' },
+      { x: 'a', y: 1, text: 'weg' },
+    ],
+    pins: [
+      { x: 6, y: 1, label: 'Keller', value: '3,1 °C · 70 %', color: 'climate', side: 'l' },
+      { x: 4, y: 5, label: 'Dach', value: '–', color: 'nope', state: 'look' },
+      { x: null, y: 1, label: 'ohne Ort' },
+    ],
+  };
+  const sk = (s: object) =>
+    sanitizeBoard({ sections: [{ type: 'sketch', title: 'S', ...s }] })!.sections;
+
+  it('keeps geometry, labels and pins, drops the broken ones', () => {
+    const [s] = sk({ panels: [panel], left: 'Ost', right: 'West' });
+    expect(s).toMatchObject({ type: 'sketch', left: 'Ost', right: 'West' });
+    const p = (
+      s as {
+        panels: {
+          lines: unknown[];
+          labels: unknown[];
+          pins: { color: string; side: string; state?: string }[];
+        }[];
+      }
+    ).panels[0]!;
+    expect(p.lines).toEqual([
+      {
+        kind: 'wall',
+        points: [
+          [0, 0],
+          [0, 3],
+          [8, 3],
+        ],
+      },
+      {
+        kind: 'wall',
+        points: [
+          [0, 0],
+          [1, 1],
+        ],
+      },
+    ]);
+    expect(p.labels).toEqual([{ x: 4, y: 3.5, text: 'Boden' }]);
+    expect(p.pins.map((q) => [q.color, q.side, q.state])).toEqual([
+      ['climate', 'l', undefined],
+      ['climate', 'r', 'look'],
+    ]);
+  });
+
+  it('drops a panel with a broken box and a sketch without panels', () => {
+    expect(sk({ panels: [{ ...panel, box: [5, 0, 1, 3] }] })).toEqual([]);
+    expect(sk({ panels: [] })).toEqual([]);
+  });
+});
